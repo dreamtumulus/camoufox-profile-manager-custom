@@ -207,6 +207,7 @@
   "Installing Camoufox browser": "Установка браузера Camoufox",
   "Set up your browser": "Установите браузер",
   "Download the browser once to launch profiles. Creating a profile does not require a download.": "Для запуска профилей достаточно один раз скачать браузер. Создать профиль можно и до загрузки.",
+  "The installer includes Camoufox. If setup is needed, repair the browser installation here.": "Camoufox включён в установщик. Если потребуется настройка, восстановите здесь установку браузера.",
   "Checking browser files…": "Проверка файлов браузера…",
   "Browser installation progress": "Ход установки браузера",
   "Installing…": "Установка…",

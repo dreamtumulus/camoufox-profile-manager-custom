@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex flex-col gap-px p-2">
-          {NAV.filter(item => canManageAccess || item.href === '/' || (role === 'operator' && item.href === '/schedules/')).map(({ href, label, icon: Icon }) => {
+          {NAV.filter(item => canManageAccess || item.href === '/' || (role === 'operator' && ['/schedules/', '/onboarding/'].includes(item.href))).map(({ href, label, icon: Icon }) => {
             const target = href.replace(/\/+$/, '') || '/'
             const active = current === target
             return (
@@ -92,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto">{canManageAccess || current === '/' || (role === 'operator' && current === '/schedules') ? children : <div className="p-6" role="alert">{t('Access denied')}</div>}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto">{canManageAccess || current === '/' || (role === 'operator' && ['/schedules', '/onboarding'].includes(current)) ? children : <div className="p-6" role="alert">{t('Access denied')}</div>}</main>
     </div>
   )
 }
@@ -109,7 +109,7 @@ function Wordmark() {
         <rect x="3" y="6.8" width="10" height="2.4" rx="1.2" fill="var(--color-signal)" opacity="0.62" />
         <rect x="5.5" y="11.1" width="5" height="2.4" rx="1.2" fill="var(--color-signal)" opacity="0.32" />
       </svg>
-      <span className="text-[13px] font-semibold tracking-tight">Camoufox</span>
+      <span className="text-[13px] font-semibold tracking-tight">赵露思 上号系统</span>
     </>
   )
 }

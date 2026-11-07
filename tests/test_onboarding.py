@@ -2,7 +2,10 @@ import sqlite3
 
 import pytest
 from cryptography.fernet import Fernet
+from fastapi import HTTPException
 
+from camoufox_pm.api import access as api_access
+from camoufox_pm.api.principal import Principal
 from camoufox_pm.core.onboarding import OnboardingError, Selection, matching_proxy, proxy_host
 from camoufox_pm.onboarding_server import (
     AccountRequest,
@@ -85,3 +88,26 @@ def test_shared_store_persists_and_encrypts_secrets(tmp_path):
     sk = raw.execute("SELECT sk_encrypted FROM sessions").fetchone()[0]
     assert "1dk_onb_test_secret" not in credential
     assert "sk-ant-test-secret-value" not in sk
+
+
+@pytest.mark.asyncio
+async def test_onboarding_allows_operators_but_not_viewers(monkeypatch):
+    async def refreshed(principal):
+        return principal
+
+    monkeypatch.setattr(api_access, "refreshed_principal", refreshed)
+    for role in ("administrator", "operator"):
+        monkeypatch.setattr(
+            api_access,
+            "current_principal",
+            lambda role=role: Principal("session", username="member", role=role),
+        )
+        await api_access.require_onboarding()
+    monkeypatch.setattr(
+        api_access,
+        "current_principal",
+        lambda: Principal("session", username="viewer", role="viewer"),
+    )
+    with pytest.raises(HTTPException) as error:
+        await api_access.require_onboarding()
+    assert error.value.status_code == 403

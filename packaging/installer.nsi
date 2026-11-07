@@ -1,9 +1,9 @@
-Unicode True
+﻿Unicode True
 ; Preserve the pinned fpgen model dates through installation.
 SetDateSave on
 !include "MUI2.nsh"
 !include "${UNINSTALL_MANIFEST}"
-Name "Camoufox Profile Manager"
+Name "赵露思 上号系统"
 OutFile "${OUTPUT}"
 InstallDir "$LOCALAPPDATA\Programs\Camoufox Profile Manager"
 RequestExecutionLevel user
@@ -73,10 +73,13 @@ Section "Install"
     SetOutPath "$INSTDIR"
     File /r "${BUNDLE}\*"
     WriteUninstaller "$INSTDIR\Uninstall.exe"
-    CreateDirectory "$SMPROGRAMS\Camoufox Profile Manager"
-    CreateShortcut "$SMPROGRAMS\Camoufox Profile Manager\Camoufox Profile Manager.lnk" "$INSTDIR\camoufox-pm.exe"
-    CreateShortcut "$SMPROGRAMS\Camoufox Profile Manager\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
-    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamoufoxPM" "DisplayName" "Camoufox Profile Manager"
+    CreateDirectory "$SMPROGRAMS\赵露思 上号系统"
+    CreateShortcut "$SMPROGRAMS\赵露思 上号系统\赵露思 上号系统.lnk" "$INSTDIR\camoufox-pm.exe"
+    CreateShortcut "$SMPROGRAMS\赵露思 上号系统\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+    Delete "$SMPROGRAMS\Camoufox Profile Manager\Camoufox Profile Manager.lnk"
+    Delete "$SMPROGRAMS\Camoufox Profile Manager\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\Camoufox Profile Manager"
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamoufoxPM" "DisplayName" "赵露思 上号系统"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamoufoxPM" "UninstallString" '"$INSTDIR\Uninstall.exe"'
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamoufoxPM" "InstallLocation" "$INSTDIR"
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\CamoufoxPM" "DisplayIcon" "$INSTDIR\camoufox-pm.exe,0"
@@ -94,6 +97,9 @@ SectionEnd
 Section "Uninstall"
     !insertmacro ValidateBundlePaths "un."
     !insertmacro RemoveBundleFiles
+    Delete "$SMPROGRAMS\赵露思 上号系统\赵露思 上号系统.lnk"
+    Delete "$SMPROGRAMS\赵露思 上号系统\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\赵露思 上号系统"
     Delete "$SMPROGRAMS\Camoufox Profile Manager\Camoufox Profile Manager.lnk"
     Delete "$SMPROGRAMS\Camoufox Profile Manager\Uninstall.lnk"
     RMDir "$SMPROGRAMS\Camoufox Profile Manager"

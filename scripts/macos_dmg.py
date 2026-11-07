@@ -19,7 +19,7 @@ def create_dmg(stage: Path, output: Path) -> None:
                     "hdiutil",
                     "create",
                     "-volname",
-                    "Camoufox Profile Manager",
+                    "赵露思 上号系统",
                     "-srcfolder",
                     str(stage),
                     "-format",

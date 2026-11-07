@@ -207,6 +207,7 @@
   "Installing Camoufox browser": "正在安装 Camoufox 浏览器",
   "Set up your browser": "安装浏览器",
   "Download the browser once to launch profiles. Creating a profile does not require a download.": "启动配置前需要下载一次浏览器。创建配置无需下载。",
+  "The installer includes Camoufox. If setup is needed, repair the browser installation here.": "安装包已内置 Camoufox。如需修复浏览器安装，可在此处操作。",
   "Checking browser files…": "正在检查浏览器文件…",
   "Browser installation progress": "浏览器安装进度",
   "Installing…": "正在安装…",

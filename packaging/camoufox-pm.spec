@@ -4,7 +4,7 @@
 #   pyinstaller packaging/camoufox-pm.spec --noconfirm --clean
 #
 # Produces dist/camoufox-pm/ (a standalone bundle) and, on macOS, a .app.
-# The Camoufox browser binary is NOT bundled — it is fetched at first run.
+# The paired Camoufox browser and location data are staged before this build.
 import os
 import sys
 from importlib.metadata import version
@@ -49,6 +49,7 @@ version_hook = Path(ROOT) / "build" / "camoufox_pm_version_hook.py"
 write_runtime_version_hook(version_hook, version("camoufox-profile-manager"))
 
 datas = [(os.path.join(ROOT, "src", "camoufox_pm", "webui"), "camoufox_pm/webui")]
+datas += [(os.path.join(ROOT, "build", "bundled-camoufox"), "camoufox-runtime")]
 datas += [(os.path.join(SPECPATH, "camoufox-pm.svg"), ".")]
 datas += copy_metadata("camoufox-profile-manager")
 datas += copy_metadata("playwright")
@@ -118,6 +119,8 @@ app = BUNDLE(
     bundle_identifier="com.github.polyackiy.camoufox-pm",
     info_plist={
         "NSHighResolutionCapable": True,
+        "CFBundleName": "赵露思 上号系统",
+        "CFBundleDisplayName": "赵露思 上号系统",
         "CFBundleShortVersionString": version("camoufox-profile-manager"),
     },
 )

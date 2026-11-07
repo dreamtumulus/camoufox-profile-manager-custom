@@ -111,3 +111,7 @@ def bootstrap_desktop() -> None:
             Fernet(key.encode())  # Fail clearly instead of starting with a broken key.
             os.environ["CPM_SECRET_KEY"] = key
     get_settings.cache_clear()
+    from .core.bundled_browser import configure_browser_cache, provision_bundled_browser
+
+    configure_browser_cache()
+    provision_bundled_browser()

@@ -39,6 +39,10 @@ export interface OnboardingProxy {
   status: string
   bound: boolean
   quarantined: boolean
+  boundAccounts: number
+  reservedAccounts: number
+  normalSlots: number
+  overflowSlots: number
   exitIp: string
   country: string | null
 }

@@ -1,4 +1,4 @@
-# Camoufox Profile Manager
+# 赵露思 上号系统
 
 [![CI](https://github.com/polyackiy/camoufox-profile-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/polyackiy/camoufox-profile-manager/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -13,9 +13,9 @@ Each profile is **one long-lived machine**. It keeps the same fingerprint every
 session, along with its own cookies, storage and history, so an account opened
 from it in January still looks like the same computer in June.
 
-> **Desktop release:** [download the latest stable release](https://github.com/polyackiy/camoufox-profile-manager/releases/latest) from **Assets**. macOS
-> Apple Silicon and Intel, Windows x64, and Ubuntu/Debian x64 builds are produced
-> by CI. Releases remain unsigned; certificates and macOS notarization are not planned
+> **Desktop release:** [download the latest custom release](https://github.com/dreamtumulus/camoufox-profile-manager-custom/releases/latest) from **Assets**. macOS
+> Apple Silicon and Intel, plus Windows x64, are produced by CI with Camoufox bundled.
+> Releases remain unsigned; certificates and macOS notarization are not planned
 > and are not release requirements. OS security warnings can appear.
 > See [Getting started](docs/getting-started.md) / [Начало работы](docs/getting-started.ru.md).
 > See [installation evidence and coverage limits](docs/desktop-acceptance.md).
@@ -118,7 +118,7 @@ of plausible parts.
 
 ### Desktop app — recommended
 
-1. Open [Releases](https://github.com/polyackiy/camoufox-profile-manager/releases)
+1. Open [Releases](https://github.com/dreamtumulus/camoufox-profile-manager-custom/releases)
    and choose the installer in **Assets** for your computer:
 
    | Computer | Download |
@@ -128,10 +128,10 @@ of plausible parts.
    | Windows 10/11, Intel/AMD 64-bit | `camoufox-pm-windows-x86_64-setup.exe` |
    | Ubuntu 22.04+/compatible Debian, Intel/AMD 64-bit | `camoufox-pm-linux-x86_64.deb` |
 
-2. Install and open **Camoufox Profile Manager**. You do not need Python, Node.js
+2. Install and open **赵露思 上号系统**. You do not need Python, Node.js
    or a terminal. On Mac, drag the app into Applications first.
-3. Click **Install browser** in the app, wait for the download, and create your
-   first profile. The app shows progress and provides a retry if installation fails.
+3. The matching Camoufox browser is included in the desktop installer and is
+   provisioned automatically on first launch. Create your first profile directly.
 
 Older releases may only offer Python packages. Desktop installers are unsigned
 under the [release policy](docs/signing.md); macOS/Windows can show a security warning.

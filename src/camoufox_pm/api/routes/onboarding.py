@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from camoufox_pm.api.access import require_admin
+from camoufox_pm.api.access import require_admin, require_onboarding
 from camoufox_pm.api.dependencies import get_profile_manager
 from camoufox_pm.core.onboarding import (
     AccountInput,
@@ -36,7 +36,7 @@ def _public_result(value: Any) -> Any:
 
 @router.get("/onboarding/config")
 async def onboarding_config():
-    await require_admin()
+    await require_onboarding()
     return remote_status()
 
 
@@ -49,7 +49,7 @@ async def save_onboarding_config(request: RemoteConfig):
 
 @router.get("/onboarding/bootstrap")
 async def onboarding_bootstrap():
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     state = await remote.state()
     client = await oneday_client(remote)
@@ -58,7 +58,7 @@ async def onboarding_bootstrap():
 
 @router.get("/onboarding/nodes/{node_id}/groups")
 async def onboarding_groups(node_id: str):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     client = await oneday_client(remote)
     return await client.groups(node_id)
@@ -66,7 +66,7 @@ async def onboarding_groups(node_id: str):
 
 @router.get("/onboarding/nodes/{node_id}/proxies")
 async def onboarding_proxies(node_id: str):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     client = await oneday_client(remote)
     return await client.proxies(node_id)
@@ -74,26 +74,26 @@ async def onboarding_proxies(node_id: str):
 
 @router.put("/onboarding/preferences")
 async def onboarding_preferences(selection: Selection):
-    await require_admin()
+    await require_onboarding()
     return await RemoteClient.configured().preferences(selection.model_dump())
 
 
 @router.post("/onboarding/accounts")
 async def onboarding_account(request: AccountInput):
-    await require_admin()
+    await require_onboarding()
     return await RemoteClient.configured().save_account(request)
 
 
 @router.delete("/onboarding/accounts/{account_id}")
 async def onboarding_delete_account(account_id: str):
-    await require_admin()
+    await require_onboarding()
     await RemoteClient.configured().delete_account(account_id)
     return {"deleted": True}
 
 
 @router.post("/onboarding/sessions")
 async def onboarding_create_session(request: SessionInput):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     shared = await remote.state()
     account = next((item for item in shared["accounts"] if item["id"] == request.account_id), None)
@@ -143,7 +143,7 @@ async def onboarding_create_session(request: SessionInput):
 
 @router.post("/onboarding/sessions/{session_id}/extract")
 async def onboarding_extract_sk(session_id: str, optional: bool = False):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     session = await remote.session(session_id)
     profile_id = session.get("profile_id")
@@ -183,7 +183,7 @@ async def onboarding_extract_sk(session_id: str, optional: bool = False):
 
 @router.post("/onboarding/sessions/{session_id}/submit")
 async def onboarding_submit_sk(session_id: str):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     session = await remote.session(session_id)
     if not session.get("sk_masked"):
@@ -214,7 +214,7 @@ async def onboarding_submit_sk(session_id: str):
 
 @router.get("/onboarding/sessions/{session_id}/result")
 async def onboarding_result(session_id: str):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     session = await remote.session(session_id)
     job_id = session.get("job_id")
@@ -239,7 +239,7 @@ async def onboarding_result(session_id: str):
 
 @router.post("/onboarding/sessions/{session_id}/close")
 async def onboarding_close_browser(session_id: str):
-    await require_admin()
+    await require_onboarding()
     remote = RemoteClient.configured()
     session = await remote.session(session_id)
     profile_id = session.get("profile_id")

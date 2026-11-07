@@ -43,7 +43,7 @@ export default function AccessPage() {
   const [draftFilters, setDraftFilters] = useState(filters)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<AccessRole>('viewer')
+  const [role, setRole] = useState<AccessRole>('operator')
   const [resetPassword, setResetPassword] = useState('')
   const [deleting, setDeleting] = useState<string | null>(null)
   const [error, setError] = useState('')

@@ -39,7 +39,7 @@ def _instance_lock(data_dir: Path):
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError as exc:
             raise AlreadyRunningError(
-                "Camoufox Profile Manager is already open. Switch to its existing window."
+                "赵露思 上号系统 is already open. Switch to its existing window."
             ) from exc
         try:
             yield
@@ -80,7 +80,7 @@ def _stop_server(server: uvicorn.Server, thread: threading.Thread) -> bool:
 
 
 def run_desktop(
-    host: str = "127.0.0.1", port: int = 0, title: str = "Camoufox Profile Manager"
+    host: str = "127.0.0.1", port: int = 0, title: str = "赵露思 上号系统"
 ) -> None:
     """Serve on a reserved socket and stop browsers/server when the window closes."""
     try:
@@ -108,7 +108,7 @@ def run_desktop(
             except OSError as exc:
                 raise RuntimeError(
                     f"Cannot start on {host}:{port}. Close the app using that port, "
-                    "or start Camoufox Profile Manager without a fixed port."
+                    "or start 赵露思 上号系统 without a fixed port."
                 ) from exc
             listener.listen(128)
             actual_port = listener.getsockname()[1]
@@ -195,10 +195,10 @@ def _show_error(message: str) -> None:
         import webview
 
         webview.create_window(
-            "Camoufox Profile Manager",
+            "赵露思 上号系统",
             html=(
                 "<html><body style='font:18px system-ui;padding:24px'>"
-                "<h1>Camoufox Profile Manager</h1><p>" + html.escape(message) + "</p></body></html>"
+                "<h1>赵露思 上号系统</h1><p>" + html.escape(message) + "</p></body></html>"
             ),
             width=600,
             height=300,

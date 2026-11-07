@@ -4,7 +4,7 @@
 
 ## Download and open
 
-Open the [releases page](https://github.com/polyackiy/camoufox-profile-manager/releases)
+Open the [releases page](https://github.com/dreamtumulus/camoufox-profile-manager-custom/releases)
 and choose a desktop installer from a release's **Assets**. Python, Node.js and a
 terminal are unnecessary for desktop packages. Installer builds are attached by
 the release workflow; older releases may only contain Python packages.
@@ -41,10 +41,9 @@ below; the current 0.6.0 installers have English and Simplified Chinese. Choose
 manager remembers your choice when local storage is available. Interface language
 never changes a profile's fingerprint languages, timezone, cookies or settings.
 
-1. Open **Camoufox Profile Manager**. It keeps your data separately from the installed app.
-2. Choose **Install browser** in the setup banner. Internet access is needed for
-   this initial download. Progress and errors appear in the app; if downloading
-   fails, retry. **Retry download** is also available in Settings.
+1. Open **赵露思 上号系统**. It keeps your data separately from the installed app.
+2. The matching Camoufox browser is included and provisioned automatically on
+   first launch. Settings retains a repair option for an incomplete installation.
 3. Choose **Create first profile** or **New profile**. Give it a name you recognize.
 4. Leave the advanced fingerprint settings at their defaults. Add a proxy only if
    you already have one; check it before relying on its location.

@@ -55,6 +55,11 @@ async def require_admin() -> None:
         raise HTTPException(status_code=403, detail="Administrator access required")
 
 
+async def require_onboarding() -> None:
+    if (await refreshed_principal(current_principal())).role not in {"administrator", "operator"}:
+        raise HTTPException(status_code=403, detail="Onboarding operator access required")
+
+
 async def _check_profile(
     principal: Principal, profile_id: str, permission: str, session_hash: str | None = None
 ) -> None:

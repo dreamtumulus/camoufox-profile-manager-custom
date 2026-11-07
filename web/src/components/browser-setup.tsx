@@ -70,7 +70,7 @@ export function BrowserSetup({ firstProfile = false, onCreate }: { firstProfile?
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold">{ready ? (firstProfile ? t('Ready for your first profile') : t('Camoufox browser is ready')) : downloading ? t('Installing Camoufox browser') : t('Set up your browser')}</h2>
           <p className="mt-1 text-ink-dim">
-            {ready ? t('Browser {version}. Each profile keeps its own cookies, storage and fingerprint.', { version: browser.version || t('installed') }) : t('Download the browser once to launch profiles. Creating a profile does not require a download.')}
+            {ready ? t('Browser {version}. Each profile keeps its own cookies, storage and fingerprint.', { version: browser.version || t('installed') }) : t('The installer includes Camoufox. If setup is needed, repair the browser installation here.')}
           </p>
           {firstProfile && <ol className="mt-3 space-y-1 text-ink-dim">
             <li>{t('1. Install the browser once, or create your profile while it downloads.')}</li>

@@ -3,7 +3,7 @@
 
 Run with ``--package`` after signing the app/binary, or ``--package-only`` when
 CI already built/signed it. Python and Node are build dependencies only; the
-Camoufox browser is downloaded through the first-run UI.
+Camoufox browser is bundled into the installer.
 """
 
 import argparse
@@ -19,6 +19,7 @@ from importlib.metadata import version as installed_version
 from pathlib import Path
 from urllib.request import urlretrieve
 
+from bundle_browser import stage_browser
 from windows_uninstall_manifest import write_uninstall_manifest
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -133,6 +134,7 @@ def main() -> int:
         return 0
     if not args.package_only:
         subprocess.run([sys.executable, str(ROOT / "scripts" / "build_webui.py")], check=True)
+        stage_browser()
         subprocess.run([sys.executable, "-m", "PyInstaller", str(ROOT / "packaging" / "camoufox-pm.spec"), "--noconfirm", "--clean"], cwd=ROOT, check=True)
     if args.package or args.package_only:
         files = package_desktop()

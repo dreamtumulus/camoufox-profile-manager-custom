@@ -8,8 +8,8 @@ import './fonts.css'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Camoufox Profile Manager',
-  description: 'Antidetect browser profile management',
+  title: '赵露思 上号系统',
+  description: '本地指纹浏览器、代理与 Claude Team 上号管理',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
