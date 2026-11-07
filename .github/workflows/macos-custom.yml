@@ -1,0 +1,49 @@
+name: Custom macOS builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-15 }
+          - { name: macos-x86_64, os: macos-15-intel }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra build --extra sync
+      - name: Build desktop app
+        run: uv run --no-sync python scripts/build_desktop.py
+      - name: Smoke frozen recovery dispatcher
+        run: uv run --no-sync python scripts/smoke_desktop_recovery.py
+      - name: Create DMG
+        run: uv run --no-sync python scripts/build_desktop.py --package-only
+      - name: Verify disk image
+        run: hdiutil verify dist/*.dmg
+      - name: Write checksum
+        run: uv run --no-sync python scripts/build_desktop.py --checksums-only
+      - uses: actions/upload-artifact@v7
+        with:
+          name: camoufox-pm-${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/*.dmg
+            dist/*.sha256
