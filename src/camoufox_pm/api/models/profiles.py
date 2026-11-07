@@ -464,3 +464,13 @@ class TagSkipped(BaseModel):
 class BulkTagsResponse(BaseModel):
     updated: list[ProfileResponse]
     skipped: list[TagSkipped]
+
+
+class BulkGroupRequest(BaseModel):
+    profiles: list[TagTarget] = Field(min_length=1, max_length=1000)
+    group: str | None = None
+
+
+class BulkGroupResponse(BaseModel):
+    updated: list[ProfileResponse]
+    skipped: list[TagSkipped]

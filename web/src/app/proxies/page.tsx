@@ -9,6 +9,7 @@ import { Modal } from '@/components/modal'
 import { ProxySequenceAssignment } from '@/components/proxy-sequence-assignment'
 import { ProxyAssignment } from '@/components/proxy-assignment'
 import { ProxyForm } from '@/components/proxy-form'
+import { ProxyGroupDialog } from '@/components/proxy-group-dialog'
 import { ProxyImport } from '@/components/proxy-import'
 import { useToast } from '@/components/toast'
 import { isStaleWrite, proxiesAPI, readProxyCheck, type LibraryProxy } from '@/lib/api'
@@ -20,6 +21,7 @@ export default function ProxiesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState('')
   const [form, setForm] = useState<{ proxy: LibraryProxy | null } | null>(null)
   const [importing, setImporting] = useState(false)
   const [sequenceOpen, setSequenceOpen] = useState(false)
@@ -30,6 +32,7 @@ export default function ProxiesPage() {
   const [deleteStale, setDeleteStale] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [batchTargets, setBatchTargets] = useState<LibraryProxy[] | null>(null)
+  const [groupEditing, setGroupEditing] = useState(false)
   const mounted = useRef(true)
   const [checking, setChecking] = useState<Set<string>>(new Set())
   const load = useCallback(async () => {
@@ -45,7 +48,12 @@ export default function ProxiesPage() {
     return () => { mounted.current = false }
   }, [load])
 
-  const shown = useMemo(() => proxies.filter(proxy => `${proxy.name} ${proxy.server} ${proxy.country ?? ''}`.toLowerCase().includes(search.toLowerCase())), [proxies, search])
+  const proxyGroups = useMemo(() => [...new Set(proxies.map(proxy => proxy.group_name).filter((group): group is string => !!group))].sort(), [proxies])
+  const shown = useMemo(() => proxies.filter(proxy => {
+    if (groupFilter === '__ungrouped__' && proxy.group_name) return false
+    if (groupFilter && groupFilter !== '__ungrouped__' && proxy.group_name !== groupFilter) return false
+    return `${proxy.name} ${proxy.server} ${proxy.country ?? ''} ${proxy.group_name ?? ''}`.toLowerCase().includes(search.toLowerCase())
+  }), [proxies, search, groupFilter])
   function upsert(proxy: LibraryProxy) { if (!mounted.current) return; setProxies(current => current.some(item => item.id === proxy.id) ? current.map(item => item.id === proxy.id ? proxy : item) : [proxy, ...current]) }
   const selectedProxies = proxies.filter(proxy => selected.has(proxy.id))
   const batchCandidates = selectedProxies.length ? selectedProxies : shown
@@ -102,21 +110,23 @@ export default function ProxiesPage() {
     <header className="sticky top-0 z-20 flex min-h-[52px] flex-wrap items-center gap-3 border-b border-line bg-canvas/85 px-5 py-2 backdrop-blur">
       <h1 className="text-[14px] font-semibold">{t('Proxy library')}</h1><span className="font-mono text-ink-faint">{proxies.length}</span>
       <div className="relative ml-2 min-w-[160px] flex-1 max-w-[280px]"><Search size={13} aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-dim" /><input className="field field-compact pl-7" aria-label={t('Search library proxies')} placeholder={t('Search name, server or country')} value={search} onChange={event => setSearch(event.target.value)} /></div>
+      <select className="field field-compact w-[150px]" aria-label={t('Filter by proxy group')} value={groupFilter} onChange={event => setGroupFilter(event.target.value)}><option value="">{t('All proxy groups')}</option><option value="__ungrouped__">{t('Ungrouped')}</option>{proxyGroups.map(group => <option key={group} value={group}>{group}</option>)}</select>
       <div className="ml-auto flex max-w-full flex-wrap gap-2"><button className="btn btn-default" disabled={loading || !!error || !batchCandidates.length || checking.size > 0 || !!batchTargets} onClick={() => setBatchTargets([...batchCandidates])}><Check size={13} aria-hidden="true" />{t('Batch check')}</button><button className="btn btn-default" onClick={() => setSequenceOpen(true)}>{t('Assign proxy list')}</button><button className="btn btn-default" onClick={() => setImporting(true)}><Upload size={13} aria-hidden="true" />{t('Import')}</button><button className="btn btn-primary" onClick={() => setForm({ proxy: null })}><Plus size={14} aria-hidden="true" />{t('New proxy')}</button></div>
     </header>
     <div className="border-b border-line px-5 py-4"><p className="text-ink-dim">{t('Save named proxies once, check them on demand, and assign copies to stopped profiles. Editing or deleting a library entry never changes proxies already assigned to profiles.')}</p><p className="mt-1 text-ink-dim">{t('Checks run only when requested. Stored passwords remain hidden.')}</p></div>
     {proxies.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-2 text-ink-dim">
       <span>{selectedProxies.length ? t('Selected proxies: {count}', { count: selectedProxies.length }) : t('No selection: batch check uses the current search results ({count}).', { count: shown.length })}</span>
-      {selectedProxies.length > 0 && <button className="btn btn-ghost" onClick={() => setSelected(new Set())}>{t('Clear selection')}</button>}
+      {selectedProxies.length > 0 && <><button className="btn btn-default" onClick={() => setGroupEditing(true)}>{t('Change proxy group')}</button><button className="btn btn-ghost" onClick={() => setSelected(new Set())}>{t('Clear selection')}</button></>}
     </div>}
     {error ? <EmptyState icon={<Network size={18} />} title={t('Cannot load proxy library')} body={t(error)} action={<button className="btn btn-default" onClick={load}>{t('Retry')}</button>} /> : loading ? <p className="px-5 py-8 text-ink-dim" role="status">{t('Loading…')}</p> : !proxies.length ? <EmptyState icon={<Network size={18} />} title={t('No library proxies yet')} body={t('Add a named proxy or import a list. Profiles can still use their own manually configured proxies.')} action={<button className="btn btn-primary" onClick={() => setForm({ proxy: null })}>{t('Create a proxy')}</button>} /> : !shown.length ? <EmptyState icon={<Search size={18} />} title={t('No matching proxies')} body={t('Try a different name, server or country.')} action={<button className="btn btn-default" onClick={() => setSearch('')}>{t('Clear search')}</button>} /> : <div className="overflow-x-auto"><table className="w-full min-w-[820px] border-collapse text-left">
-      <thead><tr className="border-b border-line text-[11px] uppercase tracking-[0.05em] text-ink-faint"><th className="w-10 pl-5 py-2"><input type="checkbox" aria-label={t('Select all visible proxies')} checked={allShownSelected} ref={node => { if (node) node.indeterminate = !allShownSelected && shown.some(proxy => selected.has(proxy.id)) }} onChange={toggleShown} /></th><th className="px-5 py-2 font-medium">{t('Name')}</th><th className="px-3 py-2 font-medium">{t('Connection')}</th><th className="px-3 py-2 font-medium">{t('Credentials')}</th><th className="px-3 py-2 font-medium">{t('Last check')}</th><th className="px-5 py-2 text-right font-medium">{t('Actions')}</th></tr></thead>
+      <thead><tr className="border-b border-line text-[11px] uppercase tracking-[0.05em] text-ink-faint"><th className="w-10 pl-5 py-2"><input type="checkbox" aria-label={t('Select all visible proxies')} checked={allShownSelected} ref={node => { if (node) node.indeterminate = !allShownSelected && shown.some(proxy => selected.has(proxy.id)) }} onChange={toggleShown} /></th><th className="px-5 py-2 font-medium">{t('Name')}</th><th className="px-3 py-2 font-medium">{t('Proxy group')}</th><th className="px-3 py-2 font-medium">{t('Connection')}</th><th className="px-3 py-2 font-medium">{t('Credentials')}</th><th className="px-3 py-2 font-medium">{t('Last check')}</th><th className="px-5 py-2 text-right font-medium">{t('Actions')}</th></tr></thead>
       <tbody>{shown.map(proxy => {
         const health = proxy.last_check ? readProxyCheck(proxy.last_check, locale) : null
         const busy = checking.has(proxy.id)
         return <tr key={proxy.id} className="border-b border-line/60 hover:bg-surface">
           <td className="pl-5 py-3"><input type="checkbox" aria-label={t('Select proxy {name}', { name: proxy.name })} checked={selected.has(proxy.id)} onChange={() => toggleSelected(proxy.id)} /></td>
           <td className="px-5 py-3"><p className="font-medium">{proxy.name}</p><p className="font-mono text-[11px] text-ink-dim">{proxy.country || '—'}</p></td>
+          <td className="px-3 py-3 text-ink-dim">{proxy.group_name || t('Ungrouped')}</td>
           <td className="px-3 py-3"><p className="break-all font-mono">{proxy.type}://{proxy.server}</p></td>
           <td className="px-3 py-3 text-ink-dim"><p className="break-all">{proxy.username || t('No username')}</p><p className="text-[11px]">{proxy.has_password ? t('Password stored') : t('No password')}</p></td>
           <td className="max-w-[220px] px-3 py-3">{health ? <><p className={health.tone === 'ok' ? 'text-ok' : health.tone === 'danger' ? 'text-danger' : 'text-warn'} title={health.detail}>{health.label}</p><p className="text-[11px] text-ink-dim">{proxy.last_check?.ip || '—'}{proxy.last_check?.latency_ms != null ? ` · ${proxy.last_check.latency_ms} ms` : ''}</p><p className="text-[11px] text-ink-dim">{proxy.last_check?.checked_at && new Date(proxy.last_check.checked_at).toLocaleString(locale)}</p><details className="mt-1 text-[11px] text-ink-dim"><summary className="cursor-pointer">{t('Check details')}</summary><p className="mt-1 whitespace-pre-line break-words">{health.detail}</p></details></> : <span className="text-ink-dim">{t('Not checked')}</span>}</td>
@@ -130,7 +140,8 @@ export default function ProxiesPage() {
       })}</tbody>
     </table></div>}
     {batchTargets && <BatchProxyChecks targets={batchTargets} onClose={() => { setBatchTargets(null); if (!checking.size) void load() }} onChecked={upsert} onChecking={markChecking} />}
-    {form && <ProxyForm key={`${form.proxy?.id ?? 'new'}:${form.proxy?.row_version ?? 0}`} proxy={form.proxy} onClose={() => setForm(null)} onReload={reloadDraft} onSaved={proxy => { upsert(proxy); setForm(null); toast('ok', t('Library proxy saved'), proxy.name) }} />}
+    {groupEditing && <ProxyGroupDialog proxies={selectedProxies} groups={proxyGroups} onClose={() => setGroupEditing(false)} onSaved={upsert} />}
+    {form && <ProxyForm key={`${form.proxy?.id ?? 'new'}:${form.proxy?.row_version ?? 0}`} proxy={form.proxy} groups={proxyGroups} onClose={() => setForm(null)} onReload={reloadDraft} onSaved={proxy => { upsert(proxy); setForm(null); toast('ok', t('Library proxy saved'), proxy.name) }} />}
     {importing && <ProxyImport onClose={() => setImporting(false)} onImported={load} />}
     {sequenceOpen && <ProxySequenceAssignment onClose={() => setSequenceOpen(false)} />}
     {assigning && <ProxyAssignment proxy={assigning} onClose={() => { setAssigning(null); load() }} />}

@@ -267,6 +267,7 @@ export interface ProxyCheckRecord {
 export interface LibraryProxy {
   id: string
   name: string
+  group_name?: string | null
   type: string
   server: string
   username: string | null
@@ -360,6 +361,10 @@ export interface BulkTagsResult {
 }
 
 export const profilesAPI = {
+  async bulkGroup(profiles: Profile[], group: string | null): Promise<BulkTagsResult> {
+    const body = await request<{ data: BulkTagsResult }>(`${API_PREFIX}/profiles/group`, { method: 'POST', body: JSON.stringify({ profiles: profiles.map(({ id, row_version }) => ({ id, row_version })), group }) })
+    return body.data
+  },
   async bulkTags(profiles: Profile[], add: string[], remove: string[]): Promise<BulkTagsResult> {
     const body = await request<{ data: BulkTagsResult }>(`${API_PREFIX}/profiles/tags`, { method: 'POST', body: JSON.stringify({ profiles: profiles.map(({ id, row_version }) => ({ id, row_version })), add, remove }) })
     return body.data

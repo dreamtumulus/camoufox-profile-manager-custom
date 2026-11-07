@@ -45,6 +45,15 @@ async def test_password_is_encrypted_and_metadata_never_decrypts(inventory, monk
 
 
 @pytest.mark.asyncio
+async def test_proxy_group_is_saved_without_affecting_connection_metadata(inventory):
+    proxy = await inventory.create({**VALUES, "group_name": "洛杉矶"})
+    assert proxy["group_name"] == "洛杉矶"
+    updated = await inventory.update(proxy["id"], {"group_name": None}, proxy["row_version"])
+    assert updated["group_name"] is None
+    assert updated["server"] == VALUES["server"] and updated["has_password"]
+
+
+@pytest.mark.asyncio
 async def test_patch_password_is_preserved_then_explicitly_cleared(inventory):
     proxy = await inventory.create(VALUES)
     original = inventory.connection.execute("SELECT password FROM proxy_inventory").fetchone()[0]

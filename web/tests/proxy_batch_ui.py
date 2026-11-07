@@ -13,7 +13,7 @@ class ProxyBatchUI(DesktopUI):
     def setUp(self):
         super().setUp()
         self.library = [
-            {**self.library[0], "id": f"proxy-{i}", "name": f"Proxy {i}"}
+            {**self.library[0], "id": f"proxy-{i}", "name": f"Proxy {i}", "group_name": "US" if i <= 2 else "DE"}
             for i in range(1, 6)
         ]
         self.checked_ids = []
@@ -57,6 +57,26 @@ class ProxyBatchUI(DesktopUI):
     def open_batch(self):
         self.page.get_by_role("button", name="Batch check", exact=True).click()
         return self.page.get_by_role("dialog", name="Batch proxy check", exact=True)
+
+    def test_proxy_batch_group_filter_and_select_all_visible(self):
+        self.open_library()
+        self.page.get_by_label("Filter by proxy group", exact=True).select_option("US")
+        expect(self.page.get_by_role("row").filter(has_text="Proxy 1")).to_be_visible()
+        expect(self.page.get_by_role("row").filter(has_text="Proxy 3")).not_to_be_visible()
+        self.page.get_by_role("checkbox", name="Select all visible proxies", exact=True).check()
+        dialog = self.open_batch()
+        expect(dialog.get_by_role("listitem")).to_have_count(2)
+
+    def test_proxy_batch_bulk_group_edit(self):
+        self.open_library()
+        self.page.get_by_role("checkbox", name="Select proxy Proxy 1", exact=True).check()
+        self.page.get_by_role("button", name="Change proxy group", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="Change proxy group")
+        dialog.get_by_label("Destination group", exact=True).fill("West")
+        dialog.get_by_role("button", name="Apply group", exact=True).click()
+        expect(dialog).to_contain_text("Updated group for 1 proxies.")
+        dialog.get_by_role("button", name="Done", exact=True).click()
+        expect(self.page.get_by_role("row").filter(has_text="Proxy 1")).to_contain_text("West")
 
     def test_proxy_batch_selection_and_unreachable_results(self):
         self.open_library()

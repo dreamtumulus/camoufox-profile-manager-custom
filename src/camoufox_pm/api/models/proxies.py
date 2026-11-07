@@ -13,6 +13,7 @@ from .system import ApiResponse
 class ProxyCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=1, max_length=255)
+    group_name: str | None = Field(None, max_length=64)
     type: ProxyType
     server: str = Field(min_length=1, max_length=512)
     username: str | None = Field(None, max_length=255)
@@ -40,6 +41,11 @@ class ProxyCreateRequest(BaseModel):
             raise ValueError("Proxy name cannot be empty")
         return value.strip()
 
+    @field_validator("group_name")
+    @classmethod
+    def trim_group(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
     @model_validator(mode="after")
     def paired_credentials(self):
         if self.password and not self.username:
@@ -51,6 +57,7 @@ class ProxyUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     row_version: int = Field(ge=0)
     name: str | None = Field(None, min_length=1, max_length=255)
+    group_name: str | None = Field(None, max_length=64)
     type: ProxyType | None = None
     server: str | None = Field(None, min_length=1, max_length=512)
     username: str | None = Field(None, max_length=255)
@@ -78,6 +85,11 @@ class ProxyUpdateRequest(BaseModel):
             raise ValueError("Proxy name cannot be empty")
         return value.strip() if value is not None else None
 
+    @field_validator("group_name")
+    @classmethod
+    def trim_group(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
     @model_validator(mode="after")
     def required_values(self):
         for field in ("name", "type", "server"):
@@ -89,6 +101,7 @@ class ProxyUpdateRequest(BaseModel):
 class ProxyResponse(BaseModel):
     id: str
     name: str
+    group_name: str | None
     type: ProxyType
     server: str
     username: str | None

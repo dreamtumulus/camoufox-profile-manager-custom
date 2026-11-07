@@ -386,6 +386,26 @@ class ProfileManager:
                     result["skipped"].append({"id": profile_id, "reason": str(exc)})
         return result
 
+    async def bulk_update_group(self, profiles: list[dict], group: str | None) -> dict:
+        if group is not None and not any(
+            item["id"] == group for item in await self.list_groups()
+        ):
+            raise ValueError("Selected group no longer exists")
+        result: dict[str, list] = {"updated": [], "skipped": []}
+        for target in profiles:
+            profile_id = target["id"]
+            async with sync_mutation(self, profile_id):
+                try:
+                    updated = await self.storage.db.set_profile_group(
+                        profile_id, group, target["row_version"]
+                    )
+                    result["updated"].append(updated)
+                except StaleWriteError:
+                    result["skipped"].append(
+                        {"id": profile_id, "reason": "Profile changed; reload before changing group"}
+                    )
+        return result
+
     async def clone_profile(
         self, source_id: str, new_name: str, regenerate_fingerprint: bool = True
     ) -> Profile | None:

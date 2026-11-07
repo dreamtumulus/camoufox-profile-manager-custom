@@ -83,6 +83,38 @@ async def test_bulk_tag_edit_reports_partial_failure_and_keeps_other_metadata(cl
     assert current["browser_settings"] == second["browser_settings"]
 
 
+async def test_bulk_group_edit_preserves_browser_data_and_reports_stale_rows(client):
+    from camoufox_pm.api.dependencies import get_profile_manager
+
+    group = await get_profile_manager().create_group("Team A")
+    first = await create(client, "First", notes="keep")
+    second = await create(client, "Second")
+    await client.put(
+        f"/api/v1/profiles/{second['id']}",
+        json={"notes": "changed", "row_version": second["row_version"]},
+    )
+    result = await client.post(
+        "/api/v1/profiles/group",
+        json={
+            "profiles": [
+                {"id": first["id"], "row_version": first["row_version"]},
+                {"id": second["id"], "row_version": second["row_version"]},
+            ],
+            "group": group["id"],
+        },
+    )
+    assert result.status_code == 200, result.text
+    body = result.json()["data"]
+    assert body["updated"][0]["group"] == group["id"]
+    assert body["updated"][0]["notes"] == "keep"
+    assert body["skipped"][0]["id"] == second["id"]
+    missing = await client.post(
+        "/api/v1/profiles/group",
+        json={"profiles": [{"id": first["id"], "row_version": 1}], "group": "missing"},
+    )
+    assert missing.status_code == 422
+
+
 async def test_saved_view_crud_persists_and_stale_changes_are_refused(client):
     created = await client.post(
         "/api/v1/saved-filters",

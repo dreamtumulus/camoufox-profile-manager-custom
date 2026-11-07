@@ -138,6 +138,19 @@ class StageTwoUI(DesktopUI):
                     "row_version": self.views[0]["row_version"] + 1,
                 }
                 data = self.views[0]
+        elif path == "/profiles/group":
+            body = request.post_data_json
+            updated = []
+            for target in body["profiles"]:
+                for index, item in enumerate(self.profiles):
+                    if item["id"] == target["id"] and item["row_version"] == target["row_version"]:
+                        self.profiles[index] = {
+                            **item,
+                            "group": body["group"],
+                            "row_version": item["row_version"] + 1,
+                        }
+                        updated.append(self.profiles[index])
+            data = {"updated": updated, "skipped": []}
         elif path == "/profiles/tags":
             body = request.post_data_json
             skipped_ids = {item["id"] for item in self.tag_skips}
@@ -291,6 +304,20 @@ class StageTwoUI(DesktopUI):
         ).not_to_be_visible()
         expect(self.page).to_have_url(re.compile(r"[?&]tags=campaign(?:&|$)"))
         self.capture("profile-tags")
+
+    def test_stage_two_bulk_group_changes_only_selected_profile_metadata(self):
+        self.open_profiles()
+        self.page.get_by_role("checkbox", name="Select Account 002", exact=True).check()
+        self.page.get_by_role("button", name="Change group", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="Change profile group")
+        dialog.get_by_label("Destination group", exact=True).select_option("team")
+        dialog.get_by_role("button", name="Apply group", exact=True).click()
+        expect(dialog).to_contain_text("Updated group for 1 profiles.")
+        body = next(json.loads(body) for _, path, body in self.calls if path == "/profiles/group")
+        self.assertEqual(body, {"profiles": [{"id": "profile-2", "row_version": 3}], "group": "team"})
+        self.assertEqual(self.profiles[1]["group"], "team")
+        self.assertEqual(self.profiles[1]["browser_settings"], {"os": "windows", "screen": "1920x1080"})
+        dialog.get_by_role("button", name="Done", exact=True).click()
 
     def test_stage_two_url_filters_sort_and_pagination_use_the_whole_collection(self):
         self.profiles = [profile(index) for index in range(1, 111)]

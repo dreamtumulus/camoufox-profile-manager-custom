@@ -33,6 +33,7 @@ class TemplateBatchesUI(StageTwoUI):
                 "server": "second.example:8080",
             }
         )
+        self.library = [{**item, "group_name": "Team proxies"} for item in self.library]
         self.previews = []
         self.creations = []
         self.saved = {}
@@ -140,6 +141,16 @@ class TemplateBatchesUI(StageTwoUI):
         dialog.get_by_role("button", name="Create 2 profiles", exact=True).click()
         expect(dialog.get_by_text("2 of 2 profiles created", exact=True)).to_be_visible()
         self.assertEqual(self.creations, self.previews)
+
+    def test_proxy_group_selects_the_filtered_batch_in_order(self):
+        dialog = self.open_batch()
+        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Team proxies")
+        dialog.get_by_role("button", name="Select all filtered", exact=True).click()
+        expect(dialog).to_contain_text("2 proxies selected")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        self.assertEqual(
+            [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-two", "library-one"]
+        )
 
     def test_incomplete_proxy_selection_and_duplicate_names_require_correction(self):
         dialog = self.open_batch()

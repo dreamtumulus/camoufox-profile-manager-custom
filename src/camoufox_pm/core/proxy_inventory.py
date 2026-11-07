@@ -24,7 +24,7 @@ from .profile_operations import profile_operation
 from .proxy_import import normalize_proxy_server
 
 _PUBLIC_COLUMNS = (
-    "id, name, type, server, username, country, row_version, last_check, "
+    "id, name, group_name, type, server, username, country, row_version, last_check, "
     "created_at, updated_at, (password IS NOT NULL AND password != '') AS has_password"
 )
 _CONFIG_FIELDS = frozenset({"type", "server", "username", "password", "country"})
@@ -144,11 +144,12 @@ class ProxyInventory:
         with self.connection:
             self.connection.execute(
                 "INSERT INTO proxy_inventory "
-                "(id,name,type,server,username,password,country,created_at,updated_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?)",
+                "(id,name,group_name,type,server,username,password,country,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     proxy_id,
                     values["name"],
+                    values.get("group_name"),
                     config.type.value,
                     config.server,
                     config.username,
@@ -193,7 +194,7 @@ class ProxyInventory:
             config.validate_authentication()
         columns = []
         values = []
-        for field in ("name", "type", "server", "username", "password", "country"):
+        for field in ("name", "group_name", "type", "server", "username", "password", "country"):
             if field not in changes:
                 continue
             value = changes[field]

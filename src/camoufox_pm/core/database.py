@@ -102,6 +102,7 @@ class DatabaseManager:
         never touches existing rows.
         """
         added_columns = {
+            "proxy_inventory": [("group_name", "TEXT")],
             "profiles": [
                 ("fingerprint", "TEXT"),
                 ("proxy_check", "TEXT"),
@@ -143,6 +144,7 @@ class DatabaseManager:
             CREATE TABLE IF NOT EXISTS proxy_inventory (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                group_name TEXT,
                 type TEXT NOT NULL,
                 server TEXT NOT NULL,
                 username TEXT,
@@ -604,6 +606,21 @@ class DatabaseManager:
                     profile_id,
                     expected_row_version,
                 ),
+            )
+            if not cursor.rowcount:
+                raise StaleWriteError(profile_id, expected_row_version)
+        profile = await self.get_profile(profile_id)
+        assert profile is not None
+        return profile
+
+    async def set_profile_group(
+        self, profile_id: str, group: str | None, expected_row_version: int
+    ) -> Profile:
+        with self._connection:
+            cursor = self._connection.execute(
+                "UPDATE profiles SET group_id = ?, updated_at = ?, row_version = row_version + 1 "
+                "WHERE id = ? AND row_version = ? AND deleted_at IS NULL",
+                (group, datetime.now().isoformat(), profile_id, expected_row_version),
             )
             if not cursor.rowcount:
                 raise StaleWriteError(profile_id, expected_row_version)

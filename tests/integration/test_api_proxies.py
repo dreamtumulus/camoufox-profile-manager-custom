@@ -40,7 +40,8 @@ async def create(client, **changes):
 @pytest.mark.asyncio
 async def test_create_list_patch_and_delete_keep_password_write_only(proxy_client):
     client = proxy_client
-    proxy = await create(client)
+    proxy = await create(client, group_name="  US Team  ")
+    assert proxy["group_name"] == "US Team"
     assert proxy["server"] == "proxy.example:8080" and proxy["has_password"]
     response = await client.get("/api/v1/proxies")
     assert response.json()["data"]["proxies"] == [proxy]

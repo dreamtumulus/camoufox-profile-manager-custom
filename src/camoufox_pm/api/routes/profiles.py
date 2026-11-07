@@ -31,6 +31,8 @@ from camoufox_pm.api.models.profiles import (
     ActiveBrowsersResponse,
     BrowserCloseResponse,
     BrowsersCloseAllResponse,
+    BulkGroupRequest,
+    BulkGroupResponse,
     BulkTagsRequest,
     BulkTagsResponse,
     ClearGeographyRequest,
@@ -213,6 +215,31 @@ async def bulk_tags(request: BulkTagsRequest):
                 {"id": item["id"], "reason": "Profile could not be updated"}
                 for item in result["skipped"]
             ],
+        },
+    )
+
+
+@router.post(
+    "/profiles/group",
+    response_model=ApiResponse[BulkGroupResponse],
+    operation_id="bulk_update_profile_group",
+)
+async def bulk_group(request: BulkGroupRequest):
+    await require_admin()
+    try:
+        result = await get_profile_manager().bulk_update_group(
+            [target.model_dump() for target in request.profiles], request.group
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for profile in result["updated"]:
+        await record_audit("bulk_update_profile_group", profile.id)
+    return ApiResponse(
+        success=True,
+        message="Group assignment completed",
+        data={
+            "updated": [ProfileResponse.from_profile(profile) for profile in result["updated"]],
+            "skipped": result["skipped"],
         },
     )
 

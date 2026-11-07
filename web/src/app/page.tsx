@@ -37,6 +37,7 @@ import { CookieTransfer } from '@/components/cookie-transfer'
 import { ProfileExtensionsModal } from '@/components/profile-extensions-modal'
 import { TemplateFromProfileModal } from '@/components/template-from-profile-modal'
 import { ProfileTagsDialog } from '@/components/profile-tags-dialog'
+import { ProfileGroupDialog } from '@/components/profile-group-dialog'
 import { SavedProfileViews } from '@/components/saved-profile-views'
 import { BatchProfileOperations } from '@/components/batch-profile-operations'
 import { MAX_BATCH_SIZE, type BatchTarget } from '@/lib/batch-queue'
@@ -108,6 +109,7 @@ export default function ProfilesPage() {
   const [extensionsFor, setExtensionsFor] = useState<Profile | null>(null)
   const [templateFor, setTemplateFor] = useState<Profile | null>(null)
   const [tagsFor, setTagsFor] = useState<Profile[] | null>(null)
+  const [groupFor, setGroupFor] = useState<Profile[] | null>(null)
   const [batch, setBatch] = useState<{ action: 'launch' | 'close'; targets: BatchTarget[] } | null>(null)
 
   const toast = useToast()
@@ -688,6 +690,7 @@ export default function ProfilesPage() {
             <button className="btn btn-default h-7" disabled={selected.size > MAX_BATCH_SIZE || busy.size > 0} onClick={() => setBatch({ action: 'close', targets: profiles.filter(profile => selected.has(profile.id) && can(profile, 'launch')).map(({ id, name }) => ({ id, name })) })}><Square size={13} aria-hidden="true" />{t('Stop selected')}</button>
             {selected.size > MAX_BATCH_SIZE && <span className="text-ink-dim">{t('Select up to {count} profiles per batch.', { count: MAX_BATCH_SIZE })}</span>}
           </>}
+          {canManageAccess && <button className="btn btn-default h-7" onClick={() => setGroupFor(profiles.filter(profile => selected.has(profile.id)))}><Users size={13} aria-hidden="true" />{t('Change group')}</button>}
           <button className="btn btn-default h-7" onClick={() => setTagsFor(profiles.filter(profile => selected.has(profile.id)))}><Tags size={13} aria-hidden="true" />{t('Edit tags')}</button>
           {selectedWithProxy > 0 && (
             <button
@@ -1013,6 +1016,7 @@ export default function ProfilesPage() {
       {syncFor && <ProfileSyncPanel profile={syncFor === 'available' ? null : syncFor} running={syncFor !== 'available' && running.has(syncFor.id)} onClose={() => setSyncFor(null)} onSaved={loadProfiles} />}
       {extensionsFor && <ProfileExtensionsModal profile={extensionsFor} onClose={() => setExtensionsFor(null)} onSaved={loadProfiles} />}
       {tagsFor && <ProfileTagsDialog profiles={tagsFor} onClose={() => setTagsFor(null)} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
+      {groupFor && <ProfileGroupDialog profiles={groupFor} groups={groups} onClose={() => { setGroupFor(null); loadGroups() }} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
       {batch && <BatchProfileOperations action={batch.action} targets={batch.targets} onClose={() => setBatch(null)} onUpdated={async () => { await Promise.all([loadRunning(), loadProfiles()]) }} />}
 
       <ProfileForm

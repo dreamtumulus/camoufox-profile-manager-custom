@@ -8,8 +8,9 @@ import { proxyAuthenticationError } from '@/lib/proxy-auth'
 import { ProxyProtocolHelp } from '@/components/proxy-protocol-help'
 import { isStaleWrite, proxiesAPI, type LibraryProxy } from '@/lib/api'
 
-export function ProxyForm({ proxy, onClose, onSaved, onReload }: {
+export function ProxyForm({ proxy, groups = [], onClose, onSaved, onReload }: {
   proxy: LibraryProxy | null
+  groups?: string[]
   onClose: () => void
   onSaved: (proxy: LibraryProxy) => void
   onReload: () => Promise<void>
@@ -22,6 +23,7 @@ export function ProxyForm({ proxy, onClose, onSaved, onReload }: {
   const [password, setPassword] = useState('')
   const [clearPassword, setClearPassword] = useState(false)
   const [country, setCountry] = useState(proxy?.country ?? '')
+  const [group, setGroup] = useState(proxy?.group_name ?? '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [stale, setStale] = useState(false)
@@ -35,7 +37,7 @@ export function ProxyForm({ proxy, onClose, onSaved, onReload }: {
     if (!name.trim() || !server.trim()) { setError(t('Enter a name and proxy server.')); return }
     if ((password || (proxy?.has_password && !clearPassword)) && !username) { setError(t('A password requires a username. Enter a username or remove the stored password.')); return }
     setSaving(true); setError(null); setStale(false)
-    const data: Record<string, unknown> = { name: name.trim(), type, server: server.trim(), username: username || null, country: country.trim().toUpperCase() || null }
+    const data: Record<string, unknown> = { name: name.trim(), group_name: group.trim() || null, type, server: server.trim(), username: username || null, country: country.trim().toUpperCase() || null }
     if (clearPassword) data.password = null
     else if (password) data.password = password
     if (proxy) data.row_version = proxy.row_version
@@ -55,7 +57,10 @@ export function ProxyForm({ proxy, onClose, onSaved, onReload }: {
   </>}>
     <form id="library-proxy-form" className="flex flex-col gap-4" onSubmit={save}>
       <p className="text-ink-dim">{t('Library changes apply only to future assignments. Profiles keep their current proxy settings until you explicitly assign again.')}</p>
-      <div><label className="field-label" htmlFor="lp-name">{t('Name')}</label><input id="lp-name" className="field" value={name} onChange={event => setName(event.target.value)} maxLength={255} data-modal-autofocus required /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label className="field-label" htmlFor="lp-name">{t('Name')}</label><input id="lp-name" className="field" value={name} onChange={event => setName(event.target.value)} maxLength={255} data-modal-autofocus required /></div>
+        <div><label className="field-label" htmlFor="lp-group">{t('Proxy group')}</label><input id="lp-group" className="field" list="lp-group-list" value={group} onChange={event => setGroup(event.target.value)} maxLength={64} placeholder={t('Ungrouped')} /><datalist id="lp-group-list">{groups.map(item => <option key={item} value={item} />)}</datalist></div>
+      </div>
       <div className="grid grid-cols-[100px_1fr] gap-3">
         <div><label className="field-label" htmlFor="lp-type">{t('Type')}</label><select id="lp-type" className="field" value={type} onChange={event => setType(event.target.value)} aria-describedby="lp-type-help"><option value="http">HTTP</option><option value="https">HTTPS</option><option value="socks4">SOCKS4</option><option value="socks5">SOCKS5</option></select></div>
         <div><label className="field-label" htmlFor="lp-server">{t('Server')}</label><input id="lp-server" className="field font-mono" value={server} onChange={event => setServer(event.target.value)} placeholder="host:port" maxLength={512} required autoComplete="off" aria-describedby="lp-server-help" /><p id="lp-server-help" className="mt-1 text-ink-dim">{t('Host and port only. Use brackets for IPv6: [::1]:8080.')}</p></div>

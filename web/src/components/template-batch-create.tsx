@@ -27,6 +27,7 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
   const [groups, setGroups] = useState<Group[]>([])
   const [proxies, setProxies] = useState<LibraryProxy[]>([])
   const [selected, setSelected] = useState<string[]>([])
+  const [proxyGroup, setProxyGroup] = useState('')
   const [loading, setLoading] = useState(!existing)
   const [loadFailed, setLoadFailed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,6 +38,18 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
   const [error, setError] = useState<string | null>(null)
   const mounted = useRef(true)
   const incomplete = result?.items.filter(item => item.status === 'pending' || item.status === 'failed').length ?? 0
+  const proxyGroups = [...new Set(proxies.map(proxy => proxy.group_name).filter((group): group is string => !!group))].sort()
+  const visibleProxies = proxies.filter(proxy => !proxyGroup || (proxyGroup === '__ungrouped__' ? !proxy.group_name : proxy.group_name === proxyGroup))
+
+  function selectVisibleProxies() {
+    const ids = visibleProxies.map(proxy => proxy.id)
+    setSelected(current => [...current.filter(id => !ids.includes(id)), ...ids].slice(0, 25))
+  }
+
+  function clearVisibleProxies() {
+    const ids = visibleProxies.map(proxy => proxy.id)
+    setSelected(current => current.filter(id => !ids.includes(id)))
+  }
 
   useEffect(() => {
     mounted.current = true
@@ -128,7 +141,8 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
       <label className="flex items-start gap-2"><input type="checkbox" checked={allowDuplicates} disabled={busy} onChange={event => setAllowDuplicates(event.target.checked)} /><span>{t('Allow duplicate profile names. Existing profiles will never be overwritten.')}</span></label>
       <fieldset><legend className="font-medium">{t('Optional proxy list')}</legend><p className="mt-1 text-ink-dim">{t('Select one distinct proxy per profile, or none. The preview follows your selection order; passwords remain hidden.')}</p>
         <p className="mt-1 text-ink-dim">{t('Preview checks names and saved proxy selections. Use Check in the proxy library to test connections.')}</p>
-        <ul className="mt-2 max-h-[180px] divide-y divide-line overflow-y-auto rounded-md border border-line">{proxies.map(proxy => <li key={proxy.id}><label className="flex items-start gap-2 px-3 py-2"><input type="checkbox" checked={selected.includes(proxy.id)} disabled={busy || (!selected.includes(proxy.id) && selected.length >= 25)} onChange={() => setSelected(current => current.includes(proxy.id) ? current.filter(id => id !== proxy.id) : [...current, proxy.id])} /><span><span className="block">{proxy.name}</span><span className="break-all font-mono text-[11px] text-ink-dim">{endpoint(proxy)}</span></span></label></li>)}{!loading && !proxies.length && <li className="px-3 py-2 text-ink-dim">{t('No saved proxies. These profiles will use a direct connection.')}</li>}</ul>
+        <div className="mt-2 flex flex-wrap items-center gap-2"><select className="field field-compact w-[180px]" aria-label={t('Filter by proxy group')} value={proxyGroup} disabled={busy} onChange={event => setProxyGroup(event.target.value)}><option value="">{t('All proxy groups')}</option><option value="__ungrouped__">{t('Ungrouped')}</option>{proxyGroups.map(item => <option key={item} value={item}>{item}</option>)}</select><button type="button" className="btn btn-default" disabled={busy || !visibleProxies.length || selected.length + visibleProxies.filter(proxy => !selected.includes(proxy.id)).length > 25} onClick={selectVisibleProxies}>{t('Select all filtered')}</button><button type="button" className="btn btn-default" disabled={busy || !visibleProxies.some(proxy => selected.includes(proxy.id))} onClick={clearVisibleProxies}>{t('Clear filtered')}</button><span className="text-ink-dim">{t('{count} proxies selected', { count: selected.length })}</span></div>
+        <ul className="mt-2 max-h-[180px] divide-y divide-line overflow-y-auto rounded-md border border-line">{visibleProxies.map(proxy => <li key={proxy.id}><label className="flex items-start gap-2 px-3 py-2"><input type="checkbox" checked={selected.includes(proxy.id)} disabled={busy || (!selected.includes(proxy.id) && selected.length >= 25)} onChange={() => setSelected(current => current.includes(proxy.id) ? current.filter(id => id !== proxy.id) : [...current, proxy.id])} /><span><span className="block">{proxy.name}{proxy.group_name && <span className="ml-2 text-[11px] text-ink-dim">{proxy.group_name}</span>}</span><span className="break-all font-mono text-[11px] text-ink-dim">{endpoint(proxy)}</span></span></label></li>)}{!loading && !visibleProxies.length && <li className="px-3 py-2 text-ink-dim">{proxies.length ? t('No proxies in this group.') : t('No saved proxies. These profiles will use a direct connection.')}</li>}</ul>
       </fieldset>
     </div>}
     {preview && <div className="mt-4">
