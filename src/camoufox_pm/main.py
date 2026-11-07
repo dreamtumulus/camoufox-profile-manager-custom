@@ -28,6 +28,7 @@ from camoufox_pm.api.routes import (
     cookies,
     extensions,
     groups,
+    onboarding,
     profiles,
     proxies,
     recovery,
@@ -43,6 +44,7 @@ from camoufox_pm.config import get_settings
 from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.database import StorageManager
 from camoufox_pm.core.maintenance import MaintenanceBlocked, MaintenanceGate
+from camoufox_pm.core.onboarding import OnboardingError
 from camoufox_pm.core.profile_manager import ProfileManager
 from camoufox_pm.core.scheduler import TaskScheduler
 
@@ -163,6 +165,16 @@ app = FastAPI(
 )
 install_error_handlers(app)
 
+
+@app.exception_handler(OnboardingError)
+
+async def _onboarding_error(_request, exc: OnboardingError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": exc.code, "message": str(exc), "details": None}, "detail": str(exc)},
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -201,6 +213,13 @@ for _prefix, _in_schema in (("/api/v1", True), ("/api", False)):
         access.router,
         prefix=_prefix,
         tags=["Access"],
+        dependencies=protected,
+        include_in_schema=_in_schema,
+    )
+    app.include_router(
+        onboarding.router,
+        prefix=_prefix,
+        tags=["Claude Team"],
         dependencies=protected,
         include_in_schema=_in_schema,
     )

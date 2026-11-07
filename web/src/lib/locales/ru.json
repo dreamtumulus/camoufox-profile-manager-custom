@@ -1331,5 +1331,16 @@
   "GitHub's download request limit was reached. Wait and retry, or use a GitHub token below.": "Достигнут лимит запросов к загрузкам GitHub. Подождите и повторите попытку или укажите токен GitHub ниже.",
   "GitHub rejected the token. Check that it is valid and has not expired.": "GitHub отклонил токен. Проверьте, что он действителен и срок его действия не истёк.",
   "GitHub refused the request. Check token access or wait before retrying.": "GitHub отклонил запрос. Проверьте права токена или подождите перед повторной попыткой.",
-  "Could not read browser releases from GitHub. Check your connection and retry.": "Не удалось получить список выпусков браузера с GitHub. Проверьте подключение и повторите попытку."
+  "Could not read browser releases from GitHub. Check your connection and retry.": "Не удалось получить список выпусков браузера с GitHub. Проверьте подключение и повторите попытку.",
+  "Claude Team onboarding": "Подключение Claude Team",
+  "1dayApi.com · Local browsers · Shared onboarding records": "1dayApi.com · Локальные браузеры · Общие записи подключения",
+  "Shared server and 1dayApi": "Общий сервер и 1dayApi",
+  "Selections, email organizations, SK and submission results are stored on the shared server. Credentials are not stored in browser storage.": "Выбор, организации почты, SK и результаты отправки хранятся на общем сервере. Учётные данные не сохраняются в хранилище браузера.",
+  "1dayApi credential": "Ключ входа 1dayApi",
+  "Exit IP": "Выходной IP",
+  "No available IPs in this group": "В этой группе нет доступных IP",
+  "Loading node groups and exit IPs…": "Загрузка групп узлов и выходных IP…",
+  "SK:": "SK:",
+  "Log in manually in the local window. sessionKey will be extracted automatically, but never submitted automatically.": "Войдите вручную в локальном окне. sessionKey будет извлечён автоматически, но никогда не отправляется автоматически.",
+  "1dayApi response": "Ответ 1dayApi"
 }

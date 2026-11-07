@@ -155,6 +155,8 @@ def install_error_handlers(app: FastAPI) -> None:
                 "/api/v1/extensions",
                 "/api/workflows",
                 "/api/v1/workflows",
+                "/api/onboarding",
+                "/api/v1/onboarding",
                 "/api/system/browser/install",
                 "/api/v1/system/browser/install",
             )

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarClock, Copy, Layers, LogOut, Puzzle, Settings, Network, Trash2, Users, Shield } from 'lucide-react'
+import { CalendarClock, Copy, KeyRound, Layers, LogOut, Puzzle, Settings, Network, Trash2, Users, Shield } from 'lucide-react'
 
 import { useI18n } from '@/components/i18n-provider'
 import { LanguageSelector } from '@/components/language-selector'
@@ -12,6 +12,7 @@ import { systemAPI } from '@/lib/api'
 
 const NAV = [
   { href: '/', label: 'Profiles', icon: Users },
+  { href: '/onboarding/', label: 'Claude Team onboarding', icon: KeyRound },
   { href: '/proxies/', label: 'Proxy library', icon: Network },
   { href: '/templates/', label: 'Templates', icon: Copy },
   { href: '/extensions/', label: 'Extensions', icon: Puzzle },
