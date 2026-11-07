@@ -149,7 +149,7 @@ class TemplateBatchesUI(StageTwoUI):
         expect(dialog).to_contain_text("2 proxies selected")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         self.assertEqual(
-            [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-two", "library-one"]
+            [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one", "library-two"]
         )
 
     def test_incomplete_proxy_selection_and_duplicate_names_require_correction(self):

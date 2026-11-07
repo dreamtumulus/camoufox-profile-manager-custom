@@ -47,7 +47,7 @@ class DesktopUI(unittest.TestCase):
         cls.server.server_close()
 
     def setUp(self):
-        self.context = self.browser.new_context(viewport={"width": 1280, "height": 900})
+        self.context = self.browser.new_context(viewport={"width": 1280, "height": 900}, locale="en-US")
         self.page = self.context.new_page()
         self.page.set_default_timeout(8000)
         self.calls = []
