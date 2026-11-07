@@ -2,6 +2,7 @@
 
 import json
 import shutil
+import tarfile
 from pathlib import Path
 
 from install_ci_browser import install_browser
@@ -30,7 +31,11 @@ def stage_browser() -> Path:
         json.dumps({"active_version": relative.as_posix()}, indent=2) + "\n", encoding="utf-8"
     )
     (stage / ".0.5_FLAG").touch()
-    return stage
+    archive = ROOT / "build" / "camoufox-runtime.tar.gz"
+    with tarfile.open(archive, "w:gz") as output:
+        for item in stage.iterdir():
+            output.add(item, arcname=item.name)
+    return archive
 
 
 if __name__ == "__main__":

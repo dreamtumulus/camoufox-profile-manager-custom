@@ -49,7 +49,7 @@ version_hook = Path(ROOT) / "build" / "camoufox_pm_version_hook.py"
 write_runtime_version_hook(version_hook, version("camoufox-profile-manager"))
 
 datas = [(os.path.join(ROOT, "src", "camoufox_pm", "webui"), "camoufox_pm/webui")]
-datas += [(os.path.join(ROOT, "build", "bundled-camoufox"), "camoufox-runtime")]
+datas += [(os.path.join(ROOT, "build", "camoufox-runtime.tar.gz"), ".")]
 datas += [(os.path.join(SPECPATH, "camoufox-pm.svg"), ".")]
 datas += copy_metadata("camoufox-profile-manager")
 datas += copy_metadata("playwright")

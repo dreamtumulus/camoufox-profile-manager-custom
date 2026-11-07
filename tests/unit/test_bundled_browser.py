@@ -1,4 +1,5 @@
 import json
+import tarfile
 from pathlib import Path
 
 from camoufox import multiversion
@@ -15,6 +16,9 @@ def test_frozen_install_provisions_browser_without_replacing_existing_files(tmp_
     (bundle / "config.json").write_text('{"active_version":"browsers/official/test-build"}')
     (bundle / "geoip" / "mmdb").mkdir(parents=True)
     (bundle / "geoip" / "mmdb" / "test.mmdb").write_bytes(b"bundled")
+    with tarfile.open(tmp_path / "bundle" / "camoufox-runtime.tar.gz", "w:gz") as archive:
+        for item in bundle.iterdir():
+            archive.add(item, arcname=item.name)
     cache = tmp_path / "cache"
     monkeypatch.setattr(bundled_browser.sys, "frozen", True, raising=False)
     monkeypatch.setattr(bundled_browser.sys, "_MEIPASS", str(tmp_path / "bundle"), raising=False)

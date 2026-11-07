@@ -1,23 +1,11 @@
-"""Provision the browser bundled into a frozen desktop installer."""
+"""Provision the browser archived into a frozen desktop installer."""
 
 import json
 import os
 import shutil
 import sys
+import tarfile
 from pathlib import Path
-
-
-def _copy_missing(source: Path, target: Path) -> None:
-    if not source.is_dir():
-        return
-    for item in source.rglob("*"):
-        if not item.is_file():
-            continue
-        destination = target / item.relative_to(source)
-        if destination.exists():
-            continue
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(item, destination)
 
 
 def configure_browser_cache() -> None:
@@ -39,8 +27,8 @@ def configure_browser_cache() -> None:
 
 
 def provision_bundled_browser() -> None:
-    bundle = Path(getattr(sys, "_MEIPASS", "")) / "camoufox-runtime"
-    if not getattr(sys, "frozen", False) or not bundle.is_dir():
+    archive_path = Path(getattr(sys, "_MEIPASS", "")) / "camoufox-runtime.tar.gz"
+    if not getattr(sys, "frozen", False) or not archive_path.is_file():
         return
 
     from camoufox import multiversion
@@ -48,29 +36,51 @@ def provision_bundled_browser() -> None:
 
     from .browser_install import installed_browser
 
-    source_config = json.loads((bundle / "config.json").read_text(encoding="utf-8"))
-    relative = Path(source_config["active_version"])
-    if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "browsers":
-        raise RuntimeError("The bundled Camoufox configuration is invalid")
-    source = bundle / relative
-    if not (source / "version.json").is_file():
-        raise RuntimeError("The bundled Camoufox browser is incomplete")
+    with tarfile.open(archive_path, "r:gz") as archive:
+        config_file = archive.extractfile("config.json")
+        if config_file is None:
+            raise RuntimeError("The bundled Camoufox configuration is missing")
+        source_config = json.load(config_file)
+        relative = Path(source_config["active_version"])
+        relative_name = relative.as_posix()
+        if relative.is_absolute() or ".." in relative.parts or relative.parts[0] != "browsers":
+            raise RuntimeError("The bundled Camoufox configuration is invalid")
+        members = archive.getmembers()
+        version_name = f"{relative_name}/version.json"
+        if not any(member.name == version_name and member.isfile() for member in members):
+            raise RuntimeError("The bundled Camoufox browser is incomplete")
 
-    if not installed_browser()[0]:
-        existing = multiversion.load_config()
-        if not (is_explicit_choice(existing) and existing.get("active_version")):
-            target = multiversion.INSTALL_DIR / relative
-            if not target.exists():
-                temporary = target.with_name(f".{target.name}.installing")
-                if temporary.exists():
-                    raise RuntimeError("A previous bundled-browser copy needs manual inspection")
-                target.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copytree(source, temporary, symlinks=True)
-                temporary.rename(target)
-            if not (target / "version.json").is_file():
-                raise RuntimeError("The existing Camoufox cache is incomplete; repair it in Settings")
-            existing["active_version"] = relative.as_posix()
-            multiversion.save_config(existing)
-            multiversion.COMPAT_FLAG.touch()
+        if not installed_browser()[0]:
+            existing = multiversion.load_config()
+            if not (is_explicit_choice(existing) and existing.get("active_version")):
+                target = multiversion.INSTALL_DIR / relative
+                if not target.exists():
+                    temporary = target.parent / f".{target.name}.installing"
+                    if temporary.exists():
+                        raise RuntimeError("A previous bundled-browser copy needs manual inspection")
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    browser_members = [
+                        member for member in members if member.name.startswith(relative_name + "/")
+                    ]
+                    archive.extractall(temporary, members=browser_members, filter="data")
+                    (temporary / relative).rename(target)
+                    shutil.rmtree(temporary)
+                if not (target / "version.json").is_file():
+                    raise RuntimeError("The existing Camoufox cache is incomplete; repair it in Settings")
+                existing["active_version"] = relative_name
+                multiversion.save_config(existing)
+                multiversion.COMPAT_FLAG.touch()
 
-    _copy_missing(bundle / "geoip", multiversion.INSTALL_DIR / "geoip")
+        geoip_root = multiversion.INSTALL_DIR / "geoip"
+        for member in members:
+            if not member.isfile() or not member.name.startswith("geoip/"):
+                continue
+            destination = geoip_root / Path(member.name).relative_to("geoip")
+            if destination.exists():
+                continue
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            source = archive.extractfile(member)
+            if source is None:
+                raise RuntimeError("A bundled location database could not be read")
+            with source, destination.open("xb") as output:
+                shutil.copyfileobj(source, output)
