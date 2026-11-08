@@ -40,7 +40,7 @@ export default function OnboardingPage() {
   const [accountOrgId, setAccountOrgId] = useState('')
   const [workflowStep, setWorkflowStep] = useState<1 | 2>(1)
   const [addingAccount, setAddingAccount] = useState(false)
-  const [accountStateFilter, setAccountStateFilter] = useState<'all' | AccountOnboardingState>('all')
+  const [accountStateFilter, setAccountStateFilter] = useState<'all' | AccountOnboardingState>('not_started')
   const [loading, setLoading] = useState(true)
   const [nodeLoading, setNodeLoading] = useState(false)
   const [capacitySyncedAt, setCapacitySyncedAt] = useState<Date | null>(null)
@@ -80,6 +80,8 @@ export default function OnboardingPage() {
     return counts
   }, {})
   const filteredAccounts = shownAccounts.filter(account => accountStateFilter === 'all' || accountState(account.id) === accountStateFilter)
+  const selectableAccounts = shownAccounts.filter(account => accountState(account.id) !== 'completed' || account.id === accountId)
+  const selectedAccountCompleted = selectedAccount ? accountState(selectedAccount.id) === 'completed' : false
 
   const loadNode = useCallback(async (id: string, preferredGroup = '', preferredProxy = '', advanceFrom = '') => {
     setNodeLoading(true)
@@ -403,6 +405,7 @@ export default function OnboardingPage() {
       setShared(current => current ? { ...current, sessions: current.sessions.map(item => item.id === finished.id ? finished : item) } : current)
       setSession(null)
       setAccountId('')
+      setAccountStateFilter('not_started')
       setEmail('')
       setAccountOrgId(orgId)
       setWorkflowStep(2)
@@ -473,10 +476,10 @@ export default function OnboardingPage() {
           <div className="flex items-center gap-3"><h2 className="font-medium">3. 选择邮箱并创建窗口</h2><button type="button" className="btn btn-default ml-auto" onClick={() => { setAccountOrgId(orgId); setAddingAccount(current => !current) }}><Plus size={13} />新增邮箱</button></div>
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
             <select className="field w-full" aria-label="本次上号邮箱" value={accountId} disabled={busy !== ''} onChange={event => setAccountId(event.target.value)}>
-              {shownAccounts.length === 0 && <option value="">当前组织没有邮箱，请先批量新增</option>}
-              {shownAccounts.map(account => <option key={account.id} value={account.id}>{account.email} · {account.org_name}</option>)}
+              {selectableAccounts.length === 0 && <option value="">没有可继续上号的邮箱，请先新增</option>}
+              {selectableAccounts.map(account => <option key={account.id} value={account.id} disabled={accountState(account.id) === 'completed'}>{account.email} · {account.org_name} · {accountStateLabels[accountState(account.id)]}</option>)}
             </select>
-            <button className="btn btn-primary" disabled={busy !== '' || nodeLoading || !selectedAccount} onClick={() => void createWindow()}>{busy === 'create' ? '正在创建窗口…' : selectedAccount ? `使用 ${selectedAccount.email} 创建窗口` : '请先选择邮箱'}</button>
+            <button className="btn btn-primary" disabled={busy !== '' || nodeLoading || !selectedAccount || selectedAccountCompleted} onClick={() => void createWindow()}>{busy === 'create' ? '正在创建窗口…' : selectedAccountCompleted ? '该邮箱已上号，不可重复创建' : selectedAccount ? `使用 ${selectedAccount.email} 创建窗口` : '请先选择邮箱'}</button>
           </div>
           {selectedAccount && <p className="mt-2 text-ink-dim">本次窗口账号：<span className="font-mono text-ink">{selectedAccount.email}</span> · 所属组织：{selectedAccount.org_name} · 当前平台状态：<span className="font-medium text-ink">{accountStateLabels[accountState(selectedAccount.id)]}</span></p>}
           {addingAccount && <form className="mt-4 space-y-3 border-t border-line pt-4" onSubmit={addAccount}>
@@ -487,7 +490,7 @@ export default function OnboardingPage() {
           <div className="mt-4 border-t border-line pt-3">
             <div className="flex flex-wrap items-center gap-3"><h3 className="font-medium">共享服务器邮箱库 · {selectedOrg?.name ?? '当前组织'} · {shownAccounts.length} 个</h3><select className="field field-compact ml-auto w-[150px]" aria-label="按上号状态筛选" value={accountStateFilter} onChange={event => setAccountStateFilter(event.target.value as 'all' | AccountOnboardingState)}><option value="all">全部状态</option>{Object.entries(accountStateLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
             <div className="mt-2 flex flex-wrap gap-3 text-[12px]"><span>未上号 <strong>{accountCounts.not_started ?? 0}</strong></span><span className="text-ok">已上号 <strong>{accountCounts.completed ?? 0}</strong></span><span>进行中 / 待提交 <strong>{(accountCounts.in_progress ?? 0) + (accountCounts.ready_to_submit ?? 0)}</strong></span><span className="text-danger">失败 <strong>{accountCounts.failed ?? 0}</strong></span><span className="text-ink-dim">已关闭未完成 <strong>{accountCounts.closed_incomplete ?? 0}</strong></span></div>
-            {filteredAccounts.length > 0 ? <ul className="mt-2 max-h-[240px] divide-y divide-line overflow-y-auto rounded-md border border-line">{filteredAccounts.map(account => { const state = accountState(account.id); const latest = shared?.sessions.find(item => item.account_id === account.id && (item.selection.platform ?? '1dayapi') === platform); return <li key={account.id} className="flex items-center gap-3 px-3 py-2"><button type="button" aria-pressed={accountId === account.id} className="min-w-0 flex-1 truncate text-left font-mono hover:text-signal" onClick={() => setAccountId(account.id)} title="选择此邮箱">{account.email}</button>{accountId === account.id && <span className="shrink-0 text-[11px] text-signal">已选择</span>}<button type="button" className="btn btn-ghost h-7 shrink-0 px-2" aria-label={`复制邮箱 ${account.email}`} title="复制邮箱" onClick={() => void copyEmail(account.email)}><Copy size={12} /></button><span className={`shrink-0 font-medium ${state === 'completed' ? 'text-ok' : state === 'failed' ? 'text-danger' : 'text-ink-dim'}`}>{accountStateLabels[state]}</span>{latest && <span className="hidden shrink-0 text-[11px] text-ink-faint md:inline">{new Date(latest.updated_at).toLocaleString()}</span>}</li> })}</ul> : <p className="mt-2 text-ink-dim">{shownAccounts.length ? '当前状态筛选下没有邮箱，请选择“全部状态”。' : '此组织还没有邮箱。点击“新增邮箱”可一次粘贴整份列表。'}</p>}
+            {filteredAccounts.length > 0 ? <ul className="mt-2 max-h-[240px] divide-y divide-line overflow-y-auto rounded-md border border-line">{filteredAccounts.map(account => { const state = accountState(account.id); const latest = shared?.sessions.find(item => item.account_id === account.id && (item.selection.platform ?? '1dayapi') === platform); return <li key={account.id} className="flex items-center gap-3 px-3 py-2">{state === 'completed' ? <span className="min-w-0 flex-1 truncate font-mono">{account.email}</span> : <button type="button" aria-pressed={accountId === account.id} className="min-w-0 flex-1 truncate text-left font-mono hover:text-signal" onClick={() => setAccountId(account.id)} title="选择此邮箱">{account.email}</button>}{accountId === account.id && <span className="shrink-0 text-[11px] text-signal">已选择</span>}<button type="button" className="btn btn-ghost h-7 shrink-0 px-2" aria-label={`复制邮箱 ${account.email}`} title="复制邮箱" onClick={() => void copyEmail(account.email)}><Copy size={12} /></button><span className={`shrink-0 font-medium ${state === 'completed' ? 'text-ok' : state === 'failed' ? 'text-danger' : 'text-ink-dim'}`}>{accountStateLabels[state]}</span>{latest && <span className="hidden shrink-0 text-[11px] text-ink-faint md:inline">{new Date(latest.updated_at).toLocaleString()}</span>}</li> })}</ul> : <p className="mt-2 text-ink-dim">{shownAccounts.length ? '当前筛选下没有邮箱；默认只显示未上号，可切换状态查看历史。' : '此组织还没有邮箱。点击“新增邮箱”可一次粘贴整份列表。'}</p>}
           </div>
         </section>
       </>}

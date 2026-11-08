@@ -99,8 +99,13 @@ class OnboardingAccountsUI(DesktopUI):
         expect(self.page.get_by_text("代理池和 IP 容量已同步", exact=False)).to_be_visible()
         self.page.get_by_role("button", name="完成此账号，继续下一个", exact=True).click()
         expect(self.page.locator("#onboarding-exit-ip")).to_have_value("proxy-b")
-        expect(self.page.get_by_role("listitem").filter(has_text="first@example.com").get_by_text("已上号", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("listitem").filter(has_text="first@example.com")).to_have_count(0)
         expect(self.page.get_by_role("listitem").filter(has_text="second@example.com").get_by_text("未上号", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("combobox", name="本次上号邮箱", exact=True).locator("option").filter(has_text="first@example.com")).to_have_count(0)
+        self.page.get_by_role("combobox", name="按上号状态筛选", exact=True).select_option("completed")
+        completed = self.page.get_by_role("listitem").filter(has_text="first@example.com")
+        expect(completed.get_by_text("已上号", exact=True)).to_be_visible()
+        expect(completed.get_by_role("button", name="first@example.com", exact=True)).to_have_count(0)
 
 
 if __name__ == "__main__":
