@@ -43,6 +43,12 @@ class AccountInput(BaseModel):
     org_name: str
 
 
+class AccountBatchInput(BaseModel):
+    emails: list[str] = Field(min_length=1, max_length=500)
+    org_id: str
+    org_name: str
+
+
 class SessionInput(BaseModel):
     account_id: str
     selection: Selection
@@ -166,6 +172,9 @@ class RemoteClient:
 
     async def save_account(self, request: AccountInput) -> dict[str, Any]:
         return await self.request("POST", "/v1/accounts", request.model_dump())
+
+    async def save_accounts(self, request: AccountBatchInput) -> dict[str, Any]:
+        return await self.request("POST", "/v1/accounts/batch", request.model_dump())
 
     async def delete_account(self, account_id: str) -> None:
         await self.request("DELETE", f"/v1/accounts/{account_id}")

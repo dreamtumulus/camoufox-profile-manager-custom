@@ -8,6 +8,7 @@ from camoufox_pm.api import access as api_access
 from camoufox_pm.api.principal import Principal
 from camoufox_pm.core.onboarding import OnboardingError, Selection, matching_proxy, proxy_host
 from camoufox_pm.onboarding_server import (
+    AccountBatchRequest,
     AccountRequest,
     OnboardingServerStore,
     SessionCreateRequest,
@@ -88,6 +89,30 @@ def test_shared_store_persists_and_encrypts_secrets(tmp_path):
     sk = raw.execute("SELECT sk_encrypted FROM sessions").fetchone()[0]
     assert "1dk_onb_test_secret" not in credential
     assert "sk-ant-test-secret-value" not in sk
+
+
+def test_batch_accounts_save_valid_rows_and_report_invalid_rows(tmp_path):
+    store = OnboardingServerStore(tmp_path / "shared.db", Fernet.generate_key().decode())
+    result = store.save_accounts(
+        AccountBatchRequest(
+            emails=["First@Example.com", "second@example.com", "invalid"],
+            org_id="org-a",
+            org_name="Org A",
+        )
+    )
+    assert [item["email"] for item in result["accounts"]] == [
+        "first@example.com",
+        "second@example.com",
+    ]
+    assert result["invalid"] == [{"email": "invalid", "reason": "邮箱地址格式不正确"}]
+    assert len(store.accounts()) == 2
+
+    moved = store.save_accounts(
+        AccountBatchRequest(emails=["first@example.com"], org_id="org-b", org_name="Org B")
+    )
+    assert moved["accounts"][0]["id"] == result["accounts"][0]["id"]
+    assert moved["accounts"][0]["org_id"] == "org-b"
+    assert len(store.accounts()) == 2
 
 
 @pytest.mark.asyncio

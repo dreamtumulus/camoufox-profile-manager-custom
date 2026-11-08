@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { proxyAtCapacity, shouldCloseBeforeNext } from '../src/lib/onboarding-flow'
+import { parseEmailList, proxyAtCapacity, shouldCloseBeforeNext } from '../src/lib/onboarding-flow'
 import type { OnboardingProxy, OnboardingSession } from '../src/lib/onboarding-api'
 
 const proxy = { boundAccounts: 0, reservedAccounts: 0 } as OnboardingProxy
@@ -18,4 +18,11 @@ test('next-account flow closes only sessions that can still have a browser', () 
   assert.equal(shouldCloseBeforeNext({ ...session, status: 'closed' }), false)
   assert.equal(shouldCloseBeforeNext({ ...session, status: 'error' }), false)
   assert.equal(shouldCloseBeforeNext({ ...session, profile_id: null }), false)
+})
+
+test('email batch accepts lines and separators, normalizes case and removes duplicates', () => {
+  assert.deepEqual(parseEmailList('First@Example.com\nsecond@example.com, THIRD@example.com；first@example.com'), [
+    'first@example.com', 'second@example.com', 'third@example.com',
+  ])
+  assert.deepEqual(parseEmailList(' \n,； '), [])
 })

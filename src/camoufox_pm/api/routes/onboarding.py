@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from camoufox_pm.api.access import require_admin, require_onboarding
 from camoufox_pm.api.dependencies import get_profile_manager
 from camoufox_pm.core.onboarding import (
+    AccountBatchInput,
     AccountInput,
     OnboardingError,
     RemoteClient,
@@ -84,6 +85,12 @@ async def onboarding_account(request: AccountInput):
     return await RemoteClient.configured().save_account(request)
 
 
+@router.post("/onboarding/accounts/batch")
+async def onboarding_accounts_batch(request: AccountBatchInput):
+    await require_onboarding()
+    return await RemoteClient.configured().save_accounts(request)
+
+
 @router.delete("/onboarding/accounts/{account_id}")
 async def onboarding_delete_account(account_id: str):
     await require_onboarding()
@@ -126,7 +133,17 @@ async def onboarding_create_session(request: SessionInput):
         pages = list(browser.context.pages)
         page = pages[0] if pages else await browser.context.new_page()
         await page.goto("https://claude.ai/login", wait_until="domcontentloaded", timeout=60000)
-        session = await remote.update_session(session_id, status="browser_open", error=None)
+        prefill_error = None
+        try:
+            email_input = page.locator('input[type="email"], input[name="email"]').first
+            await email_input.wait_for(state="visible", timeout=15000)
+            await email_input.fill(account["email"])
+        except Exception as exc:
+            prefill_error = (
+                f"Claude 登录页未能预填 {account['email']}，请在窗口中手动输入；"
+                f"窗口保持打开（{type(exc).__name__}）"
+            )
+        session = await remote.update_session(session_id, status="browser_open", error=prefill_error)
         return {"session": session, "profile_id": profile_id, "launch_status": launched["status"]}
     except Exception as exc:
         message = str(exc)

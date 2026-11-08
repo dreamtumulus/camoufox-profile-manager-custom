@@ -43,6 +43,12 @@ class AccountRequest(BaseModel):
     org_name: str = Field(min_length=1, max_length=255)
 
 
+class AccountBatchRequest(BaseModel):
+    emails: list[str] = Field(min_length=1, max_length=500)
+    org_id: str = Field(min_length=1, max_length=128)
+    org_name: str = Field(min_length=1, max_length=255)
+
+
 class SessionCreateRequest(BaseModel):
     account_id: str
     email: str
@@ -132,20 +138,39 @@ class OnboardingServerStore:
             rows = connection.execute("SELECT * FROM accounts ORDER BY email").fetchall()
         return [dict(row) for row in rows]
 
-    def save_account(self, request: AccountRequest) -> dict[str, Any]:
+    def _save_account(self, connection: sqlite3.Connection, request: AccountRequest) -> dict[str, Any]:
         email = request.email.strip().lower()
         if "@" not in email or email.startswith("@") or email.endswith("@"):
             raise HTTPException(422, "邮箱地址格式不正确")
-        account_id = uuid.uuid4().hex
-        with self.lock, self.connect() as connection:
-            connection.execute(
-                "INSERT INTO accounts(id, email, org_id, org_name, created_at) VALUES(?,?,?,?,?) "
-                "ON CONFLICT(email) DO UPDATE SET org_id = excluded.org_id, "
-                "org_name = excluded.org_name",
-                (account_id, email, request.org_id, request.org_name, _now()),
-            )
-            row = connection.execute("SELECT * FROM accounts WHERE email = ?", (email,)).fetchone()
+        connection.execute(
+            "INSERT INTO accounts(id, email, org_id, org_name, created_at) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(email) DO UPDATE SET org_id = excluded.org_id, "
+            "org_name = excluded.org_name",
+            (uuid.uuid4().hex, email, request.org_id, request.org_name, _now()),
+        )
+        row = connection.execute("SELECT * FROM accounts WHERE email = ?", (email,)).fetchone()
         return dict(row)
+
+    def save_account(self, request: AccountRequest) -> dict[str, Any]:
+        with self.lock, self.connect() as connection:
+            return self._save_account(connection, request)
+
+    def save_accounts(self, request: AccountBatchRequest) -> dict[str, Any]:
+        accounts: list[dict[str, Any]] = []
+        invalid: list[dict[str, str]] = []
+        with self.lock, self.connect() as connection:
+            for value in request.emails:
+                try:
+                    account = self._save_account(
+                        connection,
+                        AccountRequest(email=value, org_id=request.org_id, org_name=request.org_name),
+                    )
+                    accounts.append(account)
+                except HTTPException as exc:
+                    invalid.append({"email": value, "reason": str(exc.detail)})
+                except ValueError:
+                    invalid.append({"email": value, "reason": "邮箱地址格式不正确"})
+        return {"accounts": accounts, "invalid": invalid}
 
     def delete_account(self, account_id: str) -> None:
         with self.lock, self.connect() as connection:
@@ -271,6 +296,10 @@ def create_app(store: OnboardingServerStore, api_token: str) -> FastAPI:
     @app.post("/v1/accounts", dependencies=[Depends(authorized)])
     async def account(request: AccountRequest):
         return store.save_account(request)
+
+    @app.post("/v1/accounts/batch", dependencies=[Depends(authorized)])
+    async def accounts_batch(request: AccountBatchRequest):
+        return store.save_accounts(request)
 
     @app.delete("/v1/accounts/{account_id}", dependencies=[Depends(authorized)])
     async def delete_account(account_id: str):

@@ -12,7 +12,7 @@ import {
   type OneDayOptions,
   type SharedState,
 } from '@/lib/onboarding-api'
-import { proxyAtCapacity, shouldCloseBeforeNext } from '@/lib/onboarding-flow'
+import { parseEmailList, proxyAtCapacity, shouldCloseBeforeNext } from '@/lib/onboarding-flow'
 
 export default function OnboardingPage() {
   const { t } = useI18n()
@@ -46,6 +46,7 @@ export default function OnboardingPage() {
   const selectedOrg = options?.orgs.find(org => org.id === orgId)
   const selectedAccountOrg = options?.orgs.find(org => org.id === accountOrgId)
   const selectedProxy = proxies.find(proxy => proxy.id === proxyId)
+  const selectedAccount = shared?.accounts.find(account => account.id === accountId)
   const shownProxies = useMemo(() => proxies.filter(proxy => !group || proxy.group === group), [proxies, group])
   const shownAccounts = useMemo(() => shared?.accounts.filter(account => account.org_id === orgId) ?? [], [shared, orgId])
 
@@ -168,16 +169,31 @@ export default function OnboardingPage() {
   async function addAccount(event: React.FormEvent) {
     event.preventDefault()
     if (!selectedAccountOrg) { setError('请为新邮箱选择所属组织'); return }
+    const emails = parseEmailList(email)
+    if (!emails.length) { setError('请至少粘贴一个邮箱地址'); return }
+    if (emails.length > 500) { setError('每次最多保存 500 个邮箱'); return }
     setBusy('account')
     setError(null)
+    setNotice(null)
     try {
-      const account = await onboardingAPI.addAccount({ email: email.trim(), org_id: selectedAccountOrg.id, org_name: selectedAccountOrg.name })
-      setShared(current => current ? { ...current, accounts: [...current.accounts.filter(item => item.id !== account.id), account] } : current)
-      setOrgId(account.org_id)
-      setAccountId(account.id)
-      setEmail('')
-      setAddingAccount(false)
-      setNotice(`已保存邮箱 ${account.email}（${account.org_name}）到共享服务器`)
+      const result = await onboardingAPI.addAccounts({ emails, org_id: selectedAccountOrg.id, org_name: selectedAccountOrg.name })
+      const accounts = result.accounts
+      setShared(current => {
+        if (!current) return current
+        const savedIds = new Set(accounts.map(account => account.id))
+        return { ...current, accounts: [...current.accounts.filter(item => !savedIds.has(item.id)), ...accounts].sort((a, b) => a.email.localeCompare(b.email)) }
+      })
+      if (accounts.length) {
+        setOrgId(accounts[0].org_id)
+        setAccountId(accounts[0].id)
+        setNotice(`已将 ${accounts.length} 个邮箱保存到共享服务器的「${accounts[0].org_name}」邮箱库，可在下方列表查看`)
+      }
+      if (result.invalid.length) {
+        setError(`有 ${result.invalid.length} 项未保存：${result.invalid.map(item => `${item.email}（${item.reason}）`).join('；')}`)
+      } else {
+        setEmail('')
+        setAddingAccount(false)
+      }
     } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
     finally { setBusy('') }
   }
@@ -185,7 +201,7 @@ export default function OnboardingPage() {
   async function createWindow() {
     if (!nodeId || !orgId || !proxyId || !selectedProxy) { setError('请完整选择出口节点、归属组织和出口 IP'); return }
     if (proxyAtCapacity(selectedProxy)) { setError(`平台出口 ${selectedProxy.exitIp} 已绑定或预留 3 个账号，已达上限，请选择其他 IP`); return }
-    if (!accountId) { setError('请先新增并选择邮箱账号'); return }
+    if (!selectedAccount) { setError('请先新增并选择邮箱账号'); return }
     setBusy('create')
     setError(null)
     setNotice(null)
@@ -195,7 +211,7 @@ export default function OnboardingPage() {
       const answer = await onboardingAPI.createSession(accountId, currentSelection)
       setSession(answer.session)
       setShared(current => current ? { ...current, sessions: [answer.session, ...current.sessions], preferences: currentSelection } : current)
-      setNotice('本地 Camoufox 窗口已创建，代理已与所选出口 IP 匹配。请在窗口内手动登录。')
+      setNotice(`已为 ${selectedAccount.email} 创建本地 Camoufox 窗口，代理与所选出口一致。登录页会预填此邮箱，请手动完成验证。`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       try { setShared(await (await onboardingAPI.bootstrap()).shared) } catch { /* 保留原始错误，不自动重试 */ }
@@ -327,16 +343,22 @@ export default function OnboardingPage() {
         <section className="mt-4 rounded-lg border border-line bg-surface p-4">
           <div className="flex items-center gap-3"><h2 className="font-medium">3. 选择邮箱并创建窗口</h2><button type="button" className="btn btn-default ml-auto" onClick={() => { setAccountOrgId(orgId); setAddingAccount(current => !current) }}><Plus size={13} />新增邮箱</button></div>
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-            <select className="field w-full" value={accountId} disabled={busy !== ''} onChange={event => setAccountId(event.target.value)}>
-              {shownAccounts.length === 0 && <option value="">当前组织没有邮箱，请先新增</option>}
+            <select className="field w-full" aria-label="本次上号邮箱" value={accountId} disabled={busy !== ''} onChange={event => setAccountId(event.target.value)}>
+              {shownAccounts.length === 0 && <option value="">当前组织没有邮箱，请先批量新增</option>}
               {shownAccounts.map(account => <option key={account.id} value={account.id}>{account.email} · {account.org_name}</option>)}
             </select>
-            <button className="btn btn-primary" disabled={busy !== '' || nodeLoading} onClick={() => void createWindow()}>{busy === 'create' ? '正在创建窗口…' : '保存选择并创建 Camoufox 窗口'}</button>
+            <button className="btn btn-primary" disabled={busy !== '' || nodeLoading || !selectedAccount} onClick={() => void createWindow()}>{busy === 'create' ? '正在创建窗口…' : selectedAccount ? `使用 ${selectedAccount.email} 创建窗口` : '请先选择邮箱'}</button>
           </div>
+          {selectedAccount && <p className="mt-2 text-ink-dim">本次窗口账号：<span className="font-mono text-ink">{selectedAccount.email}</span> · 所属组织：{selectedAccount.org_name}</p>}
           {addingAccount && <form className="mt-4 space-y-3 border-t border-line pt-4" onSubmit={addAccount}>
-            <div className="flex flex-wrap gap-2"><input className="field min-w-[260px] flex-1" type="email" value={email} autoComplete="email" spellCheck={false} onChange={event => setEmail(event.target.value)} placeholder="粘贴或输入 name@example.com" required /><button type="button" className="btn btn-default" disabled={busy !== ''} onClick={() => void pasteEmail()}><ClipboardPaste size={13} />{busy === 'paste' ? '正在读取…' : '粘贴邮箱'}</button></div>
-            <div className="flex flex-wrap items-end gap-2"><label className="min-w-[260px] flex-1 text-[12px]">邮箱所属组织<select className="field mt-1 w-full" value={accountOrgId} disabled={busy !== ''} onChange={event => setAccountOrgId(event.target.value)} required>{options.orgs.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label><button className="btn btn-default" disabled={busy !== ''}>{busy === 'account' ? '正在保存…' : '保存邮箱与组织'}</button></div>
+            <p className="text-ink-dim">一次粘贴多个邮箱，每行一个，也支持逗号、分号或空格分隔。保存后进入下方共享邮箱库，不会自动创建窗口。</p>
+            <div className="flex items-start gap-2"><textarea className="field min-w-[260px] flex-1 resize-y font-mono" rows={4} value={email} autoComplete="off" spellCheck={false} onChange={event => setEmail(event.target.value)} placeholder={'name1@example.com\nname2@example.com'} aria-label="批量邮箱列表" required /><button type="button" className="btn btn-default" disabled={busy !== ''} onClick={() => void pasteEmail()}><ClipboardPaste size={13} />{busy === 'paste' ? '正在读取…' : '粘贴邮箱列表'}</button></div>
+            <div className="flex flex-wrap items-end gap-2"><label className="min-w-[260px] flex-1 text-[12px]">这批邮箱所属组织<select className="field mt-1 w-full" value={accountOrgId} disabled={busy !== ''} onChange={event => setAccountOrgId(event.target.value)} required>{options.orgs.map(org => <option key={org.id} value={org.id}>{org.name}</option>)}</select></label><button className="btn btn-default" disabled={busy !== ''}>{busy === 'account' ? '正在保存…' : `保存 ${parseEmailList(email).length} 个邮箱到共享服务器`}</button></div>
           </form>}
+          <div className="mt-4 border-t border-line pt-3">
+            <h3 className="font-medium">共享服务器邮箱库 · {selectedOrg?.name ?? '当前组织'} · {shownAccounts.length} 个</h3>
+            {shownAccounts.length > 0 ? <ul className="mt-2 max-h-[190px] divide-y divide-line overflow-y-auto rounded-md border border-line">{shownAccounts.map(account => { const latest = shared?.sessions.find(item => item.account_id === account.id); return <li key={account.id} className="flex items-center gap-3 px-3 py-2"><button type="button" className="min-w-0 flex-1 truncate text-left font-mono hover:text-signal" onClick={() => setAccountId(account.id)} title="选择此邮箱">{account.email}</button><span className="shrink-0 text-[11px] text-ink-dim">{latest ? `已有窗口记录 · ${latest.status}` : '尚未创建窗口'}</span></li> })}</ul> : <p className="mt-2 text-ink-dim">此组织还没有邮箱。点击“新增邮箱”可一次粘贴整份列表。</p>}
+          </div>
         </section>
       </>}
 

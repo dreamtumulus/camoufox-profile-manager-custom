@@ -100,6 +100,7 @@ export const onboardingAPI = {
   proxies: (nodeId: string) => apiRequest<OnboardingProxy[]>(`${PREFIX}/nodes/${encodeURIComponent(nodeId)}/proxies`),
   preferences: (selection: OnboardingSelection) => apiRequest<OnboardingSelection>(`${PREFIX}/preferences`, { method: 'PUT', body: JSON.stringify(selection) }),
   addAccount: (body: { email: string; org_id: string; org_name: string }) => apiRequest<OnboardingAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
+  addAccounts: (body: { emails: string[]; org_id: string; org_name: string }) => apiRequest<{ accounts: OnboardingAccount[]; invalid: { email: string; reason: string }[] }>(`${PREFIX}/accounts/batch`, { method: 'POST', body: JSON.stringify(body) }),
   deleteAccount: (id: string) => apiRequest(`${PREFIX}/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   createSession: (accountId: string, selection: OnboardingSelection) => apiRequest<{ session: OnboardingSession; profile_id: string }>(`${PREFIX}/sessions`, { method: 'POST', body: JSON.stringify({ account_id: accountId, selection }) }),
   extract: (id: string, optional = false) => apiRequest<{ message?: string; found?: boolean; session: OnboardingSession }>(`${PREFIX}/sessions/${id}/extract${optional ? '?optional=1' : ''}`, { method: 'POST' }),
