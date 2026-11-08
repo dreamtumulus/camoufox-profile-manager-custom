@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from camoufox_pm.api import access as api_access
 from camoufox_pm.api.principal import Principal
+from camoufox_pm.core.api_key_onboarding import ApiKeyClient
 from camoufox_pm.core.onboarding import OnboardingError, Selection, matching_proxy, proxy_host
 from camoufox_pm.onboarding_server import (
     AccountBatchRequest,
@@ -51,10 +52,54 @@ def test_matching_proxy_rejects_failed_or_mismatched_check():
         matching_proxy([mismatch], "10.0.0.1")
 
 
+@pytest.mark.asyncio
+async def test_api_key_session_key_payload_matches_console_contract(monkeypatch):
+    client = ApiKeyClient("test-token")
+    calls = []
+
+    async def request(method, path, body=None):
+        calls.append((method, path, body))
+        return {"id": "account-a"}
+
+    monkeypatch.setattr(client, "request", request)
+    selection = Selection(
+        platform="api-key.xyz",
+        node_id="api-key.xyz",
+        node_name="api-key.xyz",
+        org_id="org-a",
+        org_name="Org A",
+        proxy_group="group-a",
+        proxy_id="ip-a",
+        exit_ip="10.0.0.1",
+        seats=200,
+        rpm=300,
+        pool_tags=["pool-a"],
+        required_traits=["trait-a"],
+        forbidden_traits=["trait-b"],
+    )
+    result = await client.submit("sk-ant-test", selection, "person@example.com")
+    assert result["id"] == "account-a"
+    assert calls == [(
+        "POST",
+        "/api/v1/me/accounts/claude-code/session-key",
+        {
+            "session_key": "sk-ant-test",
+            "seats": 200,
+            "rpm": 300,
+            "pool_tags": ["pool-a"],
+            "required_traits": ["trait-a"],
+            "forbidden_traits": ["trait-b"],
+            "ip": "ip-a",
+            "name": "person@example.com",
+        },
+    )]
+
+
 def test_shared_store_persists_and_encrypts_secrets(tmp_path):
     path = tmp_path / "shared.db"
     store = OnboardingServerStore(path, Fernet.generate_key().decode())
     store.set_credential("1dk_onb_test_secret")
+    store.set_api_key_credential("api-key-test-secret")
     store.set_preferences({"node_id": "node-a", "exit_ip": "10.0.0.1"})
     account = store.save_account(
         AccountRequest(email="Person@Example.com", org_id="org-a", org_name="Org A")

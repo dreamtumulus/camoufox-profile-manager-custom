@@ -1227,5 +1227,8 @@
   "Change only the library group of {count} selected proxies. Proxies already copied into profiles are unchanged.": "仅修改所选 {count} 个代理在代理库中的分组，已复制到窗口中的代理保持不变。",
   "Updated group for {count} proxies.": "已更新 {count} 个代理的分组。",
   "Proxies skipped: {count}": "已跳过代理：{count}",
-  "No failed proxy was retried. Reload the library before changing it again.": "未自动重试失败的代理。请刷新代理库后再修改。"
+  "No failed proxy was retried. Reload the library before changing it again.": "未自动重试失败的代理。请刷新代理库后再修改。",
+  "api-key.xyz Bearer token": "api-key.xyz Bearer 密钥",
+  "1dayApi.com": "1dayApi.com",
+  "api-key.xyz": "api-key.xyz"
 }

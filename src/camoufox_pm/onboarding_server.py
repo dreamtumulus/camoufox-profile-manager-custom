@@ -79,6 +79,9 @@ class OnboardingServerStore:
                 CREATE TABLE IF NOT EXISTS credential (
                     id INTEGER PRIMARY KEY CHECK(id = 1), token_encrypted TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS api_key_credential (
+                    id INTEGER PRIMARY KEY CHECK(id = 1), token_encrypted TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS accounts (
                     id TEXT PRIMARY KEY, email TEXT NOT NULL UNIQUE,
                     org_id TEXT NOT NULL, org_name TEXT NOT NULL, created_at TEXT NOT NULL
@@ -131,6 +134,27 @@ class OnboardingServerStore:
             row = connection.execute("SELECT token_encrypted FROM credential WHERE id = 1").fetchone()
         if row is None:
             raise HTTPException(409, "1dayApi 登录密钥尚未配置")
+        return self.fernet.decrypt(row[0]).decode()
+
+    def has_api_key_credential(self) -> bool:
+        with self.lock, self.connect() as connection:
+            row = connection.execute("SELECT 1 FROM api_key_credential WHERE id = 1").fetchone()
+        return row is not None
+
+    def set_api_key_credential(self, token: str) -> None:
+        encrypted = self.fernet.encrypt(token.encode()).decode()
+        with self.lock, self.connect() as connection:
+            connection.execute(
+                "INSERT INTO api_key_credential(id, token_encrypted) VALUES(1, ?) "
+                "ON CONFLICT(id) DO UPDATE SET token_encrypted = excluded.token_encrypted",
+                (encrypted,),
+            )
+
+    def api_key_credential(self) -> str:
+        with self.lock, self.connect() as connection:
+            row = connection.execute("SELECT token_encrypted FROM api_key_credential WHERE id = 1").fetchone()
+        if row is None:
+            raise HTTPException(409, "api-key.xyz Bearer 密钥尚未配置")
         return self.fernet.decrypt(row[0]).decode()
 
     def accounts(self) -> list[dict[str, Any]]:
@@ -278,6 +302,7 @@ def create_app(store: OnboardingServerStore, api_token: str) -> FastAPI:
             "accounts": store.accounts(),
             "sessions": store.sessions(),
             "credential_configured": store.has_credential(),
+            "api_key_configured": store.has_api_key_credential(),
         }
 
     @app.put("/v1/preferences", dependencies=[Depends(authorized)])
@@ -292,6 +317,15 @@ def create_app(store: OnboardingServerStore, api_token: str) -> FastAPI:
     @app.get("/v1/credential", dependencies=[Depends(authorized)])
     async def read_credential():
         return {"token": store.credential()}
+
+    @app.put("/v1/api-key-credential", dependencies=[Depends(authorized)])
+    async def set_api_key_credential(request: CredentialRequest):
+        store.set_api_key_credential(request.token)
+        return {"configured": True}
+
+    @app.get("/v1/api-key-credential", dependencies=[Depends(authorized)])
+    async def read_api_key_credential():
+        return {"token": store.api_key_credential()}
 
     @app.post("/v1/accounts", dependencies=[Depends(authorized)])
     async def account(request: AccountRequest):

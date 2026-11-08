@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import httpx
@@ -28,6 +28,7 @@ class OnboardingError(RuntimeError):
 
 
 class Selection(BaseModel):
+    platform: Literal["1dayapi", "api-key.xyz"] = "1dayapi"
     node_id: str
     node_name: str
     org_id: str
@@ -35,6 +36,11 @@ class Selection(BaseModel):
     proxy_group: str | None = None
     proxy_id: str
     exit_ip: str
+    seats: int = Field(default=500, ge=1)
+    rpm: int = Field(default=500, ge=1)
+    pool_tags: list[str] = Field(default_factory=list)
+    required_traits: list[str] = Field(default_factory=list)
+    forbidden_traits: list[str] = Field(default_factory=list)
 
 
 class AccountInput(BaseModel):
@@ -58,6 +64,7 @@ class RemoteConfig(BaseModel):
     server_url: str
     server_token: str = Field(min_length=32, max_length=512)
     credential_token: str | None = Field(default=None, max_length=512)
+    api_key_token: str | None = Field(default=None, max_length=512)
 
 
 def _config_path() -> Path:
@@ -114,6 +121,8 @@ async def write_remote_config(request: RemoteConfig) -> None:
     temporary.replace(path)
     if request.credential_token:
         await client.put_credential(request.credential_token)
+    if request.api_key_token:
+        await client.put_api_key_credential(request.api_key_token)
 
 
 def _response_error(response: httpx.Response, service: str) -> OnboardingError:
@@ -169,6 +178,12 @@ class RemoteClient:
 
     async def credential(self) -> str:
         return (await self.request("GET", "/v1/credential"))["token"]
+
+    async def put_api_key_credential(self, token: str) -> None:
+        await self.request("PUT", "/v1/api-key-credential", {"token": token})
+
+    async def api_key_credential(self) -> str:
+        return (await self.request("GET", "/v1/api-key-credential"))["token"]
 
     async def save_account(self, request: AccountInput) -> dict[str, Any]:
         return await self.request("POST", "/v1/accounts", request.model_dump())

@@ -3,6 +3,7 @@ import { apiRequest } from './api'
 const PREFIX = '/api/v1/onboarding'
 
 export interface OnboardingSelection {
+  platform?: '1dayapi' | 'api-key.xyz'
   node_id: string
   node_name: string
   org_id: string
@@ -10,6 +11,11 @@ export interface OnboardingSelection {
   proxy_group: string | null
   proxy_id: string
   exit_ip: string
+  seats?: number
+  rpm?: number
+  pool_tags?: string[]
+  required_traits?: string[]
+  forbidden_traits?: string[]
 }
 
 export interface OnboardingNode {
@@ -43,6 +49,7 @@ export interface OnboardingProxy {
   reservedAccounts: number
   normalSlots: number
   overflowSlots: number
+  capacity?: number
   exitIp: string
   country: string | null
 }
@@ -75,6 +82,36 @@ export interface SharedState {
   accounts: OnboardingAccount[]
   sessions: OnboardingSession[]
   credential_configured: boolean
+  api_key_configured?: boolean
+}
+
+export interface ApiKeyOptions {
+  me: { org_id: string; org_name: string }
+  defaults: {
+    seats: number
+    rpm: number
+    pool_tags: string[]
+    required_traits: string[]
+    forbidden_traits: string[]
+  }
+  groups: {
+    name: string
+    display_name: string
+    ip_count: number
+    ready_count: number
+    free_count: number
+    ips: {
+      id: string
+      server: string
+      port: number
+      status: string
+      accounts: number
+      signing_in: number
+      capacity: number
+      free: number
+      observed_ip: string
+    }[]
+  }[]
 }
 
 export interface OneDayOptions {
@@ -93,11 +130,12 @@ export interface OnboardingConfig {
 
 export const onboardingAPI = {
   config: () => apiRequest<OnboardingConfig>(`${PREFIX}/config`),
-  saveConfig: (body: { server_url: string; server_token: string; credential_token?: string }) =>
+  saveConfig: (body: { server_url: string; server_token: string; credential_token?: string; api_key_token?: string }) =>
     apiRequest<OnboardingConfig>(`${PREFIX}/config`, { method: 'PUT', body: JSON.stringify(body) }),
-  bootstrap: () => apiRequest<{ shared: SharedState; oneDay: OneDayOptions }>(`${PREFIX}/bootstrap`),
+  bootstrap: () => apiRequest<{ shared: SharedState; oneDay: OneDayOptions; apiKey: ApiKeyOptions | null; apiKeyError?: string | null }>(`${PREFIX}/bootstrap`),
   groups: (nodeId: string) => apiRequest<{ group: string | null; total: number; live: number; assignable: number }[]>(`${PREFIX}/nodes/${encodeURIComponent(nodeId)}/groups`),
   proxies: (nodeId: string) => apiRequest<OnboardingProxy[]>(`${PREFIX}/nodes/${encodeURIComponent(nodeId)}/proxies`),
+  apiKeyOptions: () => apiRequest<ApiKeyOptions>(`${PREFIX}/api-key/options`),
   preferences: (selection: OnboardingSelection) => apiRequest<OnboardingSelection>(`${PREFIX}/preferences`, { method: 'PUT', body: JSON.stringify(selection) }),
   addAccount: (body: { email: string; org_id: string; org_name: string }) => apiRequest<OnboardingAccount>(`${PREFIX}/accounts`, { method: 'POST', body: JSON.stringify(body) }),
   addAccounts: (body: { emails: string[]; org_id: string; org_name: string }) => apiRequest<{ accounts: OnboardingAccount[]; invalid: { email: string; reason: string }[] }>(`${PREFIX}/accounts/batch`, { method: 'POST', body: JSON.stringify(body) }),
@@ -107,4 +145,5 @@ export const onboardingAPI = {
   submit: (id: string) => apiRequest<{ message: string; session: OnboardingSession; result: unknown }>(`${PREFIX}/sessions/${id}/submit`, { method: 'POST' }),
   result: (id: string) => apiRequest<{ session: OnboardingSession; result: unknown }>(`${PREFIX}/sessions/${id}/result`),
   close: (id: string) => apiRequest<{ session: OnboardingSession }>(`${PREFIX}/sessions/${id}/close`, { method: 'POST' }),
+  retryBrowser: (id: string) => apiRequest<{ session: OnboardingSession; message: string }>(`${PREFIX}/sessions/${id}/retry-browser`, { method: 'POST' }),
 }

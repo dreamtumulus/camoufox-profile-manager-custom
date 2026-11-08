@@ -1362,5 +1362,8 @@
   "Change only the library group of {count} selected proxies. Proxies already copied into profiles are unchanged.": "Изменяется только группа в библиотеке для выбранных прокси: {count}. Прокси, скопированные в профили, не изменяются.",
   "Updated group for {count} proxies.": "Группа обновлена для прокси: {count}.",
   "Proxies skipped: {count}": "Пропущено прокси: {count}",
-  "No failed proxy was retried. Reload the library before changing it again.": "Ошибочные прокси не повторялись автоматически. Обновите библиотеку перед повторным изменением."
+  "No failed proxy was retried. Reload the library before changing it again.": "Ошибочные прокси не повторялись автоматически. Обновите библиотеку перед повторным изменением.",
+  "api-key.xyz Bearer token": "Токен Bearer api-key.xyz",
+  "1dayApi.com": "1dayApi.com",
+  "api-key.xyz": "api-key.xyz"
 }
