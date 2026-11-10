@@ -44,7 +44,9 @@ class Settings(BaseSettings):
     # How the browser and the proxy check reach a profile's proxy: "system"
     # follows this computer's proxy settings, "direct" never uses one, and a
     # URL (http://host:port, socks5://host:port) names one explicitly.
-    front_proxy: str = "system"
+    # The variable must not end in "_PROXY": urllib treats every such variable
+    # as a proxy definition and then stops consulting the operating system.
+    front_proxy_mode: str = "system"
     backup_interval_hours: int = Field(default=24, ge=1)
     backup_retention: int = Field(default=7, ge=1)
 

@@ -23,11 +23,11 @@ def certs(tmp_path):
 @pytest.fixture
 def front_setting(monkeypatch):
     def apply(value):
-        monkeypatch.setenv("CPM_FRONT_PROXY", value)
+        monkeypatch.setenv("CPM_FRONT_PROXY_MODE", value)
         get_settings.cache_clear()
 
     yield apply
-    monkeypatch.setenv("CPM_FRONT_PROXY", "direct")
+    monkeypatch.setenv("CPM_FRONT_PROXY_MODE", "direct")
     get_settings.cache_clear()
 
 
@@ -311,3 +311,128 @@ async def test_pipe_relay_keeps_browser_side_authentication_and_closes_cleanly(c
             writer.close()
             with pytest.raises(RuntimeError):
                 _ = relay.browser_proxy
+
+
+@asynccontextmanager
+async def sniffing_front_proxy():
+    """A front proxy that, like Xray, re-routes on a parseable first HTTP packet.
+
+    It waits up to 200 ms for the first payload. If that payload is an HTTP
+    request, the connection is sent to the Host it names — which is not the
+    proxy that was asked for, so the client sees silence.
+    """
+    rerouted = []
+    tasks = set()
+
+    async def serve(reader, writer):
+        head = (await reader.readuntil(b"\r\n\r\n")).decode("latin-1")
+        host, _, port = head.split(" ")[1].rpartition(":")
+        writer.write(b"HTTP/1.1 200 Connection established\r\n\r\n")
+        await writer.drain()
+        # Like Xray: keep collecting for the whole sniffing window, then decide.
+        first = b""
+        deadline = asyncio.get_running_loop().time() + 0.2
+        while (remaining := deadline - asyncio.get_running_loop().time()) > 0:
+            try:
+                chunk = await asyncio.wait_for(reader.read(65536), remaining)
+            except asyncio.TimeoutError:
+                break
+            if not chunk:
+                break
+            first += chunk
+        if first.split(b" ", 1)[0].upper() in {b"CONNECT", b"GET", b"POST"} and b"\r\nHost:" in first:
+            rerouted.append(first.split(b" ", 2)[1])
+            await reader.read()  # destination overridden: nothing ever answers
+            return
+        upstream_reader, upstream_writer = await asyncio.open_connection(host, int(port))
+        upstream_writer.write(first)
+
+        async def pump(source, target):
+            try:
+                while data := await source.read(65536):
+                    target.write(data)
+                    await target.drain()
+            finally:
+                target.close()
+
+        await asyncio.gather(
+            pump(reader, upstream_writer), pump(upstream_reader, writer), return_exceptions=True
+        )
+
+    def accept(reader, writer):
+        async def run():
+            try:
+                await serve(reader, writer)
+            except (asyncio.IncompleteReadError, ConnectionError, OSError):
+                pass
+            finally:
+                writer.close()
+
+        task = asyncio.create_task(run())
+        tasks.add(task)
+        task.add_done_callback(tasks.discard)
+
+    server = await asyncio.start_server(accept, "127.0.0.1", 0)
+    try:
+        yield FrontProxy("http", "127.0.0.1", server.sockets[0].getsockname()[1]), rerouted
+    finally:
+        server.close()
+        for task in list(tasks):
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        await server.wait_closed()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("auth", [False, True])
+async def test_http_proxies_survive_a_front_proxy_that_sniffs_the_first_packet(
+    certs, monkeypatch, front_setting, auth
+):
+    """Found in the field: Xray rewrote the tunnel's destination from the proxy to the site."""
+    from camoufox_pm.core import proxy_chain
+
+    monkeypatch.setenv("SSL_CERT_FILE", str(certs[0]))
+    async with proxy_fixture("http", certs, auth=auth) as fixture:
+        async with sniffing_front_proxy() as (front, rerouted):
+            use_front(monkeypatch, front_setting, front)
+            monkeypatch.setattr(
+                proxy_check,
+                "IP_ENDPOINTS",
+                (f"https://cpm-origin.invalid:{fixture.https_port}/ip",),
+            )
+            ip, _ = await proxy_check.resolve_exit_ip(config(fixture), timeout=5)
+            assert ip == "203.0.113.19" and rerouted == []
+            # Without the guard the very same check is re-routed and never answers.
+            monkeypatch.setattr(proxy_chain, "SNIFF_GUARD_SECONDS", 0)
+            with pytest.raises(ConnectionError):
+                await proxy_check.resolve_exit_ip(config(fixture), timeout=2)
+            assert rerouted
+
+
+def test_the_setting_itself_is_not_mistaken_for_a_proxy_definition(monkeypatch, front_setting):
+    """urllib reads every ``*_proxy`` variable as a proxy and then skips the OS settings.
+
+    A variable named ``CPM_FRONT_PROXY`` did exactly that on Windows: setting it
+    to ``system`` silently disabled the system proxy it was meant to select.
+    """
+    front_setting("system")
+    names = {name.lower() for name in system_proxy.urllib.request.getproxies_environment()}
+    assert not any(name.startswith("cpm") for name in names)
+    from camoufox_pm.config import Settings
+
+    assert not any(
+        f"cpm_{field}".endswith("_proxy") for field in Settings.model_fields
+    ), "a CPM_*_PROXY variable would shadow the operating system's proxy settings"
+
+
+def test_an_unrelated_proxy_variable_does_not_hide_the_operating_system_proxy(
+    monkeypatch, front_setting
+):
+    front_setting("system")
+    request = system_proxy.urllib.request
+    monkeypatch.setattr(request, "proxy_bypass", lambda host: False)
+    monkeypatch.setattr(request, "getproxies", lambda: {"vendor_tool": "something"})
+    monkeypatch.setattr(
+        request, "getproxies_registry", lambda: {"http": "http://127.0.0.1:10808"}, raising=False
+    )
+    assert system_proxy.front_proxy_for("proxy.example") == FrontProxy("http", "127.0.0.1", 10808)

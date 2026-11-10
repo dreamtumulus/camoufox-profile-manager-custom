@@ -16,6 +16,15 @@ from urllib.parse import quote, urlsplit
 from .socks_relay import SocksRelay
 from .system_proxy import Dialer, FrontProxy, dialer_for
 
+# Local proxy clients (v2ray, Xray, sing-box, Clash) sniff the first packet of a
+# connection and, when it parses as HTTP, re-route the connection to the Host it
+# names. A plain HTTP proxy request names the *site*, so the tunnel meant for
+# the profile's proxy would be sent to the site on the proxy's port and hang.
+# Sniffers give up after about 200-300 ms without a parseable packet, so the
+# first byte goes out alone and the rest follows once that window has passed.
+# Measured against Xray: 0.15 s is still rewritten, 0.3 s never is.
+SNIFF_GUARD_SECONDS = 0.35
+
 
 class PipeRelay:
     """One ephemeral loopback listener piping bytes to one upstream proxy."""
@@ -38,6 +47,9 @@ class PipeRelay:
         # for the real proxy name on a loopback address.
         self._tls = parsed.scheme == "https"
         self._scheme = "http" if self._tls else parsed.scheme
+        # Only cleartext HTTP proxying starts with a packet a sniffer can parse:
+        # TLS names the proxy itself and SOCKS is not HTTP.
+        self._guard_first_packet = parsed.scheme == "http"
         self._dial = dial
         self._username = username
         self._password = password
@@ -97,6 +109,15 @@ class PipeRelay:
                 if start_tls is None:  # Python 3.10
                     raise ConnectionError("HTTPS proxies need Python 3.11+ behind a front proxy")
                 await start_tls(ssl.create_default_context(), server_hostname=self._host)
+            if self._guard_first_packet:
+                first = await reader.read(65536)
+                if not first:
+                    return
+                upstream_writer.write(first[:1])
+                await upstream_writer.drain()
+                await asyncio.sleep(SNIFF_GUARD_SECONDS)
+                upstream_writer.write(first[1:])
+                await upstream_writer.drain()
             pumps = [
                 asyncio.create_task(SocksRelay._pump(reader, upstream_writer)),
                 asyncio.create_task(SocksRelay._pump(upstream_reader, writer)),

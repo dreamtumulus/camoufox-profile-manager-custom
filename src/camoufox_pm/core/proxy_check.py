@@ -80,8 +80,10 @@ CERTIFICATE_ERROR = (
 )
 
 # The launch path is not a person waiting for an answer, so it gets Camoufox's own
-# 5 seconds: a tarpitting proxy must not hold a browser open indefinitely.
-LAUNCH_TIMEOUT = 5.0
+# bound: a tarpitting proxy must not hold a browser open indefinitely. Camoufox's
+# own 5 seconds proved too tight in the field — a healthy proxy reached over a
+# slow international link answered in 4.75 s and failed launches at random.
+LAUNCH_TIMEOUT = 10.0
 
 
 class LocationUnavailable(RuntimeError):

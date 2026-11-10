@@ -8,7 +8,7 @@ operating system is configured with:
     browser -> loopback relay -> system proxy -> onboarding proxy -> site
 
 The exit address is still the onboarding proxy's; the system proxy only carries
-the connection to it. ``CPM_FRONT_PROXY`` selects the behaviour:
+the connection to it. ``CPM_FRONT_PROXY_MODE`` selects the behaviour:
 
 * ``system`` (default) — follow the operating system (Windows Internet
   settings, macOS network settings, ``*_proxy`` variables elsewhere);
@@ -106,20 +106,41 @@ def parse(url: str) -> FrontProxy | None:
     )
 
 
+def _system_proxies() -> dict[str, str]:
+    """The operating system's proxies, even when stray variables hide them.
+
+    ``urllib.request.getproxies`` returns the environment's ``*_proxy``
+    variables when there are any and only otherwise asks Windows or macOS. Any
+    unrelated variable with that suffix would therefore switch the system proxy
+    off, so the operating system is asked directly when the environment names
+    no usable proxy.
+    """
+    proxies = urllib.request.getproxies()
+    if not any(proxies.get(key) for key in _SYSTEM_KEYS):
+        for name in ("getproxies_registry", "getproxies_macosx_sysconf"):
+            lookup = getattr(urllib.request, name, None)
+            if lookup is not None:
+                try:
+                    proxies = {**lookup(), **proxies}
+                except OSError:
+                    pass
+    return proxies
+
+
 def front_proxy_for(host: str) -> FrontProxy | None:
     """The proxy to dial ``host`` through, or ``None`` to connect directly.
 
     Blocking on Windows (registry and name lookups); call via :func:`dialer_for`.
     """
-    mode = (get_settings().front_proxy or "system").strip()
+    mode = (get_settings().front_proxy_mode or "system").strip()
     if mode.lower() == "direct" or _is_loopback(host):
         return None
     if mode.lower() != "system":
         front = parse(mode)
         if front is None:
-            raise FrontProxyError("CPM_FRONT_PROXY is not a usable http:// or socks5:// address")
+            raise FrontProxyError("CPM_FRONT_PROXY_MODE is not a usable http:// or socks5:// address")
         return front
-    proxies = urllib.request.getproxies()
+    proxies = _system_proxies()
     candidates = [proxies[key] for key in _SYSTEM_KEYS if proxies.get(key)]
     if not candidates:
         return None
@@ -133,7 +154,7 @@ def front_proxy_for(host: str) -> FrontProxy | None:
         if front is not None:
             return front
     raise FrontProxyError(
-        "The system proxy uses an unsupported protocol. Set CPM_FRONT_PROXY explicitly."
+        "The system proxy uses an unsupported protocol. Set CPM_FRONT_PROXY_MODE explicitly."
     )
 
 

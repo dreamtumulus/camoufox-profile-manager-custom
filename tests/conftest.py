@@ -9,7 +9,7 @@ import pytest
 # The suite must not depend on the developer's own proxy settings: a shell with
 # http_proxy set would otherwise route synthetic proxies through it. Tests of
 # the front proxy opt in explicitly (tests/unit/test_system_proxy.py).
-os.environ.setdefault("CPM_FRONT_PROXY", "direct")
+os.environ.setdefault("CPM_FRONT_PROXY_MODE", "direct")
 
 from camoufox_pm.core.database import StorageManager
 from camoufox_pm.core.profile_manager import ProfileManager

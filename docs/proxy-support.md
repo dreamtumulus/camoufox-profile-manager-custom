@@ -189,7 +189,7 @@ computer's own proxy:
 browser -> loopback relay -> system proxy -> profile proxy -> site
 ```
 
-The exit address is still the profile proxy's. `CPM_FRONT_PROXY` controls it:
+The exit address is still the profile proxy's. `CPM_FRONT_PROXY_MODE` controls it:
 `system` (default) follows Windows Internet settings, macOS network settings or
 the `*_proxy` variables; `direct` restores a direct connection; a URL
 (`http://host:port`, `socks5://user:pass@host:port`) names the front proxy
