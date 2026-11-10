@@ -178,3 +178,24 @@ Protocol references: [SOCKS5 (RFC 1928)](https://www.rfc-editor.org/rfc/rfc1928)
 [SOCKS5 password authentication (RFC 1929)](https://www.rfc-editor.org/rfc/rfc1929),
 [curl's SOCKS4a/remote-DNS definitions](https://curl.se/libcurl/c/CURLOPT_PROXYTYPE.html)
 and [Firefox ProxyInfo](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/ProxyInfo).
+
+## Reaching the proxy through this computer's proxy
+
+Where a profile's proxy server cannot be reached directly (an operator behind
+Clash, v2rayN or a corporate gateway), the connection to it is carried by the
+computer's own proxy:
+
+```
+browser -> loopback relay -> system proxy -> profile proxy -> site
+```
+
+The exit address is still the profile proxy's. `CPM_FRONT_PROXY` controls it:
+`system` (default) follows Windows Internet settings, macOS network settings or
+the `*_proxy` variables; `direct` restores a direct connection; a URL
+(`http://host:port`, `socks5://user:pass@host:port`) names the front proxy
+explicitly, which is the way to handle PAC-only configurations. The proxy check
+uses the same path as a launch. When a front proxy is configured but refuses or
+cannot be reached, the launch and the check fail — they never fall back to a
+direct connection. Loopback proxies and hosts on the system bypass list are
+always reached directly. HTTPS-type proxies behind a front proxy need
+Python 3.11 or newer.

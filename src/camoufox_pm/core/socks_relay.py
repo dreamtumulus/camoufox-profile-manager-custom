@@ -47,6 +47,7 @@ class SocksRelay:
         *,
         negotiation_timeout: float = 10.0,
         max_connections: int = 128,
+        connect=None,
     ) -> None:
         parsed = urlsplit(server)
         if (
@@ -71,6 +72,9 @@ class SocksRelay:
         else:
             self._username, self._password = validate_credentials(username, password)
         self._timeout = negotiation_timeout
+        # How to reach the upstream proxy: directly, or through the system proxy
+        # (see system_proxy.dialer_for). Chosen once for the relay's lifetime.
+        self._connect = connect or asyncio.open_connection
         self._max_connections = max_connections
         self._server: asyncio.Server | None = None
         self._tasks: set[asyncio.Task[None]] = set()
@@ -132,7 +136,7 @@ class SocksRelay:
                 # Never resolve destination hostnames here. The upstream server
                 # receives the client's address type and original hostname bytes.
                 request = header + address + destination_port
-                upstream_reader, upstream_writer = await asyncio.open_connection(
+                upstream_reader, upstream_writer = await self._connect(
                     self._host, self._port
                 )
                 if self._version == 4:

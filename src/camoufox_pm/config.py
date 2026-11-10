@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # window in which an instance that died without releasing anything keeps
     # its profiles locked to the rest of the fleet.
     lease_ttl: int = 120
+    # How the browser and the proxy check reach a profile's proxy: "system"
+    # follows this computer's proxy settings, "direct" never uses one, and a
+    # URL (http://host:port, socks5://host:port) names one explicitly.
+    front_proxy: str = "system"
     backup_interval_hours: int = Field(default=24, ge=1)
     backup_retention: int = Field(default=7, ge=1)
 

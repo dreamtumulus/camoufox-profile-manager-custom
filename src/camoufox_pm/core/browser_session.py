@@ -25,6 +25,7 @@ import psutil
 from loguru import logger
 
 from ..config import get_settings
+from .proxy_chain import PipeRelay, front_dialer
 from .socks_relay import SocksRelay
 
 if TYPE_CHECKING:
@@ -294,7 +295,7 @@ class BrowserSession:
         profile_id: str,
         camoufox: Any,
         process_id: int | None = None,
-        socks_relay: SocksRelay | None = None,
+        socks_relay: SocksRelay | PipeRelay | None = None,
     ):
         self.profile_id = profile_id
         self.camoufox = camoufox  # AsyncCamoufox context manager instance
@@ -486,7 +487,7 @@ class BrowserSessionManager:
         # registered, is_live() says this profile is coming up, and nothing
         # may hand its lease away.
         self._starting[profile_id] = self._starting.get(profile_id, 0) + 1
-        relay: SocksRelay | None = None
+        relay: SocksRelay | PipeRelay | None = None
         camoufox = None
         cookie_directory: Path | None = None
         pending_cookies = None
@@ -495,12 +496,26 @@ class BrowserSessionManager:
                 options = _browser_launch_options(launch_options)
                 proxy = options.get("proxy") or {}
                 server = proxy.get("server", "")
+                # A system proxy on this computer carries the connection to the
+                # profile's proxy; without one the paths below are unchanged.
+                dial, front = await front_dialer(server) if server else (None, None)
+                if front is not None:
+                    logger.info(f"Profile {profile_id} reaches its proxy through {front.label}")
                 if server.startswith("socks4://") or (
                     server.startswith("socks5://")
                     and (proxy.get("username") or proxy.get("password"))
                 ):
                     relay = SocksRelay(
-                        proxy["server"], proxy.get("username"), proxy.get("password")
+                        proxy["server"],
+                        proxy.get("username"),
+                        proxy.get("password"),
+                        **({"connect": dial} if dial else {}),
+                    )
+                    await relay.start()
+                    options["proxy"] = relay.browser_proxy
+                elif dial is not None:
+                    relay = PipeRelay(
+                        server, dial, proxy.get("username"), proxy.get("password")
                     )
                     await relay.start()
                     options["proxy"] = relay.browser_proxy

@@ -43,6 +43,7 @@ from .models import (
     ProxyConfig,
     ProxyType,
 )
+from .proxy_chain import PipeRelay, front_dialer
 from .proxy_import import normalize_proxy_server
 from .socks_relay import SocksRelay, validate_credentials
 
@@ -371,11 +372,42 @@ async def resolve_exit_ip(
             ) from None
 
     async with AsyncExitStack() as stack:
+        # The check takes the same path a launch does: through the system proxy
+        # when this computer has one, so the two can never disagree.
+        dial = None
+        if proxy:
+            try:
+                dial, _ = await front_dialer(proxy.server)
+            except ConnectionError:
+                raise ConnectionError(
+                    "The system proxy is configured but cannot be used to reach the proxy."
+                ) from None
+        chained = {"connect": dial} if dial else {}
         if proxy and proxy.type == ProxyType.SOCKS4:
-            relay = SocksRelay(f"socks4://{proxy.server}", negotiation_timeout=timeout)
+            relay = SocksRelay(
+                f"socks4://{proxy.server}", negotiation_timeout=timeout, **chained
+            )
             stack.push_async_callback(relay.close)
             await relay.start()
             url = relay.browser_proxy["server"]
+        elif proxy and dial and proxy.type == ProxyType.SOCKS5 and proxy.username:
+            relay = SocksRelay(
+                f"socks5://{proxy.server}",
+                proxy.username,
+                proxy.password,
+                negotiation_timeout=timeout,
+                **chained,
+            )
+            stack.push_async_callback(relay.close)
+            await relay.start()
+            url = relay.browser_proxy["server"]
+        elif proxy and dial:
+            pipe = PipeRelay(
+                f"{proxy.type.value}://{proxy.server}", dial, proxy.username, proxy.password
+            )
+            stack.push_async_callback(pipe.close)
+            await pipe.start()
+            url = pipe.url
         streams: list[httpcore.AsyncNetworkStream] = []
 
         async def trace(event: str, info: dict[str, Any]) -> None:
