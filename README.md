@@ -60,6 +60,9 @@ from it in January still looks like the same computer in June.
   app binds to loopback and is open. Set `CPM_API_KEY` for machine clients, or
   create an account (`camoufox-pm user add`) and humans get a login screen —
   argon2id hashes, HttpOnly session cookies, a logout that really invalidates.
+  A deployment can instead declare its administrator with `CPM_ADMIN_USERNAME` /
+  `CPM_ADMIN_PASSWORD`, which startup reconciles: that is also how a forgotten
+  password is recovered on the server without editing the database.
   Administrators assign operator/viewer roles, profile access and separate export
   grants from **Access**, with a searchable activity log. See [roles and access](docs/stage-three.md).
 - **Encrypted device synchronization (experimental, opt-in).** Opt in to closed-profile

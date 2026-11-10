@@ -53,7 +53,7 @@ usage: camoufox-pm user {add,passwd,remove,list} ...
 | Command | What it does |
 | ------- | ------------ |
 | `user add <name>` | Create an account. Prompts twice for the password (min 8 characters); it is argon2id-hashed before it touches the database and never appears in argv, the environment, or logs. |
-| `user passwd <name>` | Change an account's password. Existing sessions stay valid. |
+| `user passwd <name>` | Change an account's password. Sessions for that account are invalidated; it must log in again. |
 | `user remove <name>` | Delete an account and its open sessions. Warns when it was the last one. |
 | `user list` | List account names and creation times. Never shows hashes. |
 
@@ -67,6 +67,38 @@ openssl rand -base64 18 | camoufox-pm user add ci-bot --password-stdin
 
 The commands work against `CPM_DB_PATH` and take effect immediately, even while
 the server is running — the guard checks the database per request.
+
+### A server-managed account (and password recovery)
+
+A deployment can declare its administrator in the environment instead of
+creating one by hand:
+
+```bash
+CPM_ADMIN_USERNAME=root
+CPM_ADMIN_PASSWORD=a-long-password    # at least 8 characters
+```
+
+When both are set, every start reconciles that account against the
+configuration: missing — created as an administrator; password different — the
+stored argon2id hash is replaced; role different — restored to administrator.
+A changed password or role invalidates that account's sessions, so a browser
+holding the old cookie is logged out. An account already in step is left
+alone, so restarting with the same configuration does not sign anyone out.
+
+This is the recovery path for a forgotten password: set the two variables in
+the service or container environment and restart. No database edit and no shell
+inside the data volume is needed. The plaintext password stays in the
+deployment's environment, beside `CPM_API_KEY` and `CPM_SECRET_KEY`; it is never
+written to the database, the activity log or the process arguments. Remove both
+variables to stop managing the account this way — `camoufox-pm user passwd`
+owns it again, and the last password set remains in force.
+
+```yaml
+# docker-compose.yml, for example
+environment:
+  CPM_ADMIN_USERNAME: root
+  CPM_ADMIN_PASSWORD: ${CPM_ADMIN_PASSWORD}
+```
 
 ## `camoufox-pm leases` and `camoufox-pm unlock`
 

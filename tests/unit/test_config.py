@@ -32,3 +32,30 @@ def test_the_reported_version_matches_the_package_metadata():
 
     assert __version__ == version("camoufox-profile-manager")
     assert __version__ != "0.0.0+unknown", "the package should be installed for the test run"
+
+
+def test_configured_admin_must_be_set_as_a_pair():
+    """Half a credential is a typo, not a configuration: refuse to start rather
+    than silently leave login on the old password."""
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, admin_username="root")
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, admin_password="a-long-password")
+
+
+def test_configured_admin_requires_a_real_password():
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, admin_username="root", admin_password="short")
+
+
+def test_configured_admin_comes_from_the_environment(monkeypatch):
+    monkeypatch.setenv("CPM_ADMIN_USERNAME", "root")
+    monkeypatch.setenv("CPM_ADMIN_PASSWORD", "a-long-password")
+    s = Settings(_env_file=None)
+    assert (s.admin_username, s.admin_password) == ("root", "a-long-password")

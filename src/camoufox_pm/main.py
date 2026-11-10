@@ -42,6 +42,7 @@ from camoufox_pm.api.routes import (
 )
 from camoufox_pm.config import get_settings
 from camoufox_pm.core.backups import ProfileBackupManager
+from camoufox_pm.core.bootstrap import apply_configured_admin
 from camoufox_pm.core.database import StorageManager
 from camoufox_pm.core.maintenance import MaintenanceBlocked, MaintenanceGate
 from camoufox_pm.core.onboarding import OnboardingError
@@ -72,6 +73,10 @@ async def lifespan(app: FastAPI):
         with maintenance_gate.operation():
             maintenance_gate.register_manager()
             await storage_manager.initialize()
+            # The deployment's environment, when it names an administrator, wins
+            # over whatever password the database happens to hold. This is the
+            # server-side recovery path for a forgotten local password.
+            await apply_configured_admin(storage_manager, settings)
             data_dir = str(Path(settings.db_path).parent)
             profile_manager = ProfileManager(storage_manager, data_dir)
             await profile_manager.initialize()

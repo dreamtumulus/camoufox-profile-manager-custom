@@ -13,6 +13,12 @@ profiles, and grant export separately where needed. The Activity tab filters by
 actor, action and result, pages through events and exports JSON. Password reset
 and role changes invalidate that account's sessions; the user must log in again.
 
+For a deployment that should keep the administrator credential with the server
+rather than only in the database, set `CPM_ADMIN_USERNAME` and
+`CPM_ADMIN_PASSWORD` in the environment. Startup then creates or repairs that
+account, which is also how a forgotten password is recovered without touching
+the database — see [the CLI reference](cli.md#a-server-managed-account-and-password-recovery).
+
 Existing accounts become administrators during the resumable schema 1 → 2
 migration. The last administrator cannot be deleted or demoted, including from
 the CLI. Keep a second administrator if you need to replace the first. Schema 2

@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     # Lifetime of a login session. Sessions are stored server-side, so shortening
     # this takes effect for existing sessions on their next request.
     session_ttl_hours: int = 168
+    # Optional server-managed administrator. When both are set, startup keeps that
+    # account's password and role in step with this configuration, so a forgotten
+    # password is recovered by editing the deployment's environment and restarting
+    # — the credential lives with the server, not with a browser profile. Leave
+    # both unset to manage accounts only with `camoufox-pm user`.
+    admin_username: str | None = None
+    admin_password: str | None = None
     # Force the Secure flag on the session cookie. The flag is set automatically
     # when the request itself arrived over HTTPS, but behind a TLS-terminating
     # proxy the app sees plain HTTP — set this there.
@@ -50,6 +57,20 @@ class Settings(BaseSettings):
                 "CPM_LEASE_TTL must be at least 60 seconds (the heartbeat renews every 30s)"
             )
         return value
+
+    @model_validator(mode="after")
+    def _configured_admin_is_all_or_nothing(self):
+        if (self.admin_username is None) != (self.admin_password is None):
+            raise ValueError(
+                "CPM_ADMIN_USERNAME and CPM_ADMIN_PASSWORD must be set together"
+            )
+        if self.admin_username is not None:
+            self.admin_username = self.admin_username.strip()
+            if not self.admin_username:
+                raise ValueError("CPM_ADMIN_USERNAME must not be empty")
+        if self.admin_password is not None and len(self.admin_password) < 8:
+            raise ValueError("CPM_ADMIN_PASSWORD must be at least 8 characters")
+        return self
 
     @field_validator("cors_origins", mode="before")
     @classmethod
