@@ -11,12 +11,15 @@ from camoufox_pm.core.onboarding import (
     AccountBatchInput,
     AccountInput,
     OnboardingError,
+    OperatorLogin,
     RemoteClient,
     RemoteConfig,
     Selection,
     SessionInput,
     matching_proxy,
     oneday_client,
+    operator_login,
+    operator_logout,
     remote_status,
     write_remote_config,
 )
@@ -65,10 +68,145 @@ async def save_onboarding_config(request: RemoteConfig):
     return remote_status()
 
 
+@router.post("/onboarding/operator/login")
+async def onboarding_operator_login(request: OperatorLogin):
+    await require_onboarding()
+    return await operator_login(request)
+
+
+@router.post("/onboarding/operator/logout")
+async def onboarding_operator_logout():
+    await require_onboarding()
+    return await operator_logout()
+
+
+async def _operator_bundle(remote: RemoteClient) -> dict[str, Any]:
+    """The operator's assignment, without proxy passwords, plus local window state."""
+    bundle = await remote.bundle()
+    running = get_profile_manager().browser_sessions
+    for proxy in bundle["proxies"]:
+        proxy.pop("password", None)
+    for session in bundle["sessions"]:
+        session["browser_running"] = bool(
+            session.get("profile_id") and running.is_running(session["profile_id"])
+        )
+    for task in bundle["tasks"]:
+        current = task.get("session")
+        if current:
+            current["browser_running"] = bool(
+                current.get("profile_id") and running.is_running(current["profile_id"])
+            )
+    return bundle
+
+
+async def _launch_for_session(manager, remote: RemoteClient, session, proxy_config, account):
+    """Create the profile for an onboarding record and open Claude's login in it."""
+    session_id = session["id"]
+    profile_id = None
+    try:
+        profile = await manager.create_profile(
+            name=f"Claude Team · {account['email']}",
+            browser_settings={"os": "windows"},
+            proxy_config=proxy_config,
+            notes=f"Claude Team onboarding account: {account['id']}; session: {session_id}",
+            tags=["claude-team"],
+        )
+        profile_id = profile.id
+        session = await remote.update_session(session_id, profile_id=profile_id, status="launching")
+        launched = await manager.launch_browser(profile_id, headless=False, geoip=True, humanize=True)
+        browser = manager.browser_sessions.active_sessions[profile_id]
+        prefill_error = await _open_claude_login(browser, account["email"])
+        session = await remote.update_session(session_id, status="browser_open", error=prefill_error)
+        return {"session": session, "profile_id": profile_id, "launch_status": launched["status"]}
+    except Exception as exc:
+        message = str(exc)
+        if profile_id and manager.browser_sessions.is_running(profile_id):
+            try:
+                await manager.close_browser(profile_id)
+            except Exception as close_exc:
+                message = f"{message}；浏览器关闭也需要手动检查：{close_exc}"
+        await remote.update_session(session_id, status="error", error=message)
+        if isinstance(exc, OnboardingError):
+            raise
+        raise OnboardingError(f"创建或启动浏览器失败：{message}", 500, "browser_launch_failed") from exc
+
+
+@router.post("/onboarding/operator/tasks/{account_id}/start")
+async def onboarding_operator_start(account_id: str):
+    """Open the window for an assigned e-mail on the proxy the server paired it with."""
+    await require_onboarding()
+    remote = RemoteClient.configured()
+    if not remote.is_operator:
+        raise OnboardingError("请先登录上号员账号", 409, "operator_login_required")
+    bundle = await remote.bundle()
+    task = next((item for item in bundle["tasks"] if item["id"] == account_id), None)
+    if task is None:
+        raise OnboardingError("该邮箱未分配给你，请刷新任务列表", 409, "task_missing")
+    proxy = next((item for item in bundle["proxies"] if item["id"] == task["proxy_id"]), None)
+    if proxy is None:
+        raise OnboardingError("该邮箱对应的 IP 已被收回，请联系管理员", 409, "proxy_missing")
+    session = await remote.start_task(account_id)
+    proxy_config = {
+        "type": proxy["type"],
+        "server": proxy["server"],
+        "username": proxy["username"],
+        "password": proxy.get("password"),
+    }
+    return await _launch_for_session(get_profile_manager(), remote, session, proxy_config, task)
+
+
+async def _admin_call(method: str, path: str, body: Any = None) -> Any:
+    await require_admin()
+    return await RemoteClient.admin().admin_request(method, path, body)
+
+
+@router.get("/onboarding/admin/overview")
+async def onboarding_admin_overview():
+    return await _admin_call("GET", "/overview")
+
+
+@router.post("/onboarding/admin/operators")
+async def onboarding_admin_create_operator(body: dict[str, Any]):
+    return await _admin_call("POST", "/operators", body)
+
+
+@router.patch("/onboarding/admin/operators/{operator_id}")
+async def onboarding_admin_update_operator(operator_id: str, body: dict[str, Any]):
+    return await _admin_call("PATCH", f"/operators/{operator_id}", body)
+
+
+@router.post("/onboarding/admin/proxies/import")
+async def onboarding_admin_import_proxies(body: dict[str, Any]):
+    body.pop("platform_proxies", None)  # Always matched against the live platform list.
+    return await _admin_call("POST", "/proxies/import", body)
+
+
+@router.post("/onboarding/admin/proxies/assign")
+async def onboarding_admin_assign_proxies(body: dict[str, Any]):
+    return await _admin_call("POST", "/proxies/assign", body)
+
+
+@router.delete("/onboarding/admin/proxies/{proxy_id}")
+async def onboarding_admin_delete_proxy(proxy_id: str):
+    return await _admin_call("DELETE", f"/proxies/{proxy_id}")
+
+
+@router.post("/onboarding/admin/accounts/import")
+async def onboarding_admin_import_accounts(body: dict[str, Any]):
+    return await _admin_call("POST", "/accounts/import", body)
+
+
+@router.post("/onboarding/admin/accounts/{account_id}/unassign")
+async def onboarding_admin_unassign_account(account_id: str):
+    return await _admin_call("POST", f"/accounts/{account_id}/unassign")
+
+
 @router.get("/onboarding/bootstrap")
 async def onboarding_bootstrap():
     await require_onboarding()
     remote = RemoteClient.configured()
+    if remote.is_operator:
+        return {"operator": await _operator_bundle(remote)}
     state = await remote.state()
     client = await oneday_client(remote)
     api_key_options = None
@@ -231,6 +369,9 @@ async def onboarding_submit_sk(session_id: str):
         raise OnboardingError("尚未提取 SK，不能提交", 409, "sk_not_extracted")
     if session.get("job_id"):
         raise OnboardingError("该 SK 已提交，请使用“刷新返回结果”查看", 409, "sk_already_submitted")
+    if remote.is_operator:
+        session = await remote.submit_session(session_id)
+        return {"message": "SK 已提交，返回结果如下", "session": session, "result": session.get("result")}
     await remote.update_session(session_id, status="submitting", error=None)
     try:
         sk = await remote.session_secret(session_id)
@@ -267,6 +408,9 @@ async def onboarding_submit_sk(session_id: str):
 async def onboarding_result(session_id: str):
     await require_onboarding()
     remote = RemoteClient.configured()
+    if remote.is_operator:
+        session = await remote.refresh_session(session_id)
+        return {"session": session, "result": session.get("result")}
     session = await remote.session(session_id)
     job_id = session.get("job_id")
     if not job_id:

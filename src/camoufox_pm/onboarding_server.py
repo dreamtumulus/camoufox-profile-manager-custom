@@ -359,6 +359,11 @@ def create_app(store: OnboardingServerStore, api_token: str) -> FastAPI:
             raise HTTPException(409, "尚未提取 SK")
         return {"sk": session["sk"]}
 
+    # Personal operator accounts, the assigned proxy pool and server-side
+    # submission. The routes above stay as they were: administrator only.
+    from camoufox_pm.onboarding_operators import register
+
+    app.state.operators = register(app, store, api_token)
     return app
 
 

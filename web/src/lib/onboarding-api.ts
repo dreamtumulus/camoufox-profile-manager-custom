@@ -122,10 +122,94 @@ export interface OneDayOptions {
   orgs: OnboardingOrg[]
 }
 
+export interface OnboardingOperator {
+  id: string
+  username: string
+  disabled: boolean
+  created_at: string
+}
+
 export interface OnboardingConfig {
   configured: boolean
   server_url: string | null
+  mode?: 'operator' | 'admin' | null
+  operator?: OnboardingOperator | null
   message?: string
+}
+
+/** A proxy in the shared pool. Passwords never reach the web UI. */
+export interface PoolProxy {
+  id: string
+  platform: '1dayapi' | 'api-key.xyz'
+  node_id: string
+  node_name: string
+  proxy_group: string | null
+  platform_proxy_id: string
+  exit_ip: string
+  type: string
+  server: string
+  username: string | null
+  capacity: number
+  used: number
+  operator_id: string | null
+  has_password: boolean
+}
+
+export interface OperatorSession extends OnboardingSession {
+  browser_running?: boolean
+}
+
+export interface OperatorTask {
+  id: string
+  email: string
+  org_id: string
+  org_name: string
+  platform: '1dayapi' | 'api-key.xyz' | null
+  proxy_id: string | null
+  exit_ip: string | null
+  session: OperatorSession | null
+}
+
+export interface OperatorBundle {
+  operator: OnboardingOperator
+  proxies: PoolProxy[]
+  tasks: OperatorTask[]
+  sessions: OperatorSession[]
+}
+
+export interface AdminOperator extends OnboardingOperator {
+  proxies: number
+  accounts: number
+  completed: number
+}
+
+export interface AdminAccount {
+  id: string
+  email: string
+  org_id: string
+  org_name: string
+  platform: string | null
+  operator_id: string | null
+  proxy_id: string | null
+  status: string | null
+}
+
+export interface AdminOverview {
+  operators: AdminOperator[]
+  proxies: PoolProxy[]
+  accounts: AdminAccount[]
+  audit: { id: number; at: string; actor: string; action: string; detail_json: string }[]
+}
+
+export interface ProxyImportResult {
+  imported: PoolProxy[]
+  unmatched: { line: number; server: string }[]
+}
+
+export interface AccountImportResult {
+  placed: (AdminAccount & { exit_ip?: string })[]
+  unplaced: { email: string; reason: string }[]
+  invalid: { email: string; reason: string }[]
 }
 
 export const onboardingAPI = {
@@ -133,6 +217,26 @@ export const onboardingAPI = {
   saveConfig: (body: { server_url: string; server_token: string; credential_token?: string; api_key_token?: string }) =>
     apiRequest<OnboardingConfig>(`${PREFIX}/config`, { method: 'PUT', body: JSON.stringify(body) }),
   bootstrap: () => apiRequest<{ shared: SharedState; oneDay: OneDayOptions; apiKey: ApiKeyOptions | null; apiKeyError?: string | null }>(`${PREFIX}/bootstrap`),
+  /** The same route answers with the personal assignment once an operator has signed in. */
+  operatorBundle: async () => (await apiRequest<{ operator: OperatorBundle }>(`${PREFIX}/bootstrap`)).operator,
+  operatorLogin: (body: { username: string; password: string; server_url?: string }) =>
+    apiRequest<OnboardingConfig>(`${PREFIX}/operator/login`, { method: 'POST', body: JSON.stringify(body) }),
+  operatorLogout: () => apiRequest<OnboardingConfig>(`${PREFIX}/operator/logout`, { method: 'POST' }),
+  startTask: (accountId: string) =>
+    apiRequest<{ session: OperatorSession; profile_id: string }>(`${PREFIX}/operator/tasks/${encodeURIComponent(accountId)}/start`, { method: 'POST' }),
+  adminOverview: () => apiRequest<AdminOverview>(`${PREFIX}/admin/overview`),
+  adminCreateOperator: (body: { username: string; password: string }) =>
+    apiRequest<OnboardingOperator>(`${PREFIX}/admin/operators`, { method: 'POST', body: JSON.stringify(body) }),
+  adminUpdateOperator: (id: string, body: { password?: string; disabled?: boolean }) =>
+    apiRequest<OnboardingOperator>(`${PREFIX}/admin/operators/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  adminImportProxies: (body: { platform: string; node_id: string; node_name: string; text: string; capacity: number; operator_id: string | null; defaults?: Record<string, unknown> }) =>
+    apiRequest<ProxyImportResult>(`${PREFIX}/admin/proxies/import`, { method: 'POST', body: JSON.stringify(body) }),
+  adminAssignProxies: (proxyIds: string[], operatorId: string | null) =>
+    apiRequest<{ assigned: number }>(`${PREFIX}/admin/proxies/assign`, { method: 'POST', body: JSON.stringify({ proxy_ids: proxyIds, operator_id: operatorId }) }),
+  adminDeleteProxy: (id: string) => apiRequest(`${PREFIX}/admin/proxies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  adminImportAccounts: (body: { operator_id: string; platform: string; org_id: string; org_name: string; emails: string[] }) =>
+    apiRequest<AccountImportResult>(`${PREFIX}/admin/accounts/import`, { method: 'POST', body: JSON.stringify(body) }),
+  adminUnassignAccount: (id: string) => apiRequest(`${PREFIX}/admin/accounts/${encodeURIComponent(id)}/unassign`, { method: 'POST' }),
   groups: (nodeId: string) => apiRequest<{ group: string | null; total: number; live: number; assignable: number }[]>(`${PREFIX}/nodes/${encodeURIComponent(nodeId)}/groups`),
   proxies: (nodeId: string) => apiRequest<OnboardingProxy[]>(`${PREFIX}/nodes/${encodeURIComponent(nodeId)}/proxies`),
   apiKeyOptions: () => apiRequest<ApiKeyOptions>(`${PREFIX}/api-key/options`),

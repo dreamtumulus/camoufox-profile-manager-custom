@@ -71,54 +71,169 @@ def _config_path() -> Path:
     return Path(get_settings().db_path).expanduser().resolve().parent / "onboarding-config.json"
 
 
+class OperatorLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=256)
+    server_url: str | None = None
+
+
 def remote_status() -> dict[str, Any]:
     try:
         config = _read_config()
-        return {"configured": True, "server_url": config["server_url"]}
+        return {
+            "configured": True,
+            "server_url": config["server_url"],
+            "mode": config["mode"],
+            "operator": config.get("operator"),
+        }
     except OnboardingError as exc:
-        return {"configured": False, "server_url": None, "message": str(exc)}
+        return {
+            "configured": False,
+            "server_url": _stored_server_url(),
+            "mode": None,
+            "operator": None,
+            "message": str(exc),
+        }
 
 
-def _read_config() -> dict[str, str]:
+def _stored_server_url() -> str | None:
+    """The shared server's address, known even before anyone has signed in."""
     url = os.environ.get("CPM_ONBOARDING_SERVER_URL")
-    token = os.environ.get("CPM_ONBOARDING_SERVER_TOKEN")
-    if url and token:
-        return {"server_url": url.rstrip("/"), "server_token": token}
-    path = _config_path()
-    if not path.exists():
-        raise OnboardingError("尚未配置共享服务器", 503, "remote_not_configured")
+    if url:
+        return url.rstrip("/")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        server_token = decrypt(data["server_token"])
-        if data["server_url"] and len(server_token) >= 32:
-            return {"server_url": data["server_url"].rstrip("/"), "server_token": server_token}
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return json.loads(_config_path().read_text(encoding="utf-8")).get("server_url") or None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def _read_config() -> dict[str, Any]:
+    """Who this installation is to the shared server.
+
+    ``mode`` is ``operator`` after a personal sign-in (the normal case on an
+    operator's computer) and ``admin`` when the server's own token is stored.
+    An operator sign-in wins: it is the narrower identity.
+    """
+    path = _config_path()
+    data: dict[str, Any] = {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("not an object")
+        except (OSError, ValueError) as exc:
+            raise OnboardingError("共享服务器配置无法读取", 500, "remote_config_invalid") from exc
+    url = os.environ.get("CPM_ONBOARDING_SERVER_URL") or data.get("server_url")
+    try:
+        if url and data.get("operator_token"):
+            return {
+                "server_url": url.rstrip("/"),
+                "server_token": decrypt(data["operator_token"]),
+                "mode": "operator",
+                "operator": data.get("operator"),
+            }
+        token = os.environ.get("CPM_ONBOARDING_SERVER_TOKEN")
+        if not token and data.get("server_token"):
+            token = decrypt(data["server_token"])
+    except (ValueError, KeyError, TypeError) as exc:
         raise OnboardingError("共享服务器配置无法读取", 500, "remote_config_invalid") from exc
-    raise OnboardingError("共享服务器配置不完整", 500, "remote_config_invalid")
+    if url and token and len(token) >= 32:
+        return {"server_url": url.rstrip("/"), "server_token": token, "mode": "admin"}
+    if url:
+        raise OnboardingError("请先登录上号员账号", 409, "operator_login_required")
+    raise OnboardingError("尚未配置共享服务器", 503, "remote_not_configured")
 
 
-def save_remote_config(request: RemoteConfig) -> RemoteClient:
-    parsed = urlparse(request.server_url)
+def _write_config(values: dict[str, Any]) -> None:
+    path = _config_path()
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(values, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(path)
+
+
+def _validated_url(server_url: str) -> str:
+    parsed = urlparse(server_url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         raise OnboardingError("共享服务器地址格式不正确", 422, "remote_url_invalid")
     if parsed.scheme != "https" and parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
         raise OnboardingError("非本机共享服务器必须使用 HTTPS", 422, "remote_https_required")
-    client = RemoteClient(request.server_url, request.server_token)
-    return client
+    return server_url.rstrip("/")
+
+
+async def operator_login(request: OperatorLogin) -> dict[str, Any]:
+    """Sign in to the shared server with a personal account and remember it."""
+    url = request.server_url or _stored_server_url()
+    if not url:
+        raise OnboardingError("请填写共享服务器地址", 422, "remote_not_configured")
+    url = _validated_url(url)
+    result = await RemoteClient(url, "").request(
+        "POST", "/v1/auth/login", {"username": request.username, "password": request.password}
+    )
+    try:
+        stored = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        stored = {}
+    _write_config(
+        {
+            **(stored if isinstance(stored, dict) else {}),
+            "server_url": url,
+            "operator_token": encrypt(result["token"]),
+            "operator": result["operator"],
+        }
+    )
+    return remote_status()
+
+
+async def operator_logout() -> dict[str, Any]:
+    try:
+        config = _read_config()
+    except OnboardingError:
+        config = None
+    if config and config["mode"] == "operator":
+        try:
+            await RemoteClient(config["server_url"], config["server_token"]).request(
+                "POST", "/v1/auth/logout"
+            )
+        except OnboardingError:
+            pass  # The local credential is removed either way.
+    try:
+        stored = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        stored = {}
+    if isinstance(stored, dict) and ("operator_token" in stored or "operator" in stored):
+        stored.pop("operator_token", None)
+        stored.pop("operator", None)
+        _write_config(stored)
+    return remote_status()
+
+
+def forget_operator_login() -> None:
+    """Drop a token the server no longer accepts, so the UI asks to sign in."""
+    try:
+        stored = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if isinstance(stored, dict) and stored.pop("operator_token", None) is not None:
+        _write_config(stored)
+
+
+def save_remote_config(request: RemoteConfig) -> RemoteClient:
+    return RemoteClient(_validated_url(request.server_url), request.server_token)
 
 
 async def write_remote_config(request: RemoteConfig) -> None:
     client = save_remote_config(request)
-    path = _config_path()
-    temporary = path.with_suffix(".tmp")
-    temporary.write_text(
-        json.dumps(
-            {"server_url": request.server_url.rstrip("/"), "server_token": encrypt(request.server_token)},
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
+    try:
+        stored = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        stored = {}
+    _write_config(
+        {
+            **(stored if isinstance(stored, dict) else {}),
+            "server_url": request.server_url.rstrip("/"),
+            "server_token": encrypt(request.server_token),
+        }
     )
-    temporary.replace(path)
     if request.credential_token:
         await client.put_credential(request.credential_token)
     if request.api_key_token:
@@ -143,29 +258,84 @@ def _response_error(response: httpx.Response, service: str) -> OnboardingError:
 
 
 class RemoteClient:
-    def __init__(self, base_url: str, token: str):
+    def __init__(self, base_url: str, token: str, mode: str = "admin"):
         self.base_url = base_url.rstrip("/")
         self.token = token
+        self.mode = mode
 
     @classmethod
     def configured(cls) -> RemoteClient:
         config = _read_config()
-        return cls(config["server_url"], config["server_token"])
+        return cls(config["server_url"], config["server_token"], config["mode"])
+
+    @classmethod
+    def admin(cls) -> RemoteClient:
+        """The server-token identity, for administration from this installation."""
+        path = _config_path()
+        url = os.environ.get("CPM_ONBOARDING_SERVER_URL")
+        token = os.environ.get("CPM_ONBOARDING_SERVER_TOKEN")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            url = url or data.get("server_url")
+            if not token and data.get("server_token"):
+                token = decrypt(data["server_token"])
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+            raise OnboardingError("共享服务器配置无法读取", 500, "remote_config_invalid") from exc
+        if not url or not token:
+            raise OnboardingError("此电脑未保存管理员密钥", 403, "admin_token_missing")
+        return cls(url, token, "admin")
+
+    @property
+    def is_operator(self) -> bool:
+        return self.mode == "operator"
+
+    @property
+    def _sessions(self) -> str:
+        return "/v1/me/sessions" if self.is_operator else "/v1/sessions"
 
     async def request(self, method: str, path: str, body: Any = None) -> Any:
+        if self.is_operator and not path.startswith(("/v1/me/", "/v1/auth/")):
+            raise OnboardingError("上号员账号不能执行此操作", 409, "operator_not_allowed")
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(35, connect=10)) as client:
                 response = await client.request(
                     method,
                     f"{self.base_url}{path}",
                     json=body,
-                    headers={"Authorization": f"Bearer {self.token}"},
+                    headers={"Authorization": f"Bearer {self.token}"} if self.token else {},
                 )
         except httpx.HTTPError as exc:
             raise OnboardingError(f"无法连接共享服务器：{type(exc).__name__}", 503, "remote_unavailable") from exc
+        if response.status_code == 401 and self.is_operator:
+            forget_operator_login()
+            raise OnboardingError("登录已失效，请重新登录", 409, "operator_login_required")
         if not response.is_success:
-            raise _response_error(response, "共享服务器")
+            error = _response_error(response, "共享服务器")
+            # The shared server's own answers (wrong password, not yours, already
+            # submitted) are the operator's to read, not a gateway failure.
+            # 401/403 are reserved for this app's own login in the web UI.
+            if 400 <= response.status_code < 500:
+                error.status_code = (
+                    409 if response.status_code in {401, 403} else response.status_code
+                )
+                error.code = "remote_rejected"
+            raise error
         return response.json()
+
+    async def bundle(self) -> dict[str, Any]:
+        return await self.request("GET", "/v1/me/bundle")
+
+    async def start_task(self, account_id: str) -> dict[str, Any]:
+        return await self.request("POST", "/v1/me/sessions", {"account_id": account_id})
+
+    async def submit_session(self, session_id: str) -> dict[str, Any]:
+        return await self.request("POST", f"/v1/me/sessions/{session_id}/submit")
+
+    async def refresh_session(self, session_id: str) -> dict[str, Any]:
+        return await self.request("GET", f"/v1/me/sessions/{session_id}/result")
+
+    async def admin_request(self, method: str, path: str, body: Any = None) -> Any:
+        return await self.request(method, f"/v1/admin{path}", body)
 
     async def state(self) -> dict[str, Any]:
         return await self.request("GET", "/v1/state")
@@ -206,10 +376,13 @@ class RemoteClient:
         )
 
     async def session(self, session_id: str) -> dict[str, Any]:
-        return await self.request("GET", f"/v1/sessions/{session_id}")
+        return await self.request("GET", f"{self._sessions}/{session_id}")
 
     async def update_session(self, session_id: str, **values: Any) -> dict[str, Any]:
-        return await self.request("PATCH", f"/v1/sessions/{session_id}", values)
+        if self.is_operator:
+            # The server owns the platform result; an operator reports progress only.
+            values = {key: value for key, value in values.items() if key not in {"result", "job_id"}}
+        return await self.request("PATCH", f"{self._sessions}/{session_id}", values)
 
     async def session_secret(self, session_id: str) -> str:
         return (await self.request("GET", f"/v1/sessions/{session_id}/secret"))["sk"]

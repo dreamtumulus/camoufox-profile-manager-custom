@@ -1,11 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ClipboardPaste, Copy, KeyRound, LoaderCircle, Plus, RefreshCw, Settings, Square, Upload } from 'lucide-react'
+import { ClipboardPaste, Copy, KeyRound, LoaderCircle, Plus, RefreshCw, Settings, Square, Upload, Users } from 'lucide-react'
+import { AdminPanel } from '@/components/onboarding/admin-panel'
+import { OperatorPanel } from '@/components/onboarding/operator-panel'
 import { useI18n } from '@/components/i18n-provider'
 import { useToast } from '@/components/toast'
 import {
   onboardingAPI,
+  type OnboardingConfig,
   type OnboardingProxy,
   type OnboardingSelection,
   type OnboardingSession,
@@ -20,6 +23,11 @@ export default function OnboardingPage() {
   const toast = useToast()
   const [configured, setConfigured] = useState<boolean | null>(null)
   const [showConfig, setShowConfig] = useState(false)
+  // Who this installation is to the shared server: a signed-in operator sees
+  // only their assignment, the server token holder sees the full console.
+  const [remote, setRemote] = useState<OnboardingConfig | null>(null)
+  const [adminSetup, setAdminSetup] = useState(false)
+  const [showAssignments, setShowAssignments] = useState(false)
   const [serverUrl, setServerUrl] = useState('http://127.0.0.1:9878')
   const [serverToken, setServerToken] = useState('')
   const [credentialToken, setCredentialToken] = useState('')
@@ -124,8 +132,10 @@ export default function OnboardingPage() {
     setError(null)
     try {
       const config = await onboardingAPI.config()
+      setRemote(config)
       setConfigured(config.configured)
       if (config.server_url) setServerUrl(config.server_url)
+      if (config.mode === 'operator') return
       if (!config.configured) { setShowConfig(true); return }
       const data = await onboardingAPI.bootstrap()
       setOptions(data.oneDay)
@@ -419,10 +429,23 @@ export default function OnboardingPage() {
 
   if (configured === null || loading) return <div className="p-6 text-ink-dim" role="status"><LoaderCircle className="inline animate-spin" size={15} /> 正在读取上号配置…</div>
 
+  const operatorView = remote !== null && (remote.mode === 'operator' || (!remote.configured && !adminSetup))
+  if (operatorView) {
+    return <div className="mx-auto max-w-[1180px] p-5">
+      <header className="mb-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
+        <div><h1 className="text-[18px] font-semibold">赵露思 上号系统</h1><p className="mt-1 text-ink-dim">{'登录后自动下发分配给你的邮箱和出口 IP'}</p></div>
+        {!remote.configured && <button className="btn btn-default ml-auto" onClick={() => { setAdminSetup(true); setShowConfig(true) }}><Settings size={14} />管理员配置</button>}
+      </header>
+      <OperatorPanel config={remote} onConfigChange={next => { setRemote(next); setConfigured(next.configured); if (next.mode === 'admin') void load() }} />
+    </div>
+  }
+
   return <div className="mx-auto max-w-[1180px] p-5">
     <header className="mb-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
       <div><h1 className="text-[18px] font-semibold">赵露思 上号系统</h1><p className="mt-1 text-ink-dim">{t('1dayApi.com · Local browsers · Shared onboarding records')}</p></div>
-      <button className="btn btn-default ml-auto" onClick={() => setShowConfig(current => !current)}><Settings size={14} />共享与接口配置</button>
+      {configured && <button className={`btn ml-auto ${showAssignments ? 'btn-primary' : 'btn-default'}`} onClick={() => setShowAssignments(current => !current)}><Users size={14} />{showAssignments ? '返回上号' : '上号员与分配'}</button>}
+      <button className={`btn btn-default ${configured ? '' : 'ml-auto'}`} onClick={() => setShowConfig(current => !current)}><Settings size={14} />共享与接口配置</button>
+      {!configured && <button className="btn btn-default" onClick={() => { setAdminSetup(false); setShowConfig(false) }}>上号员登录</button>}
       <button className="btn btn-default" disabled={busy !== ''} onClick={() => void load()}><RefreshCw size={14} />刷新</button>
     </header>
 
@@ -441,7 +464,9 @@ export default function OnboardingPage() {
       <button className="btn btn-primary mt-4" disabled={busy === 'config'}>{busy === 'config' ? '正在保存…' : '保存并连接'}</button>
     </form>}
 
-    {configured && activeOptions && <>
+    {configured && showAssignments && options && <AdminPanel nodes={options.nodes} orgs={options.orgs} />}
+
+    {configured && !showAssignments && activeOptions && <>
       <section className="mb-4 rounded-lg border border-line bg-surface p-4"><label className="text-[12px]">上号平台<select className="field mt-1 max-w-[340px]" value={platform} disabled={busy !== ''} onChange={event => changePlatform(event.target.value as '1dayapi' | 'api-key.xyz')}><option value="1dayapi">{t('1dayApi.com')}</option><option value="api-key.xyz" disabled={!shared?.api_key_configured}>{t('api-key.xyz')}{shared?.api_key_configured ? '' : '（请先在配置中保存 Bearer 密钥）'}</option></select></label><p className="mt-2 text-ink-dim">{platform === 'api-key.xyz' ? '使用平台默认 Seats / RPM 与池标签；选择组内指定 IP，提交参数由 api-key.xyz 接口返回。' : '使用 1dayApi 的节点、组织、出口分组和 IP。'}</p></section>
       {workflowStep === 1 ? <section className="rounded-lg border border-line bg-surface p-4">
         <h2 className="font-medium">1. 选择出口节点与组织</h2>
