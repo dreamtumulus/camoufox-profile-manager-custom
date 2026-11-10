@@ -51,3 +51,58 @@ def test_explicit_browser_cache_override_is_applied_to_all_camoufox_paths(tmp_pa
     assert multiversion.CONFIG_FILE == tmp_path / "isolated" / "config.json"
     assert multiversion.BROWSERS_DIR == tmp_path / "isolated" / "browsers"
     assert geolocation.MMDB_DIR == tmp_path / "isolated" / "geoip" / "mmdb"
+
+
+def test_later_starts_skip_the_archive_once_it_has_been_provisioned(tmp_path, monkeypatch):
+    """Listing the gigabyte archive on every start kept the window away for 47 s."""
+    bundle = tmp_path / "bundle" / "camoufox-runtime"
+    source = bundle / "browsers" / "official" / "test-build"
+    source.mkdir(parents=True)
+    (source / "version.json").write_text('{"version":"1","build":"test"}')
+    (bundle / "config.json").write_text('{"active_version":"browsers/official/test-build"}')
+    (bundle / "geoip" / "mmdb").mkdir(parents=True)
+    (bundle / "geoip" / "mmdb" / "test.mmdb").write_bytes(b"bundled")
+    archive_path = tmp_path / "bundle" / "camoufox-runtime.tar.gz"
+    with tarfile.open(archive_path, "w:gz") as archive:
+        for item in bundle.iterdir():
+            archive.add(item, arcname=item.name)
+    cache = tmp_path / "cache"
+    installed = [False]
+    monkeypatch.setattr(bundled_browser.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(bundled_browser.sys, "_MEIPASS", str(tmp_path / "bundle"), raising=False)
+    monkeypatch.setattr(multiversion, "INSTALL_DIR", cache)
+    monkeypatch.setattr(multiversion, "BROWSERS_DIR", cache / "browsers")
+    monkeypatch.setattr(multiversion, "CONFIG_FILE", cache / "config.json")
+    monkeypatch.setattr(multiversion, "COMPAT_FLAG", cache / ".0.5_FLAG")
+    monkeypatch.setattr(browser_install, "installed_browser", lambda: (installed[0], None))
+    opened = []
+    real_open = tarfile.open
+
+    def counting_open(*args, **kwargs):
+        opened.append(args[0])
+        return real_open(*args, **kwargs)
+
+    monkeypatch.setattr(bundled_browser.tarfile, "open", counting_open)
+
+    bundled_browser.provision_bundled_browser()
+    assert len(opened) == 1
+    installed[0] = True
+    bundled_browser.provision_bundled_browser()
+    assert len(opened) == 1  # same archive, browser usable: nothing to read
+
+    # A broken browser, a wiped location database or a new installer is provisioned again.
+    installed[0] = False
+    bundled_browser.provision_bundled_browser()
+    assert len(opened) == 2
+    installed[0] = True
+    (cache / "geoip" / "mmdb" / "test.mmdb").unlink()
+    (cache / "geoip" / "mmdb").rmdir()
+    (cache / "geoip").rmdir()
+    bundled_browser.provision_bundled_browser()
+    assert len(opened) == 3 and (cache / "geoip" / "mmdb" / "test.mmdb").exists()
+    with tarfile.open(archive_path, "w:gz") as archive:
+        for item in bundle.iterdir():
+            archive.add(item, arcname=item.name)
+        archive.add(bundle / "config.json", arcname="extra.json")
+    bundled_browser.provision_bundled_browser()
+    assert len(opened) == 5  # the rewrite above, then the new archive

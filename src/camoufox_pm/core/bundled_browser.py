@@ -36,6 +36,20 @@ def provision_bundled_browser() -> None:
 
     from .browser_install import installed_browser
 
+    # Listing a gzip archive decompresses all of it, and the bundled runtime is
+    # over a gigabyte: measured 47 seconds before the window appeared on every
+    # start. Once this exact archive has been provisioned and the browser it
+    # installed is still usable, there is nothing left to do.
+    stat = archive_path.stat()
+    stamp = f"{stat.st_size}:{stat.st_mtime_ns}"
+    marker = multiversion.INSTALL_DIR / ".bundled-runtime"
+    try:
+        provisioned = marker.read_text(encoding="utf-8").strip() == stamp
+    except OSError:
+        provisioned = False
+    if provisioned and installed_browser()[0] and (multiversion.INSTALL_DIR / "geoip").is_dir():
+        return
+
     with tarfile.open(archive_path, "r:gz") as archive:
         config_file = archive.extractfile("config.json")
         if config_file is None:
@@ -84,3 +98,9 @@ def provision_bundled_browser() -> None:
                 raise RuntimeError("A bundled location database could not be read")
             with source, destination.open("xb") as output:
                 shutil.copyfileobj(source, output)
+
+    try:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(stamp, encoding="utf-8")
+    except OSError:
+        pass  # Only costs the next start its time.
