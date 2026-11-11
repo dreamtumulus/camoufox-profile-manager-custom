@@ -314,3 +314,30 @@ async def test_operator_signs_in_locally_and_receives_only_their_assignment(clie
         await remote.bundle()
     assert desktop.remote_status()["configured"] is False
     assert desktop.remote_status()["server_url"] == "https://team.example"
+
+
+@pytest.mark.asyncio
+async def test_a_server_from_before_operator_accounts_is_named_as_outdated(tmp_path, monkeypatch):
+    """Seen in the field: the assignment page answered a bare 404 against the old server."""
+    import httpx
+    from fastapi import FastAPI
+
+    old_server = FastAPI()
+
+    @old_server.get("/health")
+    async def health():
+        return {"status": "ok"}
+
+    transport = httpx.ASGITransport(app=old_server)
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        core_onboarding.httpx, "AsyncClient", lambda **kwargs: real(transport=transport, **kwargs)
+    )
+    remote = core_onboarding.RemoteClient("https://team.example", "a" * 40)
+    with pytest.raises(core_onboarding.OnboardingError, match="版本过旧") as outdated:
+        await remote.admin_request("GET", "/overview")
+    assert outdated.value.status_code == 409 and outdated.value.code == "remote_outdated"
+    with pytest.raises(core_onboarding.OnboardingError, match="版本过旧"):
+        await core_onboarding.RemoteClient("https://team.example", "").request(
+            "POST", "/v1/auth/login", {"username": "a", "password": "b"}
+        )

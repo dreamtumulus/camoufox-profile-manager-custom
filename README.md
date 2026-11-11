@@ -127,7 +127,6 @@ of plausible parts.
    | Computer | Download |
    | --- | --- |
    | Mac, Apple Silicon (M1 or newer) | `camoufox-pm-macos-arm64.dmg` |
-   | Mac, Intel | `camoufox-pm-macos-x86_64.dmg` |
    | Windows 10/11, Intel/AMD 64-bit | `camoufox-pm-windows-x86_64-setup.exe` |
    | Ubuntu 22.04+/compatible Debian, Intel/AMD 64-bit | `camoufox-pm-linux-x86_64.deb` |
 

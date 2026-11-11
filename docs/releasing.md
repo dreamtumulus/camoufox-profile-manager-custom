@@ -21,7 +21,6 @@ for package labels, integrity checks and normal OS approval prompts.
 | Platform | Release asset | Builder |
 | --- | --- | --- |
 | macOS Apple Silicon | `camoufox-pm-macos-arm64.dmg` | `macos-15` ARM runner |
-| macOS Intel | `camoufox-pm-macos-x86_64.dmg` | `macos-15-intel` runner |
 | Windows x64 | `camoufox-pm-windows-x86_64-setup.exe` | Windows 2022 + NSIS |
 | Linux x64 | `camoufox-pm-linux-x86_64.deb` and `.tar.gz` | Ubuntu 22.04 + bundled Qt webview |
 

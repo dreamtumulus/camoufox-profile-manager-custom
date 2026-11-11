@@ -309,6 +309,18 @@ class RemoteClient:
         if response.status_code == 401 and self.is_operator:
             forget_operator_login()
             raise OnboardingError("登录已失效，请重新登录", 409, "operator_login_required")
+        if response.status_code == 404 and path.startswith(("/v1/admin/", "/v1/me/", "/v1/auth/")):
+            try:
+                unknown_route = response.json().get("detail") == "Not Found"
+            except (ValueError, AttributeError):
+                unknown_route = True
+            if unknown_route:
+                # The route itself is missing: a server from before operator accounts.
+                raise OnboardingError(
+                    "共享服务器版本过旧，不支持上号员与分配功能，请先更新共享服务器",
+                    409,
+                    "remote_outdated",
+                )
         if not response.is_success:
             error = _response_error(response, "共享服务器")
             # The shared server's own answers (wrong password, not yours, already
