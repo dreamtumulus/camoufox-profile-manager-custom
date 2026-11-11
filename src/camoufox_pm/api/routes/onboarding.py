@@ -16,6 +16,7 @@ from camoufox_pm.core.onboarding import (
     RemoteConfig,
     Selection,
     SessionInput,
+    forget_admin_token,
     matching_proxy,
     oneday_client,
     operator_login,
@@ -66,6 +67,13 @@ async def save_onboarding_config(request: RemoteConfig):
     await require_admin()
     await write_remote_config(request)
     return remote_status()
+
+
+@router.delete("/onboarding/config")
+async def forget_onboarding_admin_token():
+    # Giving up a credential needs no more than being allowed on this page.
+    await require_onboarding()
+    return forget_admin_token()
 
 
 @router.post("/onboarding/operator/login")

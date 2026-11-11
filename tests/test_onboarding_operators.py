@@ -341,3 +341,32 @@ async def test_a_server_from_before_operator_accounts_is_named_as_outdated(tmp_p
         await core_onboarding.RemoteClient("https://team.example", "").request(
             "POST", "/v1/auth/login", {"username": "a", "password": "b"}
         )
+
+
+@pytest.mark.asyncio
+async def test_a_computer_set_up_with_the_shared_token_can_become_operator_only(client, desktop):
+    """Operators' computers held the administrator token from before personal accounts."""
+    alice, _ = operator(client, "alice")
+    await desktop.write_remote_config(
+        desktop.RemoteConfig(server_url="https://team.example", server_token="a" * 40)
+    )
+    status = desktop.remote_status()
+    assert status["mode"] == "admin" and status["admin_token_stored"] is True
+
+    # Signing in as an operator narrows the identity, but the token is still there...
+    status = await desktop.operator_login(desktop.OperatorLogin(username="alice", password="correct-horse"))
+    assert status["mode"] == "operator" and status["admin_token_stored"] is True
+    # ...so signing out falls back to the administrator console.
+    assert (await desktop.operator_logout())["mode"] == "admin"
+
+    status = desktop.forget_admin_token()
+    assert status == {
+        "configured": False, "server_url": "https://team.example", "mode": None, "operator": None,
+        "admin_token_stored": False, "message": "请先登录上号员账号",
+    }
+    assert "server_token" not in desktop._config_path().read_text()
+    with pytest.raises(desktop.OnboardingError):
+        desktop.RemoteClient.admin()
+    status = await desktop.operator_login(desktop.OperatorLogin(username="alice", password="correct-horse"))
+    assert status["mode"] == "operator" and status["admin_token_stored"] is False
+    assert (await desktop.operator_logout())["configured"] is False

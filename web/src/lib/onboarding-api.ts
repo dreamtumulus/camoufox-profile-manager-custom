@@ -134,6 +134,8 @@ export interface OnboardingConfig {
   server_url: string | null
   mode?: 'operator' | 'admin' | null
   operator?: OnboardingOperator | null
+  /** This installation still holds the shared server's administrator token. */
+  admin_token_stored?: boolean
   message?: string
 }
 
@@ -216,6 +218,7 @@ export const onboardingAPI = {
   config: () => apiRequest<OnboardingConfig>(`${PREFIX}/config`),
   saveConfig: (body: { server_url: string; server_token: string; credential_token?: string; api_key_token?: string }) =>
     apiRequest<OnboardingConfig>(`${PREFIX}/config`, { method: 'PUT', body: JSON.stringify(body) }),
+  forgetAdminToken: () => apiRequest<OnboardingConfig>(`${PREFIX}/config`, { method: 'DELETE' }),
   bootstrap: () => apiRequest<{ shared: SharedState; oneDay: OneDayOptions; apiKey: ApiKeyOptions | null; apiKeyError?: string | null }>(`${PREFIX}/bootstrap`),
   /** The same route answers with the personal assignment once an operator has signed in. */
   operatorBundle: async () => (await apiRequest<{ operator: OperatorBundle }>(`${PREFIX}/bootstrap`)).operator,

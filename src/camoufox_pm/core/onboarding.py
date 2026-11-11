@@ -85,6 +85,7 @@ def remote_status() -> dict[str, Any]:
             "server_url": config["server_url"],
             "mode": config["mode"],
             "operator": config.get("operator"),
+            "admin_token_stored": _admin_token_stored(),
         }
     except OnboardingError as exc:
         return {
@@ -92,8 +93,40 @@ def remote_status() -> dict[str, Any]:
             "server_url": _stored_server_url(),
             "mode": None,
             "operator": None,
+            "admin_token_stored": _admin_token_stored(),
             "message": str(exc),
         }
+
+
+def _stored_config() -> dict[str, Any]:
+    try:
+        data = json.loads(_config_path().read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _admin_token_stored() -> bool:
+    """Whether this installation can still act as the shared server's administrator."""
+    return bool(os.environ.get("CPM_ONBOARDING_SERVER_TOKEN") or _stored_config().get("server_token"))
+
+
+def forget_admin_token() -> dict[str, Any]:
+    """Make this installation operator-only: drop the administrator token, keep the address.
+
+    An operator's computer that was set up with the shared token before personal
+    accounts existed would otherwise fall back to the administrator console
+    whenever nobody is signed in.
+    """
+    if os.environ.get("CPM_ONBOARDING_SERVER_TOKEN"):
+        raise OnboardingError(
+            "管理员令牌来自环境变量 CPM_ONBOARDING_SERVER_TOKEN，请在系统环境中移除", 409,
+            "admin_token_from_environment",
+        )
+    stored = _stored_config()
+    if stored.pop("server_token", None) is not None:
+        _write_config(stored)
+    return remote_status()
 
 
 def _stored_server_url() -> str | None:

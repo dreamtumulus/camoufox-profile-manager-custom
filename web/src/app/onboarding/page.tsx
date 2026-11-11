@@ -28,6 +28,8 @@ export default function OnboardingPage() {
   const [remote, setRemote] = useState<OnboardingConfig | null>(null)
   const [adminSetup, setAdminSetup] = useState(false)
   const [showAssignments, setShowAssignments] = useState(false)
+  // The operator sign-in form, asked for from the administrator console.
+  const [operatorLogin, setOperatorLogin] = useState(false)
   const [serverUrl, setServerUrl] = useState('http://127.0.0.1:9878')
   const [serverToken, setServerToken] = useState('')
   const [credentialToken, setCredentialToken] = useState('')
@@ -429,14 +431,37 @@ export default function OnboardingPage() {
 
   if (configured === null || loading) return <div className="p-6 text-ink-dim" role="status"><LoaderCircle className="inline animate-spin" size={15} /> 正在读取上号配置…</div>
 
-  const operatorView = remote !== null && (remote.mode === 'operator' || (!remote.configured && !adminSetup))
+  async function forgetAdminToken() {
+    if (!window.confirm('移除后，这台电脑不能再进入管理员界面（上号员与分配、共享与接口配置），只能用上号员账号登录。以后需要时可重新填写管理员令牌。确定移除吗？')) return
+    setBusy('forget-admin')
+    setError(null)
+    try {
+      const next = await onboardingAPI.forgetAdminToken()
+      setRemote(next)
+      setConfigured(next.configured)
+      setShowConfig(false)
+      setShowAssignments(false)
+      setAdminSetup(false)
+      setOperatorLogin(false)
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
+    finally { setBusy('') }
+  }
+
+  const operatorView = remote !== null && (remote.mode === 'operator' || operatorLogin || (!remote.configured && !adminSetup))
   if (operatorView) {
+    const adminAvailable = !!remote.admin_token_stored
     return <div className="mx-auto max-w-[1180px] p-5">
       <header className="mb-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
         <div><h1 className="text-[18px] font-semibold">赵露思 上号系统</h1><p className="mt-1 text-ink-dim">{'登录后自动下发分配给你的邮箱和出口 IP'}</p></div>
-        {!remote.configured && <button className="btn btn-default ml-auto" onClick={() => { setAdminSetup(true); setShowConfig(true) }}><Settings size={14} />管理员配置</button>}
+        {remote.mode !== 'operator' && adminAvailable && <button className="btn btn-default ml-auto" onClick={() => { setOperatorLogin(false); void load() }}><Settings size={14} />返回管理员界面</button>}
+        {remote.mode !== 'operator' && !adminAvailable && <button className="btn btn-default ml-auto" onClick={() => { setOperatorLogin(false); setAdminSetup(true); setShowConfig(true) }}><Settings size={14} />管理员配置</button>}
       </header>
-      <OperatorPanel config={remote} onConfigChange={next => { setRemote(next); setConfigured(next.configured); if (next.mode === 'admin') void load() }} />
+      {error && <div className="mb-4 whitespace-pre-wrap break-words rounded-lg border border-danger/40 bg-danger/10 p-3 text-danger" role="alert">{error}</div>}
+      {adminAvailable && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-warn/40 bg-warn/10 p-3" role="status">
+        <span>这台电脑还保存着管理员令牌：未登录或退出登录后，任何人都能回到管理员界面看到全部邮箱和记录。上号员专用的电脑请移除。</span>
+        <button className="btn btn-default ml-auto" disabled={busy !== ''} onClick={() => void forgetAdminToken()}>移除本机管理员令牌</button>
+      </div>}
+      <OperatorPanel config={remote} onConfigChange={next => { setRemote(next); setConfigured(next.configured); if (next.mode !== 'operator' && next.admin_token_stored) setOperatorLogin(true) }} />
     </div>
   }
 
@@ -445,7 +470,7 @@ export default function OnboardingPage() {
       <div><h1 className="text-[18px] font-semibold">赵露思 上号系统</h1><p className="mt-1 text-ink-dim">{t('1dayApi.com · Local browsers · Shared onboarding records')}</p></div>
       {configured && <button className={`btn ml-auto ${showAssignments ? 'btn-primary' : 'btn-default'}`} onClick={() => setShowAssignments(current => !current)}><Users size={14} />{showAssignments ? '返回上号' : '上号员与分配'}</button>}
       <button className={`btn btn-default ${configured ? '' : 'ml-auto'}`} onClick={() => setShowConfig(current => !current)}><Settings size={14} />共享与接口配置</button>
-      {!configured && <button className="btn btn-default" onClick={() => { setAdminSetup(false); setShowConfig(false) }}>上号员登录</button>}
+      <button className="btn btn-default" onClick={() => { setAdminSetup(false); setShowConfig(false); setError(null); setNotice(null); setOperatorLogin(true) }}>上号员登录</button>
       <button className="btn btn-default" disabled={busy !== ''} onClick={() => void load()}><RefreshCw size={14} />刷新</button>
     </header>
 
@@ -461,7 +486,10 @@ export default function OnboardingPage() {
         <label className="text-[12px] md:col-span-2">{t('1dayApi credential')}{shared?.credential_configured ? '（已配置，留空则不更换）' : ''}<input className="field mt-1 w-full" type="password" value={credentialToken} onChange={event => setCredentialToken(event.target.value)} autoComplete="off" placeholder="1dk_onb_…" required={!shared?.credential_configured} /></label>
         <label className="text-[12px] md:col-span-2">{t('api-key.xyz Bearer token')}{shared?.api_key_configured ? '（已配置，留空则不更换）' : ''}<input className="field mt-1 w-full" type="password" value={apiKeyToken} onChange={event => setApiKeyToken(event.target.value)} autoComplete="off" placeholder="用于读取 IP 组和提交 Session Key" /></label>
       </div>
-      <button className="btn btn-primary mt-4" disabled={busy === 'config'}>{busy === 'config' ? '正在保存…' : '保存并连接'}</button>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button className="btn btn-primary" disabled={busy === 'config'}>{busy === 'config' ? '正在保存…' : '保存并连接'}</button>
+        {remote?.admin_token_stored && <button type="button" className="btn btn-default" disabled={busy !== ''} onClick={() => void forgetAdminToken()}>移除本机管理员令牌（改为上号员专用）</button>}
+      </div>
     </form>}
 
     {configured && showAssignments && options && <AdminPanel nodes={options.nodes} orgs={options.orgs} />}
