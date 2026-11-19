@@ -16,6 +16,15 @@ not release requirements. [#61 is closed as not planned](https://github.com/poly
 by the maintainer's 21 October 2026 decision. See [expected signing status](signing.md)
 for package labels, integrity checks and normal OS approval prompts.
 
+## Browser and location data sources
+
+Desktop builds bundle the browser the installed library pins. Upstream publishes
+those archives as release assets of `daijro/camoufox`, whose account answered
+404 in November 2026. When release discovery fails, `scripts/install_ci_browser.py`
+installs the identical pinned build from `scripts/mirror_browser.py`, which lists
+the mirror, the digests it accepts and the location-database source it selects.
+Do not widen that list without checking the digests against the source release.
+
 ## Artifacts
 
 | Platform | Release asset | Builder |
