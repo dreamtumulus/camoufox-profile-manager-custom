@@ -313,8 +313,10 @@ export const proxiesAPI = {
     const body = await request<{ data: ProxyAssignmentResult }>(`${API_PREFIX}/proxies/${proxy.id}/assign`, { method: 'POST', body: JSON.stringify({ proxy_row_version: proxy.row_version, profiles: profiles.map(({ id, row_version }) => ({ id, row_version })) }) })
     return body.data
   },
-  async importText(text: string): Promise<ProxyImportResult> {
-    const body = await request<{ data: ProxyImportResult }>(`${API_PREFIX}/proxies/import`, { method: 'POST', body: JSON.stringify({ text }) })
+  async importText(text: string, groupName: string | null = null): Promise<ProxyImportResult> {
+    // An empty group is omitted rather than sent as null, so a server that
+    // predates import groups still accepts an ungrouped import.
+    const body = await request<{ data: ProxyImportResult }>(`${API_PREFIX}/proxies/import`, { method: 'POST', body: JSON.stringify(groupName ? { text, group_name: groupName } : { text }) })
     return body.data
   },
 }

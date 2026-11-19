@@ -9,7 +9,8 @@ test('batch names preserve literal user text and expand only numbered placeholde
 })
 
 test('invalid sizes, missing numbering and overlong or control-character names cannot produce a preview', () => {
-  for (const count of [0, 26, 1.5, NaN]) assert.throws(() => batchProfileNames('Name {n}', count, 1, 3))
+  assert.equal(batchProfileNames('Name {n}', 100, 1, 3).at(-1), 'Name 100')
+  for (const count of [0, 101, 1.5, NaN]) assert.throws(() => batchProfileNames('Name {n}', count, 1, 3))
   assert.throws(() => batchProfileNames('Same', 2, 1, 3))
   assert.throws(() => batchProfileNames(' ', 1, 1, 3))
   assert.throws(() => batchProfileNames('a'.repeat(255) + '{n}', 1, 1, 3))

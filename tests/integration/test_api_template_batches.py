@@ -53,6 +53,19 @@ async def test_preview_creates_nothing_and_saved_results_survive_alias_retries(c
 
 
 @pytest.mark.asyncio
+async def test_the_largest_batch_is_previewed_and_created_in_full(client):
+    entry = await template(client)
+    data = batch(names=[f"Work {number:03}" for number in range(1, 101)])
+    checked = await client.post(f"/api/v1/templates/{entry['id']}/batch-preview", json=data)
+    assert checked.status_code == 200 and checked.json()["data"]["names"] == data["names"]
+    assert not await get_profile_manager().storage.list_profiles()
+    created = await client.post(f"/api/v1/templates/{entry['id']}/profile-batches", json=data)
+    assert created.status_code == 200 and created.json()["errors"] == []
+    assert [item["status"] for item in created.json()["data"]["items"]] == ["created"] * 100
+    assert len(await get_profile_manager().storage.list_profiles()) == 100
+
+
+@pytest.mark.asyncio
 async def test_changed_intent_cannot_reuse_a_creation_receipt(client):
     entry = await template(client)
     data = batch(names=["Original"])
@@ -70,7 +83,7 @@ async def test_changed_intent_cannot_reuse_a_creation_receipt(client):
 @pytest.mark.parametrize(
     "changes",
     [
-        {"names": ["x"] * 26},
+        {"names": [f"x{i}" for i in range(101)]},
         {"names": [" "]},
         {"proxy_refs": [{"id": "one", "row_version": 0}]},
         {"password": "private-provider-password"},

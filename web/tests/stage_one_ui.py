@@ -186,7 +186,7 @@ class DesktopUI(unittest.TestCase):
             if self.import_failure:
                 route.fulfill(status=422, content_type="application/json", body=json.dumps({"error": {"code": "validation_error", "message": "Line 2: input includes import-secret-value"}}))
                 return
-            proxy = {**self.library[0], "id": "imported", "name": "Imported proxy", "server": "imported.example:8080"}
+            proxy = {**self.library[0], "id": "imported", "name": "Imported proxy", "server": "imported.example:8080", "group_name": request.post_data_json.get("group_name")}
             self.library.append(proxy)
             data, envelope = {"created": [proxy], "skipped": [{"line": 2, "reason": "Proxy already exists"}]}, True
         elif path == "/trash/profiles":
@@ -634,6 +634,10 @@ class DesktopUI(unittest.TestCase):
         expect(self.page.get_by_text("1 proxy imported.", exact=True)).to_be_visible()
         expect(self.page.get_by_role("dialog")).to_contain_text("Line 2: Proxy already exists")
         self.assertNotIn("import-secret-value", self.page.locator("body").inner_text())
+        # An empty group is left out of the request and out of the result.
+        body = next(json.loads(body) for _, path, body in self.calls if path == "/proxies/import")
+        self.assertEqual(list(body), ["text"])
+        expect(self.page.get_by_role("dialog")).not_to_contain_text("Added to group")
         self.page.get_by_role("button", name="Done", exact=True).click()
         self.page.get_by_role("button", name="Import", exact=True).click()
         expect(field).to_have_value("")
@@ -641,6 +645,29 @@ class DesktopUI(unittest.TestCase):
         self.page.get_by_role("button", name="Cancel", exact=True).click()
         self.page.get_by_role("button", name="Import", exact=True).click()
         expect(field).to_have_value("")
+
+    def test_proxy_import_files_new_proxies_under_the_chosen_group(self):
+        self.library[0]["group_name"] = "Residential"
+        self.open_proxy_library()
+        self.page.get_by_role("button", name="Import", exact=True).click()
+        dialog = self.page.get_by_role("dialog")
+        # The list stays the first thing focused; the group is an optional extra above it.
+        expect(self.page.get_by_label("One proxy per line (up to 100)", exact=True)).to_be_focused()
+        group = self.page.get_by_label("Proxy group (optional)", exact=True)
+        expect(group).to_have_attribute("maxlength", "64")
+        expect(group).to_have_attribute("placeholder", "Ungrouped")
+        expect(dialog.locator("datalist option")).to_have_attribute("value", "Residential")
+        group.fill("  Datacenter  ")
+        self.page.get_by_label("One proxy per line (up to 100)", exact=True).fill("imported.example:8080")
+        self.page.get_by_role("button", name="Import proxies", exact=True).click()
+        expect(dialog.get_by_text("Added to group: Datacenter", exact=True)).to_be_visible()
+        body = next(json.loads(body) for _, path, body in self.calls if path == "/proxies/import")
+        self.assertEqual(body, {"text": "imported.example:8080", "group_name": "Datacenter"})
+        self.page.get_by_role("button", name="Done", exact=True).click()
+        expect(self.page.get_by_role("row", name="Imported proxy")).to_contain_text("Datacenter")
+        # A reopened dialog starts ungrouped rather than reusing the last group.
+        self.page.get_by_role("button", name="Import", exact=True).click()
+        expect(group).to_have_value("")
 
     def test_proxy_import_error_exposes_only_safe_line_number(self):
         self.open_proxy_library()

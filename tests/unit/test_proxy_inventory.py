@@ -310,6 +310,27 @@ async def test_import_dedup_ignores_country_labels_and_separates_credentials(inv
 
 
 @pytest.mark.asyncio
+async def test_import_files_created_entries_under_group_and_leaves_duplicates(inventory):
+    existing = await inventory.create({**VALUES, "group_name": "洛杉矶"})
+    base = {field: VALUES[field] for field in ("type", "server", "username", "password")}
+    result = await inventory.import_configs(
+        [
+            (1, ProxyConfig(**base)),
+            (2, ProxyConfig(**{**base, "server": "second.example:8080"})),
+        ],
+        "纽约",
+    )
+    assert result["skipped"] == [{"line": 1, "reason": "Proxy already exists"}]
+    assert [proxy["group_name"] for proxy in result["created"]] == ["纽约"]
+    groups = {proxy["id"]: proxy["group_name"] for proxy in await inventory.list()}
+    assert groups[existing["id"]] == "洛杉矶"
+    ungrouped = await inventory.import_configs(
+        [(1, ProxyConfig(**{**base, "server": "third.example:8080"}))]
+    )
+    assert ungrouped["created"][0]["group_name"] is None
+
+
+@pytest.mark.asyncio
 async def test_assignment_does_not_use_another_holders_replaced_lease(inventory, monkeypatch):
     proxy = await inventory.create(VALUES)
     profile = await inventory.manager.create_profile("target", generate_fingerprint=False)

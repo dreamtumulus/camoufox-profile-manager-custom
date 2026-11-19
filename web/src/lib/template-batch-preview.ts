@@ -1,6 +1,9 @@
+/** The most profiles one batch creates. The API enforces the same bound. */
+export const MAX_BATCH_PROFILES = 100
+
 /** Deliberately one placeholder rather than a general executable format language. */
 export function batchProfileNames(pattern: string, count: number, start: number, digits: number): string[] {
-  if (!Number.isInteger(count) || count < 1 || count > 25) throw new Error('Choose between 1 and 25 profiles.')
+  if (!Number.isInteger(count) || count < 1 || count > MAX_BATCH_PROFILES) throw new Error('Choose between 1 and 100 profiles.')
   if (!Number.isInteger(start) || start < 0 || start + count - 1 > 999999) throw new Error('Choose a starting number between 0 and 999999.')
   if (!Number.isInteger(digits) || digits < 1 || digits > 6) throw new Error('Choose between 1 and 6 number digits.')
   if (count > 1 && !pattern.includes('{n}')) throw new Error('Include {n} in the name pattern for multiple profiles.')

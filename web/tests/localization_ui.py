@@ -226,7 +226,7 @@ class TemplateLocaleUI(Localized, TemplateBatchesUI):
     def test_names_and_counts_in_template_batch(self):
         self.page.goto(self.origin + "/templates/")
         self.button("Create batch").click()
-        self.label("Name pattern").fill("Демо 测试 {n}")
+        self.label("Name pattern").fill("Демо 测试 ")
         self.label("Count").fill("2")
         self.button("Preview batch").click()
         expect(self.page.get_by_text("Демо 测试 001", exact=True)).to_be_visible()

@@ -115,7 +115,7 @@ async def import_proxies(request: ProxyImportRequest):
     except ValueError as exc:
         # The parser's errors contain safe line numbers, never raw input.
         raise HTTPException(422, str(exc)) from exc
-    result = await _perform(inventory().import_configs(configs))
+    result = await _perform(inventory().import_configs(configs, request.group_name))
     return ApiResponse(success=True, data=result, message="Proxy import finished")
 
 

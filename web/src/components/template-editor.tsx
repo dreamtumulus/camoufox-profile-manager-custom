@@ -2,28 +2,44 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./modal";
 import { useI18n } from "./i18n-provider";
-import { isStaleWrite, type BrowserSettings } from "@/lib/api";
+import { isStaleWrite, OS_LABELS, type BrowserSettings } from "@/lib/api";
 import { templatesAPI, type ProfileTemplate } from "@/lib/templates-api";
 import { extensionsAPI, type ExtensionMetadata } from "@/lib/extensions-api";
+import { detectTemplateOs, uniqueTemplateName } from "@/lib/template-defaults";
 
 export function TemplateEditor({
   template,
+  existingNames = [],
   onClose,
   onSaved,
   onReload,
 }: {
   template: ProfileTemplate | null;
+  existingNames?: string[];
   onClose: () => void;
   onSaved: (value: ProfileTemplate) => void;
   onReload: () => void;
 }) {
   const { t } = useI18n();
-  const [name, setName] = useState(template?.name ?? "");
+  // A new template starts on this computer's system with a name built from it.
+  const [detectedOs] = useState(() =>
+    detectTemplateOs(
+      typeof navigator === "undefined" ? null : navigator.userAgent,
+    ),
+  );
+  const suggestedName = (os: string | undefined) =>
+    uniqueTemplateName(
+      t("{os} template", { os: OS_LABELS[os ?? ""] ?? os ?? "" }),
+      existingNames,
+    );
+  const [name, setName] = useState(
+    template?.name ?? suggestedName(detectedOs),
+  );
   const [notes, setNotes] = useState(template?.notes ?? "");
   const [tags, setTags] = useState(template?.tags.join(", ") ?? "");
   const [settings, setSettings] = useState<BrowserSettings>(
     template?.browser_settings ?? {
-      os: "windows",
+      os: detectedOs,
       screen: "1920x1080",
       languages: ["en-US", "en"],
       webrtc_mode: "replace",
@@ -134,6 +150,11 @@ export function TemplateEditor({
             maxLength={255}
             value={name}
             onChange={(event) => setName(event.target.value)}
+            onFocus={(event) => {
+              // Typing replaces the suggested name instead of appending to it.
+              if (!template && name === suggestedName(settings.os))
+                event.target.select();
+            }}
           />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -142,7 +163,12 @@ export function TemplateEditor({
             <select
               className="field mt-1"
               value={settings.os}
-              onChange={(event) => change({ os: event.target.value })}
+              onChange={(event) => {
+                // The suggested name follows the system until the user renames it.
+                if (!template && name === suggestedName(settings.os))
+                  setName(suggestedName(event.target.value));
+                change({ os: event.target.value });
+              }}
             >
               {["windows", "macos", "linux"].map((value) => (
                 <option key={value} value={value}>

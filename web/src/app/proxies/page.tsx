@@ -142,7 +142,7 @@ export default function ProxiesPage() {
     {batchTargets && <BatchProxyChecks targets={batchTargets} onClose={() => { setBatchTargets(null); if (!checking.size) void load() }} onChecked={upsert} onChecking={markChecking} />}
     {groupEditing && <ProxyGroupDialog proxies={selectedProxies} groups={proxyGroups} onClose={() => setGroupEditing(false)} onSaved={upsert} />}
     {form && <ProxyForm key={`${form.proxy?.id ?? 'new'}:${form.proxy?.row_version ?? 0}`} proxy={form.proxy} groups={proxyGroups} onClose={() => setForm(null)} onReload={reloadDraft} onSaved={proxy => { upsert(proxy); setForm(null); toast('ok', t('Library proxy saved'), proxy.name) }} />}
-    {importing && <ProxyImport onClose={() => setImporting(false)} onImported={load} />}
+    {importing && <ProxyImport groups={proxyGroups} onClose={() => setImporting(false)} onImported={load} />}
     {sequenceOpen && <ProxySequenceAssignment onClose={() => setSequenceOpen(false)} />}
     {assigning && <ProxyAssignment proxy={assigning} onClose={() => { setAssigning(null); load() }} />}
     <Modal open={!!deleting} title={t('Delete library proxy')} width={460} onClose={() => { if (!deleteBusy) setDeleting(null) }} footer={<><button className="btn btn-default" onClick={() => setDeleting(null)} disabled={deleteBusy}>{t('Cancel')}</button><button className="btn btn-danger" onClick={remove} disabled={deleteBusy || deleteStale}>{deleteBusy ? t('Deleting…') : t('Delete')}</button></>}>

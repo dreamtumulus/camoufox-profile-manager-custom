@@ -332,12 +332,18 @@ class ProxyInventory:
                 )
         return result
 
-    async def import_configs(self, configs: builtins.list[tuple[int, ProxyConfig]]) -> dict:
+    async def import_configs(
+        self, configs: builtins.list[tuple[int, ProxyConfig]], group_name: str | None = None
+    ) -> dict:
         """Parser validates the whole batch before this safe storage phase begins.
 
         Country is display metadata, so the same connection imported after its
         country was labeled still counts as a duplicate. A short write
         reservation serializes duplicate detection and insert across processes.
+
+        ``group_name`` files only the entries this call creates. A skipped
+        duplicate keeps the group it already has: import adds proxies, it never
+        moves saved ones.
         """
         if not 1 <= len(configs) <= 100:
             raise ValueError("Import between 1 and 100 proxies")
@@ -359,7 +365,13 @@ class ProxyInventory:
                         result["skipped"].append({"line": line, "reason": "Proxy already exists"})
                         continue
                     result["created"].append(
-                        await self.create({**config.model_dump(), "name": config.server})
+                        await self.create(
+                            {
+                                **config.model_dump(),
+                                "name": config.server,
+                                "group_name": group_name,
+                            }
+                        )
                     )
             except ProxyCredentialsUnavailable:
                 result["skipped"].append(

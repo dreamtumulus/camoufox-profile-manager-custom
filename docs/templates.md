@@ -5,9 +5,11 @@ Templates save reusable browser settings, notes, tags and extension snapshots. C
 Templates do not contain cookies, browsing history, saved logins, proxy configuration, passwords or pinned fingerprints. **Create profile** gives each result a new ID, a new data directory and no proxy. Its hardware fingerprint is generated independently on its first launch. Editing or deleting a template does not change existing profiles.
 
 **Create batch** adds numbered naming and explicit saved-proxy selection for up
-to 25 fresh profiles. Review the server-validated preview before creating them;
+to 100 fresh profiles. Review the server-validated preview before creating them;
 recent-batch receipts let interrupted requests resume without recreating committed
 profiles. See [batch creation and recovery](template-batches.md).
+
+**New template** starts with the operating system of the computer the interface is open on (Windows when it cannot be told, or on a phone or tablet) and a suggested name such as "macOS template", numbered when a saved template already uses it. The suggested name follows the selected operating system until it is edited; both remain freely changeable.
 
 The editor exposes common browser settings and an optional **All browser settings** JSON editor for the remaining supported settings. Unknown fields, including cookies, fingerprints and proxy configuration, are rejected. A conflict requires reloading the saved template before retrying. Changing the notes or settings keeps the existing extension snapshots unless **Replace saved extension snapshots** is selected.
 

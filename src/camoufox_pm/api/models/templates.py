@@ -98,9 +98,9 @@ class TemplateBatchRequest(BaseModel):
     row_version: int = Field(ge=0)
     names: list[
         Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
-    ] = Field(min_length=1, max_length=25)
+    ] = Field(min_length=1, max_length=100)
     group: str | None = Field(None, min_length=1, max_length=255)
-    proxy_refs: list[TemplateProxyReference] = Field(default_factory=list, max_length=25)
+    proxy_refs: list[TemplateProxyReference] = Field(default_factory=list, max_length=100)
     allow_duplicate_names: bool = False
 
     @model_validator(mode="after")

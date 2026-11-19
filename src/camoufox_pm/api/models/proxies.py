@@ -190,6 +190,13 @@ class ProxyImportRequest(BaseModel):
     text: str = Field(
         min_length=1, max_length=64000, repr=False, json_schema_extra={"writeOnly": True}
     )
+    # One library group for every proxy this request creates.
+    group_name: str | None = Field(None, max_length=64)
+
+    @field_validator("group_name")
+    @classmethod
+    def trim_group(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
 
 
 class ImportSkip(BaseModel):

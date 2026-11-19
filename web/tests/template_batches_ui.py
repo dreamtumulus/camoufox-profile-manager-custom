@@ -1,6 +1,7 @@
 """Batch creation UI: no writes before confirmation and no duplicate work after a lost response."""
 
 import copy
+import json
 import re
 import unittest
 from urllib.parse import urlsplit
@@ -119,6 +120,74 @@ class TemplateBatchesUI(StageTwoUI):
             return route.fulfill(json={"success": True, "data": self.saved[path.rsplit("/", 1)[1]]})
         super().route(route)
 
+    def open_new_template(self, user_agent):
+        # The suggested system comes from the user agent, so pin it per test.
+        agent = json.dumps(user_agent)
+        self.page.add_init_script(
+            f"Object.defineProperty(navigator, 'userAgent', {{get: () => {agent}}})"
+        )
+        self.page.goto(self.origin + "/templates/")
+        self.page.get_by_role("button", name="New template", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="New template")
+        name = dialog.get_by_label("Template name", exact=True)
+        system = dialog.locator("label", has_text="Operating system").locator("select")
+        return dialog, name, system
+
+    def test_new_template_starts_on_this_computers_system_with_a_suggested_name(self):
+        self.templates.append({**self.templates[0], "id": "template-two", "name": "macOS template"})
+        dialog, name, system = self.open_new_template(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+        )
+        expect(system).to_have_value("macos")
+        # "macOS template" is taken by a saved template, so the suggestion is numbered.
+        expect(name).to_have_value("macOS template 2")
+        # The suggestion follows the system until the user names the template.
+        system.select_option("linux")
+        expect(name).to_have_value("Linux template")
+        name.fill("My own")
+        system.select_option("windows")
+        expect(name).to_have_value("My own")
+        dialog.get_by_role("button", name="Save template", exact=True).click()
+        expect(dialog).not_to_be_visible()
+        body = next(
+            json.loads(body)
+            for method, path, body in self.calls
+            if method == "POST" and path == "/templates"
+        )
+        self.assertEqual(body["name"], "My own")
+        self.assertEqual(body["browser_settings"]["os"], "windows")
+
+    def test_new_template_suggestion_is_saved_as_is_and_replaced_by_typing(self):
+        dialog, name, system = self.open_new_template(
+            "Mozilla/5.0 (X11; Linux x86_64; rv:130.0) Gecko/20100101 Firefox/130.0"
+        )
+        expect(system).to_have_value("linux")
+        expect(name).to_have_value("Linux template")
+        # The suggestion is selected on open, so typing replaces it.
+        expect(name).to_be_focused()
+        self.page.keyboard.type("Team")
+        expect(name).to_have_value("Team")
+        name.fill("Linux template")
+        dialog.get_by_role("button", name="Save template", exact=True).click()
+        expect(dialog).not_to_be_visible()
+        body = next(
+            json.loads(body)
+            for method, path, body in self.calls
+            if method == "POST" and path == "/templates"
+        )
+        self.assertEqual(body["name"], "Linux template")
+        self.assertEqual(body["browser_settings"]["os"], "linux")
+
+    def test_new_template_suggested_name_is_translated(self):
+        self.page.add_init_script("localStorage.setItem('camoufox-pm.ui-language', 'zh-CN')")
+        self.page.add_init_script(
+            "Object.defineProperty(navigator, 'userAgent', {get: () => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})"
+        )
+        self.page.goto(self.origin + "/templates/")
+        self.page.get_by_role("button", name="新建模板", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="新建模板")
+        expect(dialog.get_by_label("模板名称", exact=True)).to_have_value("Windows 模板")
+
     def open_batch(self):
         self.page.goto(self.origin + "/templates/")
         self.page.get_by_role("button", name="Create batch", exact=True).click()
@@ -145,16 +214,95 @@ class TemplateBatchesUI(StageTwoUI):
     def test_proxy_group_selects_the_filtered_batch_in_order(self):
         dialog = self.open_batch()
         dialog.get_by_label("Filter by proxy group", exact=True).select_option("Team proxies")
-        dialog.get_by_role("button", name="Select all filtered", exact=True).click()
+        dialog.get_by_role("checkbox", name="Select all", exact=True).check()
         expect(dialog).to_contain_text("2 proxies selected")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         self.assertEqual(
             [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one", "library-two"]
         )
 
+    def new_batch(self):
+        self.page.goto(self.origin + "/templates/")
+        self.page.get_by_role("button", name="Create batch", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="Create profiles from template")
+        count = dialog.get_by_label("Count", exact=True)
+        select_all = dialog.get_by_role("checkbox", name="Select all", exact=True)
+        return dialog, count, select_all
+
+    def test_profile_number_is_a_fixed_suffix_outside_the_name_field(self):
+        dialog, count, _ = self.new_batch()
+        name = dialog.get_by_label("Name pattern", exact=True)
+        # The field holds only the name; the number placeholder sits beside it and cannot be edited.
+        expect(name).to_have_value("Work ")
+        suffix = dialog.get_by_text("{n}", exact=True)
+        expect(suffix).to_be_visible()
+        self.assertEqual(suffix.evaluate("element => element.tagName"), "SPAN")
+        expect(dialog).to_contain_text("First profile: Work 001")
+        name.fill("Client-")
+        dialog.get_by_label("Start number", exact=True).fill("7")
+        expect(dialog).to_contain_text("First profile: Client-007")
+        count.fill("2")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Client-008", exact=True)).to_be_visible()
+        self.assertEqual(self.previews[0]["names"], ["Client-007", "Client-008"])
+
+    def test_selected_proxies_set_the_count_and_select_all_acts_on_the_shown_list(self):
+        self.library[1]["group_name"] = "Other"
+        dialog, count, select_all = self.new_batch()
+        expect(count).to_have_value("5")
+        expect(count).to_have_attribute("max", "100")
+        dialog.get_by_role("checkbox", name=re.compile("Second")).check()
+        expect(count).to_have_value("1")
+        # With part of the list selected the box is neither on nor off; a click selects the rest.
+        self.assertTrue(select_all.evaluate("element => element.indeterminate"))
+        select_all.check()
+        expect(count).to_have_value("2")
+        expect(dialog).to_contain_text("2 proxies selected")
+        self.assertFalse(select_all.evaluate("element => element.indeterminate"))
+        # Under a group filter it selects and clears only that group's proxies.
+        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
+        expect(select_all).to_be_checked()
+        select_all.uncheck()
+        expect(count).to_have_value("1")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 001", exact=True)).to_be_visible()
+        self.assertEqual(self.previews[0]["names"], ["Work 001"])
+        self.assertEqual([ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one"])
+
+    def test_select_all_stops_at_the_batch_limit(self):
+        self.library = [
+            {
+                **self.library[0],
+                "id": f"proxy-{number}",
+                "name": f"Proxy {number:03}",
+                "server": f"p{number}.example:8080",
+            }
+            for number in range(1, 102)
+        ]
+        dialog, count, select_all = self.new_batch()
+        select_all.click()
+        expect(count).to_have_value("100")
+        expect(dialog).to_contain_text("100 proxies selected")
+        expect(dialog).to_contain_text("A batch holds up to 100 profiles")
+        expect(dialog.get_by_role("checkbox", name=re.compile("Proxy 101"))).to_be_disabled()
+        # Nothing more fits, so the next click clears the list; the count is left as it was.
+        select_all.click()
+        expect(dialog).to_contain_text("0 proxies selected")
+        expect(count).to_have_value("100")
+        select_all.click()
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 100", exact=True)).to_be_visible()
+        self.assertEqual(len(self.previews[0]["names"]), 100)
+        self.assertEqual(
+            [ref["id"] for ref in self.previews[0]["proxy_refs"]],
+            [f"proxy-{number}" for number in range(1, 101)],
+        )
+
     def test_incomplete_proxy_selection_and_duplicate_names_require_correction(self):
         dialog = self.open_batch()
         dialog.get_by_role("checkbox", name=re.compile("Office")).check()
+        # Selecting set the count to 1; a count typed afterwards must still match the selection.
+        dialog.get_by_label("Count", exact=True).fill("2")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog.get_by_role("alert")).to_contain_text("exactly 2 distinct proxies")
         self.assertEqual(self.previews, [])
@@ -204,7 +352,7 @@ class TemplateBatchesUI(StageTwoUI):
         self.page.goto(self.origin + "/templates/")
         self.page.get_by_role("button", name="批量创建", exact=True).click()
         dialog = self.page.get_by_role("dialog", name="从模板批量创建配置")
-        dialog.get_by_label("名称格式", exact=True).fill("中文 {n}")
+        dialog.get_by_label("名称格式", exact=True).fill("中文 ")
         dialog.get_by_label("数量", exact=True).fill("2")
         dialog.get_by_role("button", name="预览批次", exact=True).click()
         expect(dialog.get_by_text("中文 001", exact=True)).to_be_visible()

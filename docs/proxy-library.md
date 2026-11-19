@@ -48,6 +48,12 @@ not accepted. Validation checks the complete list before saving anything and
 identifies invalid lines without repeating credentials. Exact duplicates are
 skipped; the result reports created entries and skipped line numbers.
 
+**Proxy group (optional)** files every proxy the import creates under one
+library group. Pick an existing group or type a new name of up to 64
+characters; leave it empty to keep them ungrouped. A proxy that is already
+saved is skipped as a duplicate and stays in its current group, so use
+**Change proxy group** to move saved proxies.
+
 ## Assign to profiles
 
 ![Selecting closed profiles and confirming proxy replacement](screenshots/proxy-assignment.png)

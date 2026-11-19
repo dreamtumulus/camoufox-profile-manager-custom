@@ -206,6 +206,20 @@ class StageTwoUI(DesktopUI):
             data = self.profile_extension_state
         elif path == "/templates" and request.method == "GET":
             data = {"templates": self.templates}
+        elif path == "/templates" and request.method == "POST":
+            body = request.post_data_json
+            data = {
+                "id": f"template-{len(self.templates) + 1}",
+                "name": body["name"],
+                "browser_settings": body["browser_settings"],
+                "tags": body.get("tags", []),
+                "notes": body.get("notes"),
+                "extensions": [],
+                "row_version": 0,
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+            }
+            self.templates.append(data)
         elif path == "/templates/from-profile":
             body = request.post_data_json
             data = {

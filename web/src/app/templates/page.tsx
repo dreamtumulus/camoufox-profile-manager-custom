@@ -240,6 +240,7 @@ export default function TemplatesPage() {
         <TemplateEditor
           key={`${editor.template?.id ?? "new"}:${editor.template?.row_version ?? 0}`}
           template={editor.template}
+          existingNames={items.map((item) => item.name)}
           onClose={() => setEditor(null)}
           onReload={reloadDraft}
           onSaved={() => {

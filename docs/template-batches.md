@@ -1,13 +1,19 @@
 # Create profiles in batches
 
-In **Templates**, choose **Create batch** on a saved template. Configure a name
-pattern (for example `Work {n}`), a count from 1 to 25, a starting number and
-number width. Choose an optional group. Existing names are rejected by default;
+In **Templates**, choose **Create batch** on a saved template. Type the name the
+profiles share (for example `Work `); the profile number, shown as a fixed `{n}`
+beside the field, is always added after it, and the line below shows the first
+resulting name. Set a count from 1 to 100, a starting number and number width.
+Choose an optional group. Existing names are rejected by default;
 allow duplicates explicitly if you need them. Existing profiles are never overwritten.
 
 Optionally select one distinct saved proxy for each profile. Selection order
 defines the mapping; selecting fewer proxies than profiles is rejected rather
 than silently sharing one endpoint. Select no proxies for a direct connection.
+Selecting proxies sets **Count** to the number selected, so it does not need to
+be typed; a count edited afterwards must still match the selection. **Select
+all** at the top of the list selects or clears every proxy shown under the
+current group filter, up to the limit of 100 per batch.
 Passwords stay hidden. A preview checks saved proxy versions and access to the
 encryption key, not network connectivity: use **Check** in the proxy library for
 connection tests.
