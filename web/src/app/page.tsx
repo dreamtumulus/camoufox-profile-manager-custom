@@ -319,7 +319,9 @@ export default function ProfilesPage() {
         await profilesAPI.startProfile(profile.id)
         await Promise.all([loadRunning(), loadProfiles()])
       } catch (err) {
-        toast('error', t('Could not launch browser'), String(err))
+        // The manager's own launch refusals are fixed sentences with translations;
+        // anything else falls through t() unchanged.
+        toast('error', t('Could not launch browser'), err instanceof Error ? t(err.message) : String(err))
       }
     })
   }

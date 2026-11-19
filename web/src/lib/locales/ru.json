@@ -1237,6 +1237,8 @@
   "Browser add-on cache is a symlink; repair it manually before retrying.": "Кеш дополнений браузера является символьной ссылкой. Исправьте его вручную перед повторной попыткой.",
   "Could not resolve the proxy exit address. Check the proxy before launching.": "Не удалось определить выходной адрес прокси. Проверьте прокси перед запуском.",
   "Could not place the proxy exit address. Install browser location resources before launching.": "Не удалось определить местоположение выходного адреса прокси. Перед запуском установите данные геолокации браузера.",
+  "The proxy is connected, but the location database on this computer cannot place its exit address. Open Settings and install the browser again before launching.": "Прокси подключён, но база местоположений на этом компьютере не может определить местоположение его выходного адреса. Перед запуском откройте «Настройки» и установите браузер заново.",
+  "The proxy works, but the location database on this computer cannot place addresses. Open Settings → Browser setup and install the browser again.": "Прокси работает, но база местоположений на этом компьютере не определяет местоположение адресов. Откройте «Настройки → Установка браузера» и установите браузер заново.",
   "Workflow targets": "Профили сценария",
   "Select up to 100 profiles. Open, busy or changed profiles are skipped or refused; existing browsers are never taken over.": "Выберите до 100 профилей. Открытые, занятые или изменённые профили будут пропущены либо отклонены. Сценарий не управляет уже открытыми окнами.",
   "Selected: {count}": "Выбрано: {count}",

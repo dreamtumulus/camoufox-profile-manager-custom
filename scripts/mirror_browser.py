@@ -13,7 +13,6 @@ the mirror is a build-time dependency, not something an installed app needs.
 """
 
 import json
-import os
 import platform
 import shutil
 import sys
@@ -53,13 +52,16 @@ BROWSER_ASSETS = {
 }
 
 # The default source (daijro/geoip-all-in-one) went away with the repository.
-# GeoLite2 City carries every field the profile pinning and the proxy check read,
-# with the same dotted paths the library's MaxMind source expects. One database
-# covers both address families, so it is stored under each name the library asks
-# for.
+# The library's other source is still published, and it is taken whole: the
+# name, the download addresses and the field paths all come from its one entry
+# in the library's repos.yml, so the file on disk always has the layout its
+# source describes and later refreshes fetch the same thing.
+#
+# Do not store another publisher's database under this name. The source reads a
+# flat record (`country_code`); MaxMind's own GeoLite2-City nests the same value
+# (`country.iso_code`), opens without complaint and then places every address in
+# the country "NONE".
 GEOIP_SOURCE_NAME = "MaxMind GeoLite2"
-GEOIP_URL = "https://github.com/P3TERX/GeoLite.mmdb/releases/latest/download/GeoLite2-City.mmdb"
-GEOIP_ASSETS = {"ipv4": GEOIP_URL, "ipv6": GEOIP_URL}
 
 
 def platform_key() -> str:
@@ -164,32 +166,22 @@ def _activate(target: Path, pin) -> None:
 
 
 def seed_geoip() -> None:
-    """Install the location database the pinned source can no longer supply."""
-    import maxminddb
+    """Select the location source that is still published and install its database."""
     from camoufox import geolocation
 
-    geoip_dir = geolocation.GEOIP_DIR
-    mmdb_dir = geoip_dir / "mmdb"
-    mmdb_dir.mkdir(parents=True, exist_ok=True)
-    keys = sorted(GEOIP_ASSETS)
-    name = GEOIP_SOURCE_NAME.lower()
-    if all((mmdb_dir / f"{name}-{key}.mmdb").is_file() for key in keys):
+    from camoufox_pm.core.browser_install import geoip_lookup_works
+
+    selected = geolocation.load_geoip_config().get("name") == GEOIP_SOURCE_NAME
+    if selected and geoip_lookup_works():
         print("The location database is already installed", file=sys.stderr)
     else:
-        with tempfile.TemporaryDirectory(prefix=".cpm-geoip-") as workspace:
-            downloaded = Path(workspace) / "city.mmdb"
-            _download(GEOIP_URL, downloaded)
-            with maxminddb.open_database(str(downloaded)) as database:
-                metadata = database.metadata()
-                if "GeoLite2-City" not in str(metadata.database_type):
-                    raise SystemExit(
-                        f"The location database is {metadata.database_type}, not a city database"
-                    )
-            for key in keys:
-                shutil.copyfile(downloaded, mmdb_dir / f"{name}-{key}.mmdb")
-                os.utime(mmdb_dir / f"{name}-{key}.mmdb")
-
-    # Explicit: the built-in default source is gone, and a cache that keeps
-    # naming it would fall back to it on every launch and fail the download.
-    geolocation.save_geoip_config({"name": GEOIP_SOURCE_NAME}, explicit=True)
+        # Naming the source makes it the explicit choice. That matters: the
+        # built-in default is gone, and a cache that still names it would go
+        # back to it on every launch and fail the download.
+        geolocation.download_mmdb(GEOIP_SOURCE_NAME)
+    if not geoip_lookup_works():
+        raise SystemExit(
+            f"The location database installed as {GEOIP_SOURCE_NAME} cannot place a known "
+            "address through that source's field paths; refusing to build with it"
+        )
     print(f"Selected location database: {GEOIP_SOURCE_NAME}", file=sys.stderr)

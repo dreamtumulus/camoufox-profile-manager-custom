@@ -152,6 +152,88 @@ def _complete_bundle(build: Path) -> bool:
         return False
 
 
+# Public resolvers of three operators per address family. One answer per family
+# is enough: the question is whether the configured field paths fit the file,
+# not whether a particular address is listed.
+_GEOIP_PROBES = {
+    "ipv4": ("8.8.8.8", "1.1.1.1", "9.9.9.9"),
+    "ipv6": ("2001:4860:4860::8888", "2606:4700:4700::1111", "2620:fe::fe"),
+}
+_geoip_check: tuple[Any, bool] | None = None
+
+
+def _read_path(record: Any, dotted: str) -> Any:
+    for part in dotted.split("."):
+        if not isinstance(record, dict):
+            return None
+        record = record.get(part)
+    return record
+
+
+def _places_an_address(database: Path, paths: dict[str, str], addresses: tuple[str, ...]) -> bool:
+    """Whether one address resolves to everything a launch reads from its record."""
+    import maxminddb
+    from camoufox.locales import SELECTOR
+
+    with maxminddb.open_database(str(database)) as reader:
+        for address in addresses:
+            try:
+                record = reader.get(address)
+                country = _read_path(record, paths["iso_code"])
+                timezone = _read_path(record, paths["timezone"])
+                if not (isinstance(country, str) and len(country) == 2):
+                    continue
+                if not (isinstance(timezone, str) and timezone):
+                    continue
+                float(_read_path(record, paths["latitude"]))
+                float(_read_path(record, paths["longitude"]))
+                SELECTOR.from_region(country.upper())  # Raises for a country it cannot use.
+                return True
+            except Exception:
+                # A lookup the launch itself would fail on; try the next address.
+                continue
+    return False
+
+
+def geoip_lookup_works() -> bool:
+    """Whether the selected location source really places an address.
+
+    A database opens fine under a source whose field paths describe another
+    layout, and then answers nothing: every address reads as the country "NONE"
+    and the launch fails on it. Only reading a record through the configured
+    paths tells the two apart. The files are read directly, never through
+    get_geolocation, which downloads a database it considers out of date.
+    """
+    global _geoip_check
+    try:
+        from camoufox import geolocation
+
+        config = geolocation.load_geoip_config()
+        paths = config["paths"]
+        databases = {family: geolocation.get_mmdb_path(family, config) for family in _GEOIP_PROBES}
+        # Status polls and every launch ask this, so answer from the files'
+        # identity until one of them is replaced.
+        key = (
+            config["name"],
+            tuple(sorted(paths.items())),
+            tuple(
+                (family, str(path), path.stat().st_mtime_ns, path.stat().st_size)
+                for family, path in databases.items()
+            ),
+        )
+        if _geoip_check is not None and _geoip_check[0] == key:
+            return _geoip_check[1]
+        works = all(
+            _places_an_address(path, paths, _GEOIP_PROBES[family])
+            for family, path in databases.items()
+        )
+        _geoip_check = (key, works)
+        return works
+    except Exception:
+        # Missing or unreadable files, an unknown source, a corrupt database.
+        return False
+
+
 def browser_resources_ready() -> bool:
     """The files a normal launch otherwise downloads without a progress UI."""
     try:
@@ -159,9 +241,13 @@ def browser_resources_ready() -> bool:
         from camoufox.geolocation import MMDB_DIR, load_geoip_config
 
         config = load_geoip_config()
-        return is_pinned() and all(
-            (MMDB_DIR / f"{config['name'].lower()}-{kind}.mmdb").is_file()
-            for kind in config["urls"]
+        return (
+            is_pinned()
+            and all(
+                (MMDB_DIR / f"{config['name'].lower()}-{kind}.mmdb").is_file()
+                for kind in config["urls"]
+            )
+            and geoip_lookup_works()
         )
     except (ImportError, OSError, ValueError, KeyError):
         return False

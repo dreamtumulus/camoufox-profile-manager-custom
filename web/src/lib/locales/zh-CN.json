@@ -1102,6 +1102,8 @@
   "Browser add-on cache is a symlink; repair it manually before retrying.": "浏览器附加组件缓存是符号链接，请手动修复后再重试。",
   "Could not resolve the proxy exit address. Check the proxy before launching.": "无法确定代理出口地址。请在启动前检查代理。",
   "Could not place the proxy exit address. Install browser location resources before launching.": "无法确定代理出口地址的地理位置。请在启动前安装浏览器地理位置资源。",
+  "The proxy is connected, but the location database on this computer cannot place its exit address. Open Settings and install the browser again before launching.": "代理已连通，但本机的位置库无法识别它的出口地址。请先打开「设置」重新安装浏览器，再启动配置。",
+  "The proxy works, but the location database on this computer cannot place addresses. Open Settings → Browser setup and install the browser again.": "代理可用，但本机的位置库无法识别地址。请打开「设置 → 浏览器安装」重新安装浏览器。",
   "Workflow targets": "工作流目标配置",
   "Select up to 100 profiles. Open, busy or changed profiles are skipped or refused; existing browsers are never taken over.": "最多选择 100 个配置。已打开、忙碌或已更改的配置将被跳过或拒绝；不会接管现有浏览器。",
   "Selected: {count}": "已选择：{count}",

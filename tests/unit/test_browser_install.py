@@ -15,6 +15,7 @@ from pydantic import SecretStr
 
 from camoufox_pm.core import browser_install
 from camoufox_pm.core.browser_session import BrowserLaunchError
+from tests.support.geoip import FLAT, NESTED, NESTED_PATHS, write_mmdb
 
 
 @pytest.fixture
@@ -43,8 +44,13 @@ def upstream_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(
         geolocation,
         "load_geoip_config",
-        lambda: {"name": "Example", "urls": {"combined": ["https://unused.invalid"]}},
+        lambda: {
+            "name": "Example",
+            "urls": {"combined": ["https://unused.invalid"]},
+            "paths": NESTED_PATHS,
+        },
     )
+    monkeypatch.setattr(browser_install, "_geoip_check", None)
     monkeypatch.setattr(pkgman, "INSTALL_DIR", tmp_path / "cache")
     monkeypatch.setattr(multiversion, "BROWSERS_DIR", tmp_path / "browsers")
     return SimpleNamespace(
@@ -64,7 +70,7 @@ def write_resources(cache):
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "manifest.json").write_text(json.dumps({"manifest_version": 2}))
     cache.geolocation.MMDB_DIR.mkdir(exist_ok=True)
-    (cache.geolocation.MMDB_DIR / "example-combined.mmdb").write_bytes(b"location data")
+    write_mmdb(cache.geolocation.MMDB_DIR / "example-combined.mmdb", NESTED)
 
 
 def test_readiness_inspects_files_without_triggering_download(upstream_cache, monkeypatch):
@@ -115,6 +121,56 @@ def test_missing_location_database_blocks_launch(upstream_cache):
     (upstream_cache.geolocation.MMDB_DIR / "example-combined.mmdb").unlink()
     with pytest.raises(BrowserLaunchError):
         browser_install.ensure_browser_ready()
+
+
+def test_database_in_another_layout_than_its_source_is_not_ready(upstream_cache):
+    """A flat record under nested paths opens fine and reads every country as "NONE"."""
+    write_resources(upstream_cache)
+    assert browser_install.geoip_lookup_works()
+    write_mmdb(upstream_cache.geolocation.MMDB_DIR / "example-combined.mmdb", FLAT)
+    assert not browser_install.geoip_lookup_works()
+    assert not browser_install.browser_resources_ready()
+    assert browser_install.BrowserInstaller().status().installed is False
+    with pytest.raises(BrowserLaunchError, match="Settings"):
+        browser_install.ensure_browser_ready()
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        {**NESTED, "country": {"iso_code": "Q1"}},  # not a territory the launch can use
+        {**NESTED, "country": {}},  # the field is absent, as under a mismatched source
+        {**NESTED, "location": {**NESTED["location"], "time_zone": ""}},
+        {**NESTED, "location": {"time_zone": "America/Chicago"}},  # no coordinates
+        b"not a database",
+    ],
+)
+def test_database_that_cannot_place_an_address_is_not_ready(upstream_cache, record):
+    write_resources(upstream_cache)
+    database = upstream_cache.geolocation.MMDB_DIR / "example-combined.mmdb"
+    if isinstance(record, bytes):
+        database.write_bytes(record)
+    else:
+        write_mmdb(database, record)
+    assert not browser_install.geoip_lookup_works()
+    assert not browser_install.browser_resources_ready()
+
+
+def test_lookup_check_reads_an_old_database_without_refreshing_it(upstream_cache, monkeypatch):
+    """The library downloads a database it considers stale; a readiness probe must not."""
+    import os
+    import time
+
+    cache = upstream_cache
+    write_resources(cache)
+    database = cache.geolocation.MMDB_DIR / "example-combined.mmdb"
+    write_mmdb(database, NESTED, build_epoch=int(time.time()) - 400 * 86400)
+    os.utime(database, (time.time() - 400 * 86400,) * 2)
+    monkeypatch.setattr(
+        cache.geolocation, "download_mmdb", Mock(side_effect=AssertionError("download"))
+    )
+    assert browser_install.geoip_lookup_works()
+    assert browser_install.browser_resources_ready()
 
 
 def test_missing_fpgen_model_blocks_launch_without_downloading(upstream_cache, monkeypatch):

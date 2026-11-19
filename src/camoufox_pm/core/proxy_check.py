@@ -90,6 +90,27 @@ class LocationUnavailable(RuntimeError):
     """The exit address could not be placed on the map."""
 
 
+class LocationDatabaseUnusable(LocationUnavailable):
+    """No address can be placed: the location database itself does not work."""
+
+
+# Said in place of the library's own error ("Unknown territory: NONE"), which
+# reads as if the proxy had failed. It had not: the address was resolved through
+# it. The exit address goes to the log, not into the text, so the interface can
+# translate the sentence.
+LOCATION_DATABASE_UNUSABLE = (
+    "The proxy is connected, but the location database on this computer cannot place its "
+    "exit address. Open Settings and install the browser again before launching."
+)
+LOCATION_NOT_PLACED = (
+    "Could not place the proxy exit address. Install browser location resources before launching."
+)
+LOCATION_DATABASE_FINDING = (
+    "The proxy works, but the location database on this computer cannot place addresses. "
+    "Open Settings → Browser setup and install the browser again."
+)
+
+
 @dataclass(frozen=True)
 class ProxyLocation:
     """Where a proxy actually comes out, as the browser's own database sees it."""
@@ -211,7 +232,9 @@ def locate(ip: str) -> ProxyLocation:
     """Place an address using the database Camoufox itself uses at launch.
 
     Raises LocationUnavailable when the database is missing or does not know the
-    address, so the caller can still report a working proxy it cannot place.
+    address, so the caller can still report a working proxy it cannot place. When
+    the database cannot place any address at all, that is LocationDatabaseUnusable:
+    the remedy is to reinstall it, not to look at the proxy.
     """
     try:
         from camoufox.geolocation import get_geolocation
@@ -221,6 +244,10 @@ def locate(ip: str) -> ProxyLocation:
     try:
         geo = get_geolocation(ip)
     except Exception as exc:
+        from .browser_install import geoip_lookup_works
+
+        if not geoip_lookup_works():
+            raise LocationDatabaseUnusable(str(exc)) from exc
         raise LocationUnavailable(str(exc)) from exc
 
     # Only the region is taken from geo.locale. Its language is sampled
@@ -495,6 +522,11 @@ async def prepare_proxy_geoip(proxy: ProxyConfig | None, options: dict[str, Any]
     Coordinates intentionally disable SDK geoip; their existing fill path stays
     responsible for timezone and WebRTC. A normal launch needs a fresh exit IP
     before replacing its browser proxy with the session's local relay.
+
+    The address is placed here once before the SDK places it again during the
+    launch. It is the same lookup with the same outcome, made where a failure can
+    still be worded: the SDK's own error names neither the proxy, which worked,
+    nor the location database, which did not.
     """
     if proxy is None:
         return
@@ -509,6 +541,14 @@ async def prepare_proxy_geoip(proxy: ProxyConfig | None, options: dict[str, Any]
         raise ConnectionError(
             "Could not resolve the proxy exit address. Check the proxy before launching."
         ) from None
+    try:
+        await asyncio.to_thread(locate, ip)
+    except LocationDatabaseUnusable as exc:
+        logger.warning(f"The location database cannot place the proxy exit address {ip}: {exc}")
+        raise ConnectionError(LOCATION_DATABASE_UNUSABLE) from None
+    except LocationUnavailable as exc:
+        logger.warning(f"Could not place the proxy exit address {ip}: {exc}")
+        raise ConnectionError(LOCATION_NOT_PLACED) from None
     options["geoip"] = ip
 
 
@@ -566,8 +606,11 @@ async def fill_what_geoip_would_have(proxy: ProxyConfig | None, options: dict[st
         location = await asyncio.to_thread(locate, ip)
     except LocationUnavailable as exc:
         if proxy is not None:
+            logger.warning(f"Could not place the proxy exit address {ip}: {exc}")
             raise ConnectionError(
-                "Could not place the proxy exit address. Install browser location resources before launching."
+                LOCATION_DATABASE_UNUSABLE
+                if isinstance(exc, LocationDatabaseUnusable)
+                else LOCATION_NOT_PLACED
             ) from None
         logger.warning(f"Could not place {ip}, leaving the timezone alone: {exc}")
         return
@@ -599,7 +642,9 @@ async def check(
     except LocationUnavailable as exc:
         logger.warning(f"Could not place {ip}: {exc}")
         findings.append(
-            Finding(
+            Finding("warning", "proxy", LOCATION_DATABASE_FINDING)
+            if isinstance(exc, LocationDatabaseUnusable)
+            else Finding(
                 "info",
                 "proxy",
                 "The proxy works, but its address could not be placed on the map. "

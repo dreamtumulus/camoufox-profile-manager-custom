@@ -50,6 +50,8 @@ async def test_health_check_and_fresh_launch_ip_use_remote_destination_and_verif
         proxy = config(fixture)
         ip, _ = await proxy_check.resolve_exit_ip(proxy, timeout=2)
         assert ip == "203.0.113.19"
+        # Placing the address is the location database's part, tested on its own.
+        monkeypatch.setattr(proxy_check, "locate", lambda ip: proxy_check.ProxyLocation(ip=ip))
         options = {"geoip": True}
         await proxy_check.prepare_proxy_geoip(proxy, options)
         assert options["geoip"] == ip

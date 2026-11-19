@@ -10,6 +10,31 @@ from install_ci_browser import install_browser
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def stage_geoip(destination: Path) -> None:
+    """Copy the selected location source, and only once it places an address.
+
+    An installer carries this to every machine and nothing downstream looks at it
+    again, so a database stored under a source that describes another layout has
+    to stop the build here. Only the selected source is copied: whatever else a
+    build machine's cache holds is not part of what was checked.
+    """
+    from camoufox import geolocation
+
+    from camoufox_pm.core.browser_install import geoip_lookup_works
+
+    if not geoip_lookup_works():
+        raise RuntimeError(
+            "The location database cannot place a known address through its selected source; "
+            "refusing to bundle it"
+        )
+    config = geolocation.load_geoip_config()
+    (destination / "mmdb").mkdir(parents=True)
+    if geolocation.GEOIP_CONFIG.is_file():
+        shutil.copyfile(geolocation.GEOIP_CONFIG, destination / "config.yml")
+    for database in {geolocation.get_mmdb_path(family, config) for family in ("ipv4", "ipv6")}:
+        shutil.copyfile(database, destination / "mmdb" / database.name)
+
+
 def stage_browser() -> Path:
     install_browser()
     from camoufox import multiversion
@@ -24,9 +49,7 @@ def stage_browser() -> Path:
     stage = ROOT / "build" / "bundled-camoufox"
     shutil.rmtree(stage, ignore_errors=True)
     shutil.copytree(active, stage / relative, symlinks=True)
-    geoip = multiversion.INSTALL_DIR / "geoip"
-    if geoip.is_dir():
-        shutil.copytree(geoip, stage / "geoip", symlinks=True)
+    stage_geoip(stage / "geoip")
     (stage / "config.json").write_text(
         json.dumps({"active_version": relative.as_posix()}, indent=2) + "\n", encoding="utf-8"
     )

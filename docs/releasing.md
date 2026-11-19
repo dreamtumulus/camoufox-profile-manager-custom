@@ -25,6 +25,25 @@ installs the identical pinned build from `scripts/mirror_browser.py`, which list
 the mirror, the digests it accepts and the location-database source it selects.
 Do not widen that list without checking the digests against the source release.
 
+The library's default location source went away with that account, so the build
+selects its other source, "MaxMind GeoLite2", by name and lets the library
+download it. Name, download addresses and field paths then come from one entry
+in the library's `repos.yml`. Never store another publisher's database under a
+source's name: MaxMind's own GeoLite2-City nests the fields this source reads
+flat, opens without error and places every address in the country "NONE"
+(`Unknown territory: NONE` at launch, as in the first `zhaolusi7` installers).
+
+Three checks keep that from shipping again. Each reads a known public address
+through the selected source's field paths and requires a country the launch can
+use, a timezone and coordinates:
+
+- `seed_geoip` exits when the database it just installed fails the check;
+- `scripts/bundle_browser.py` refuses to stage location data that fails it, and
+  stages only the selected source's files;
+- an installed app reports the browser as not ready while the check fails, and
+  on start replaces failing location data, or data selecting a source the
+  installer does not ship, with the installer's copy.
+
 ## Artifacts
 
 | Platform | Release asset | Builder |

@@ -3,7 +3,10 @@
 compare() is pure, so every rule is tested here without a proxy or a network.
 """
 
+import json
 from contextlib import asynccontextmanager
+from pathlib import Path
+from unittest.mock import Mock
 
 import httpx
 import pytest
@@ -11,6 +14,7 @@ import pytest
 from camoufox_pm.core import proxy_check
 from camoufox_pm.core.models import BrowserSettings, ProxyConfig, ProxyType
 from camoufox_pm.core.proxy_check import ProxyLocation, compare, preflight, proxy_url
+from tests.support.geoip import FLAT, FLAT_SOURCE, NESTED, install_source, point_library_at
 
 TOKYO = ProxyLocation(
     ip="203.0.113.7",
@@ -422,9 +426,12 @@ async def test_auth_socks_normal_geoip_uses_original_upstream_and_literal_ip(mon
         return "203.0.113.7", 12
 
     monkeypatch.setattr(proxy_check, "resolve_exit_ip", resolve)
+    placed = []
+    monkeypatch.setattr(proxy_check, "locate", lambda ip: placed.append(ip) or TOKYO)
     options = {"geoip": True}
     await proxy_check.prepare_proxy_geoip(proxy, options)
     assert seen == [proxy]
+    assert placed == ["203.0.113.7"]  # placed before the launch, where a failure can be worded
     assert options["geoip"] == "203.0.113.7"
 
 
@@ -472,3 +479,109 @@ def test_proxy_error_messages_never_echo_credentials():
     ]:
         assert "proxy-secret" not in _readable(error)
         assert "proxy-user" not in _readable(error)
+
+
+@pytest.fixture
+def location_cache(tmp_path, monkeypatch):
+    """The library's location data, in a folder of its own and never refreshed."""
+    from camoufox import geolocation
+
+    monkeypatch.setattr(geolocation, "download_mmdb", Mock(side_effect=AssertionError("download")))
+    return point_library_at(monkeypatch, tmp_path)
+
+
+@pytest.mark.filterwarnings("ignore::FutureWarning")
+def test_database_stored_under_the_wrong_source_is_blamed_instead_of_the_proxy(location_cache):
+    """The library's own words for this were "Unknown territory: NONE"."""
+    install_source(location_cache, FLAT_SOURCE, NESTED)
+    with pytest.raises(proxy_check.LocationDatabaseUnusable, match="Unknown territory: NONE"):
+        proxy_check.locate("8.8.8.8")
+
+    install_source(location_cache, FLAT_SOURCE, FLAT)
+    location = proxy_check.locate("8.8.8.8")
+    assert (location.country, location.timezone) == ("US", "America/Chicago")
+
+
+def test_address_missing_from_a_working_database_is_not_blamed_on_the_database(
+    location_cache, monkeypatch
+):
+    from camoufox import geolocation
+    from camoufox.exceptions import UnknownIPLocation
+
+    install_source(location_cache, FLAT_SOURCE, FLAT)
+    monkeypatch.setattr(
+        geolocation, "get_geolocation", Mock(side_effect=UnknownIPLocation("IP not found"))
+    )
+    with pytest.raises(proxy_check.LocationUnavailable) as caught:
+        proxy_check.locate("203.0.113.7")
+    assert not isinstance(caught.value, proxy_check.LocationDatabaseUnusable)
+
+
+LOCATION_FAILURES = [
+    (
+        proxy_check.LocationDatabaseUnusable("Unknown territory: NONE"),
+        proxy_check.LOCATION_DATABASE_UNUSABLE,
+    ),
+    (
+        proxy_check.LocationUnavailable("IP not found in database: 203.0.113.7"),
+        proxy_check.LOCATION_NOT_PLACED,
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure,message", LOCATION_FAILURES)
+@pytest.mark.parametrize("coordinates", [False, True])
+async def test_launch_through_a_working_proxy_names_the_location_database(
+    monkeypatch, failure, message, coordinates
+):
+    """Both launch paths: the normal one, and the one explicit coordinates take."""
+
+    async def resolve(proxy, timeout):
+        return "203.0.113.7", 12
+
+    def unplaceable(ip):
+        raise failure
+
+    monkeypatch.setattr(proxy_check, "resolve_exit_ip", resolve)
+    monkeypatch.setattr(proxy_check, "locate", unplaceable)
+    proxy = ProxyConfig(type=ProxyType.HTTP, server="proxy.example:8080")
+    options = {"geoip": not coordinates, "config": {}}
+    with pytest.raises(ConnectionError) as caught:
+        await proxy_check.prepare_proxy_geoip(proxy, options)
+        await proxy_check.fill_what_geoip_would_have(proxy, options)
+    # A fixed sentence the interface can translate: no address, no library wording.
+    assert str(caught.value) == message
+    assert "timezone" not in options["config"]
+    assert options["geoip"] is (not coordinates)
+
+
+@pytest.mark.asyncio
+async def test_check_warns_that_the_location_database_cannot_place_addresses(monkeypatch):
+    async def resolve(proxy, timeout=proxy_check.DEFAULT_TIMEOUT):
+        return "203.0.113.7", 11
+
+    def unusable(ip):
+        raise proxy_check.LocationDatabaseUnusable("Unknown territory: NONE")
+
+    monkeypatch.setattr(proxy_check, "resolve_exit_ip", resolve)
+    monkeypatch.setattr(proxy_check, "locate", unusable)
+    result = await proxy_check.check(None, BrowserSettings())
+    assert result.reachable and result.location == ProxyLocation(ip="203.0.113.7")
+    assert [(finding.level, finding.message) for finding in result.findings] == [
+        ("warning", proxy_check.LOCATION_DATABASE_FINDING)
+    ]
+
+
+@pytest.mark.parametrize("locale", ["zh-CN", "ru"])
+def test_location_database_messages_have_interface_translations(locale):
+    """The interface shows an untranslated sentence as it is, so a missing one goes unnoticed."""
+    catalog = json.loads(
+        (Path(__file__).parents[2] / "web/src/lib/locales" / f"{locale}.json").read_text("utf-8")
+    )
+    for message in (
+        proxy_check.LOCATION_DATABASE_UNUSABLE,
+        proxy_check.LOCATION_NOT_PLACED,
+        proxy_check.LOCATION_DATABASE_FINDING,
+    ):
+        assert catalog.get(message), message
