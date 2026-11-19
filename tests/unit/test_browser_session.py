@@ -1008,3 +1008,163 @@ async def test_failed_sdk_close_without_driver_identity_retains_fence_until_retr
     assert not manager.is_live("p")
     storage.release_lease.assert_awaited_once_with("p", "local")
     stopped.assert_awaited_once_with("p")
+
+
+class FakePage:
+    """A tab: where it is, and every address it was sent to."""
+
+    def __init__(self, url: str = "about:blank", fail: Exception | None = None):
+        self.url = url
+        self.fail = fail
+        self.visits: list[tuple[str, dict]] = []
+        self.closed = False
+
+    def is_closed(self) -> bool:
+        return self.closed
+
+    async def goto(self, url: str, **options):
+        self.visits.append((url, options))
+        if self.fail is not None:
+            raise self.fail
+        self.url = url
+
+
+class FakeContext:
+    def __init__(self, *pages: FakePage, late: FakePage | None = None):
+        self.pages = list(pages)
+        self.late = late  # the tab that attaches just after the launch returns
+        self.opened: list[FakePage] = []
+        self.waited = 0
+
+    async def wait_for_event(self, event: str, timeout: float):
+        self.waited += 1
+        if self.late is None:
+            raise TimeoutError("no tab")
+        return self.late
+
+    async def new_page(self) -> FakePage:
+        page = FakePage()
+        self.opened.append(page)
+        self.pages.append(page)
+        return page
+
+
+START = "https://claude.ai"
+
+
+def started(context) -> tuple[BrowserSessionManager, BrowserSession]:
+    manager = BrowserSessionManager()
+    session = BrowserSession("p", camoufox=None)
+    session.context = context
+    manager.active_sessions["p"] = session
+    return manager, session
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blank", ["about:blank", "about:newtab", "about:home"])
+async def test_start_page_opens_in_the_blank_tab_the_window_starts_with(blank):
+    tab = FakePage(blank)
+    context = FakeContext(tab)
+    manager, session = started(context)
+
+    manager.open_start_page("p", START)
+    await session.start_page_task
+
+    assert [url for url, _ in tab.visits] == [START]
+    assert tab.visits[0][1]["wait_until"] == "commit"
+    assert context.opened == [] and context.waited == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "open_tab", ["https://claude.ai/chat/123", "https://www.claude.ai/login", "http://claude.ai/"]
+)
+async def test_start_page_is_not_opened_again_when_a_tab_is_already_on_the_site(open_tab):
+    restored, blank = FakePage(open_tab), FakePage()
+    context = FakeContext(restored, blank)
+    manager, session = started(context)
+
+    manager.open_start_page("p", START)
+    await session.start_page_task
+
+    assert restored.visits == [] and blank.visits == [] and context.opened == []
+
+
+@pytest.mark.asyncio
+async def test_start_page_gets_its_own_tab_when_every_tab_shows_something():
+    """A restored tab is somebody's work; it is never navigated away."""
+    restored = FakePage("https://example.com/inbox")
+    lookalike = FakePage("https://notclaude.ai/")
+    context = FakeContext(restored, lookalike)
+    manager, session = started(context)
+
+    manager.open_start_page("p", START)
+    await session.start_page_task
+
+    assert restored.visits == [] and lookalike.visits == []
+    assert [[url for url, _ in page.visits] for page in context.opened] == [[START]]
+
+
+@pytest.mark.asyncio
+async def test_start_page_waits_for_the_first_tab_and_opens_one_if_none_arrives():
+    late = FakePage()
+    context = FakeContext(late=late)
+    manager, session = started(context)
+    manager.open_start_page("p", START)
+    await session.start_page_task
+    assert [url for url, _ in late.visits] == [START] and context.opened == []
+
+    context = FakeContext()
+    manager, session = started(context)
+    manager.open_start_page("p", START)
+    await session.start_page_task
+    assert context.waited == 1
+    assert [[url for url, _ in page.visits] for page in context.opened] == [[START]]
+
+
+@pytest.mark.asyncio
+async def test_a_start_page_that_does_not_load_leaves_the_browser_running():
+    """An unreachable site is the browser's to show; the launch already succeeded."""
+    tab = FakePage(fail=RuntimeError("NS_ERROR_PROXY_CONNECTION_REFUSED private detail"))
+    manager, session = started(FakeContext(tab))
+
+    manager.open_start_page("p", START)
+    await asyncio.wait([session.start_page_task])
+
+    assert session.start_page_task.exception() is not None  # retrieved, never re-raised
+    assert manager.is_running("p")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("url", ["file:///etc/passwd", "javascript:alert(1)", "claude.ai", ""])
+async def test_only_web_addresses_are_opened_as_a_start_page(url):
+    tab = FakePage()
+    manager, session = started(FakeContext(tab))
+
+    manager.open_start_page("p", url)
+
+    assert session.start_page_task is None and tab.visits == []
+
+
+@pytest.mark.asyncio
+async def test_start_page_for_a_profile_that_is_not_running_does_nothing():
+    BrowserSessionManager().open_start_page("gone", START)
+
+
+@pytest.mark.asyncio
+async def test_closing_the_browser_stops_a_start_page_still_on_its_way():
+    arrived = asyncio.Event()
+
+    class SlowPage(FakePage):
+        async def goto(self, url: str, **options):
+            arrived.set()
+            await asyncio.Event().wait()
+
+    manager, session = started(FakeContext(SlowPage()))
+    manager.open_start_page("p", START)
+    await arrived.wait()
+
+    await manager.close("p")
+
+    await asyncio.wait([session.start_page_task])
+    assert session.start_page_task.cancelled()

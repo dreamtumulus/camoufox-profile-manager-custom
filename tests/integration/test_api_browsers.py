@@ -88,6 +88,61 @@ async def test_launching_an_unknown_profile_is_a_404(client):
     assert response.status_code == 404
 
 
+@pytest.fixture
+def launches(monkeypatch):
+    """Answer launches without a browser and record which ones got a start page."""
+    from unittest.mock import AsyncMock, Mock
+
+    manager = get_profile_manager()
+    launch = AsyncMock(return_value={"status": "launched", "process_id": 4242})
+    opened = Mock()
+    monkeypatch.setattr(manager, "_launch_browser", launch)
+    monkeypatch.setattr(manager.browser_sessions, "open_start_page", opened)
+    return launch, opened
+
+
+@pytest.mark.asyncio
+async def test_a_window_opened_by_hand_starts_on_the_configured_page(client, launches):
+    from camoufox_pm.config import get_settings
+
+    _, opened = launches
+    assert get_settings().start_url == "https://claude.ai"
+    created = (await client.post("/api/profiles", json={"name": "by hand"})).json()
+
+    response = await client.post(f"/api/profiles/{created['id']}/launch", json={"headless": False})
+
+    assert response.status_code == 200 and response.json()["status"] == "launched"
+    opened.assert_called_once_with(created["id"], "https://claude.ai")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "start_url,headless,status",
+    [
+        ("https://claude.ai", True, "launched"),  # nobody is looking at a headless browser
+        ("https://claude.ai", False, "already_running"),  # its tabs are in use
+        ("", False, "launched"),  # the start page is switched off
+        ("   ", False, "launched"),
+    ],
+)
+async def test_no_start_page_where_it_would_not_be_wanted(
+    client, launches, monkeypatch, start_url, headless, status
+):
+    from camoufox_pm.config import get_settings
+
+    launch, opened = launches
+    launch.return_value = {"status": status, "process_id": 4242}
+    monkeypatch.setattr(get_settings(), "start_url", start_url)
+    created = (await client.post("/api/profiles", json={"name": "quiet"})).json()
+
+    response = await client.post(
+        f"/api/profiles/{created['id']}/launch", json={"headless": headless}
+    )
+
+    assert response.status_code == 200
+    opened.assert_not_called()
+
+
 @pytest.mark.asyncio
 async def test_a_clone_is_created_as_a_new_profile(client):
     created = (await client.post("/api/profiles", json={"name": "source"})).json()

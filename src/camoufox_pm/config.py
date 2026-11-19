@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     # The variable must not end in "_PROXY": urllib treats every such variable
     # as a proxy definition and then stops consulting the operating system.
     front_proxy_mode: str = "system"
+    # The page a browser opened by hand shows first. Empty opens nothing.
+    start_url: str = "https://claude.ai"
     backup_interval_hours: int = Field(default=24, ge=1)
     backup_retention: int = Field(default=7, ge=1)
 

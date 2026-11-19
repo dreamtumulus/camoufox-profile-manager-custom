@@ -216,6 +216,7 @@ Advanced/source configuration uses environment variables (prefix `CPM_`); copy
 | `CPM_SECURE_COOKIES` | `0`                   | Force the session cookie's `Secure` flag (set behind a TLS proxy) |
 | `CPM_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins                 |
 | `CPM_WEBUI_DIR`    | *(auto)*                | Override where the bundled web UI is served from |
+| `CPM_START_URL`    | `https://claude.ai`     | Page a browser opened with **Run** shows first; empty opens none. Scheduled and workflow launches are not affected |
 
 Generate an encryption key with:
 

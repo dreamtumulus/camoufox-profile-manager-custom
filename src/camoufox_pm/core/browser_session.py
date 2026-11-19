@@ -20,6 +20,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlsplit
 
 import psutil
 from loguru import logger
@@ -245,6 +246,45 @@ def _linux_ime_startup_preferences(options: dict[str, Any]) -> Iterator[None]:
             logger.warning(f"Could not restore browser startup preferences: {exc}")
 
 
+# What a tab shows before anyone has used it.
+_BLANK_PAGES = frozenset({"", "about:blank", "about:newtab", "about:home"})
+START_PAGE_TIMEOUT = 60.0
+
+
+def _site(url: str) -> str:
+    """The host a page is on, without a leading "www."; empty for internal pages."""
+    try:
+        host = urlsplit(url).hostname or ""
+    except ValueError:
+        return ""
+    return host[4:] if host.startswith("www.") else host
+
+
+async def _show_start_page(context: Any, url: str) -> None:
+    """Bring the start page up in a tab nobody is using.
+
+    This runs after the launch on purpose. A URL handed to the browser as a
+    startup argument is requested before the driver's handlers exist, and the
+    proxy's credentials are among them. Tabs that already show something are
+    left alone, and nothing is opened when a tab is already on the site.
+    """
+    pages = [page for page in context.pages if not page.is_closed()]
+    if not pages:
+        # The window's first tab can attach a moment after the launch returns.
+        try:
+            pages = [await context.wait_for_event("page", timeout=3000)]
+        except Exception:  # noqa: BLE001 - no tab arrived; open one below
+            pages = []
+    site = _site(url)
+    if any(_site(page.url) == site for page in pages):
+        return
+    blank = next((page for page in pages if page.url in _BLANK_PAGES), None)
+    page = blank if blank is not None else await context.new_page()
+    # "commit": the address is on its way. Waiting for the whole page would only
+    # keep this task alive while the person is already using the window.
+    await page.goto(url, wait_until="commit", timeout=START_PAGE_TIMEOUT * 1000)
+
+
 def _resolve_process_id(obj: Any) -> int | None:
     """Best-effort resolution of a driver/browser OS process id.
 
@@ -303,6 +343,7 @@ class BrowserSession:
         self._owned_processes = _OwnedProcessTree(process_id)
         self.started_at = datetime.now()
         self.monitor_task: asyncio.Task | None = None
+        self.start_page_task: asyncio.Task | None = None
         self.on_exit: ExitHandler | None = None
         self.on_stopped: ExitHandler | None = None
         self._terminated = False
@@ -323,6 +364,8 @@ class BrowserSession:
         # Do not await the monitor: it may itself be waiting for this teardown.
         if self.monitor_task and not self.monitor_task.done():
             self.monitor_task.cancel()
+        if self.start_page_task and not self.start_page_task.done():
+            self.start_page_task.cancel()
 
         self._owned_processes.refresh()
         cancelled = False
@@ -586,6 +629,31 @@ class BrowserSessionManager:
 
         logger.info(f"Browser launched for profile {profile_id} (pid={process_id})")
         return session
+
+    def open_start_page(self, profile_id: str, url: str) -> None:
+        """Show `url` in the browser just launched for this profile, in the background.
+
+        The launch has already succeeded and stays that way: a page that cannot
+        be loaded is the browser's to report in its own window, and a window
+        closed meanwhile is nothing to report at all.
+        """
+        session = self.active_sessions.get(profile_id)
+        if session is None or session.context is None:
+            return
+        if not url.startswith(("https://", "http://")):
+            logger.warning("Ignoring the start page: it is not an http(s) address")
+            return
+
+        def finished(task: asyncio.Task[None]) -> None:
+            if not task.cancelled() and task.exception() is not None:
+                logger.info(
+                    f"Start page not shown for profile {profile_id}: "
+                    f"{type(task.exception()).__name__}"
+                )
+
+        task = asyncio.create_task(_show_start_page(session.context, url))
+        task.add_done_callback(finished)
+        session.start_page_task = task
 
     def _register_close_handler(self, browser: Any, profile_id: str) -> None:
         """Wire Playwright close/disconnect events to session cleanup."""

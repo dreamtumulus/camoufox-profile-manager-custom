@@ -50,6 +50,7 @@ from camoufox_pm.api.models.profiles import (
     ReconcileOsRequest,
 )
 from camoufox_pm.api.models.system import ApiResponse, ExcelImportData
+from camoufox_pm.config import get_settings
 from camoufox_pm.core import proxy_check
 from camoufox_pm.core.browser_session import BrowserTerminationError
 from camoufox_pm.core.database import StaleWriteError
@@ -443,6 +444,13 @@ async def launch_profile(profile_id: str, request: ProfileLaunchRequest):
         )
 
         logger.info(f"Launched browser for profile: {profile_id}")
+
+        # A window someone asked for by hand opens on the start page. Launches
+        # made by schedules, workflows and onboarding navigate for themselves,
+        # and a browser that was already running is left as it is.
+        start_url = get_settings().start_url.strip()
+        if start_url and not request.headless and browser_session.get("status") == "launched":
+            profile_manager.browser_sessions.open_start_page(profile_id, start_url)
 
         return ProfileLaunchResponse(
             profile_id=profile_id,
