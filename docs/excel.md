@@ -56,6 +56,7 @@ creating the profile through the UI instead.
 | Geolocation mode | `auto` follows the proxy IP; `manual` uses the coordinates below. |
 | Latitude / Longitude / Geolocation accuracy | Used when the mode is `manual`. |
 | Notes | Free text. |
+| Email | Read-only, last column. Written on export, ignored on import: an address is set only by [Import emails](profile-emails.md). |
 
 The supported wrapper/browser pair and upgrade guidance are recorded in
 [Camoufox compatibility](camoufox-compatibility.md). A spreadsheet retains these

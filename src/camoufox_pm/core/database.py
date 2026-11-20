@@ -40,6 +40,10 @@ def _deserialize_proxy(data: dict) -> ProxyConfig:
     return ProxyConfig(**data)
 
 
+class EmailTaken(ValueError):
+    """The address already belongs to another profile."""
+
+
 class StaleWriteError(Exception):
     """A save built on an older version of the row than the one stored.
 
@@ -117,6 +121,14 @@ class DatabaseManager:
                 ("row_version", "BIGINT NOT NULL DEFAULT 0"),
                 ("deleted_at", "TIMESTAMP"),
                 ("tags", "TEXT NOT NULL DEFAULT '[]'"),
+                # NULL until the email import gives the profile an address.
+                ("email", "TEXT"),
+                # 0 on every row that exists when this column is added: profiles
+                # from before email addresses never receive one. The two INSERT
+                # statements below write 1, so only profiles created from here
+                # on can. The default stays 0 so that an insert which forgets
+                # the column fails closed.
+                ("email_allowed", "INTEGER NOT NULL DEFAULT 0"),
             ],
         }
         for table, columns in added_columns.items():
@@ -127,6 +139,14 @@ class DatabaseManager:
                     continue
                 self._connection.execute(f"ALTER TABLE {table} ADD COLUMN {name} {column_type}")
                 logger.info(f"Migrated {table}: added column {name}")
+        # Here rather than with the other indexes: those are created before this
+        # runs, when an older database does not have the column yet. One address
+        # belongs to one profile, Trash included, since a trashed profile can be
+        # restored with its address.
+        self._connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_email "
+            "ON profiles(lower(email)) WHERE email IS NOT NULL"
+        )
         self._connection.commit()
 
     async def _create_tables(self):
@@ -178,7 +198,9 @@ class DatabaseManager:
                 locked_by TEXT,
                 lock_expires TIMESTAMP,
                 row_version BIGINT NOT NULL DEFAULT 0,
-                deleted_at TIMESTAMP
+                deleted_at TIMESTAMP,
+                email TEXT,
+                email_allowed INTEGER NOT NULL DEFAULT 0
             )
         """)
 
@@ -323,14 +345,17 @@ class DatabaseManager:
         renaming a profile would quietly unlock a browser another instance is
         running. ``DO UPDATE`` names only the columns a save owns, and the ones
         it does not name keep their values.
+
+        ``email_allowed`` is one of those: a row created here may receive an
+        email address, and a row that already existed keeps whatever it had.
         """
         self._connection.execute(
             """
             INSERT INTO profiles (
                 id, name, group_id, status, browser_settings, proxy_config,
                 extensions, storage_path, notes, created_at, updated_at, last_used,
-                fingerprint, proxy_check, tags
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                fingerprint, proxy_check, tags, email_allowed
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 group_id = excluded.group_id,
@@ -362,8 +387,8 @@ class DatabaseManager:
                 """INSERT INTO profiles (
                     id, name, group_id, status, browser_settings, proxy_config,
                     extensions, storage_path, notes, created_at, updated_at, last_used,
-                    fingerprint, proxy_check, tags
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    fingerprint, proxy_check, tags, email_allowed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 ON CONFLICT(id) DO NOTHING""",
                 self._profile_columns(profile),
             )
@@ -561,8 +586,11 @@ class DatabaseManager:
             value = (
                 str(filters["search"]).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             )
-            predicate += " AND (name LIKE ? ESCAPE '\\' OR id LIKE ? ESCAPE '\\')"
-            params.extend([f"%{value}%", f"%{value}%"])
+            predicate += (
+                " AND (name LIKE ? ESCAPE '\\' OR id LIKE ? ESCAPE '\\' "
+                "OR email LIKE ? ESCAPE '\\')"
+            )
+            params.extend([f"%{value}%"] * 3)
         requested = filters.get("tags", [])
         if filters.get("tag"):
             requested = [*requested, filters["tag"]]
@@ -612,6 +640,61 @@ class DatabaseManager:
         profile = await self.get_profile(profile_id)
         assert profile is not None
         return profile
+
+    async def set_profile_email(
+        self, profile_id: str, email: str, expected_row_version: int
+    ) -> Profile:
+        """Give a profile that has no address one; never replaces an address.
+
+        ``email IS NULL`` is part of the statement, so two imports racing for one
+        profile cannot both land, and the unique index refuses an address that
+        another profile already holds. ``email_allowed`` is part of it too: a
+        profile from before email addresses is never given one, whoever asks.
+        """
+        try:
+            with self._connection:
+                cursor = self._connection.execute(
+                    "UPDATE profiles SET email = ?, updated_at = ?, row_version = row_version + 1 "
+                    "WHERE id = ? AND row_version = ? AND deleted_at IS NULL AND email IS NULL "
+                    "AND email_allowed = 1",
+                    (email, datetime.now().isoformat(), profile_id, expected_row_version),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise EmailTaken(email) from exc
+        if not cursor.rowcount:
+            raise StaleWriteError(profile_id, expected_row_version)
+        profile = await self.get_profile(profile_id)
+        assert profile is not None
+        return profile
+
+    async def clear_profile_email(self, profile_id: str, expected_row_version: int) -> Profile:
+        """Take a profile's address away, so the import can give it another."""
+        with self._connection:
+            cursor = self._connection.execute(
+                "UPDATE profiles SET email = NULL, updated_at = ?, row_version = row_version + 1 "
+                "WHERE id = ? AND row_version = ? AND deleted_at IS NULL",
+                (datetime.now().isoformat(), profile_id, expected_row_version),
+            )
+        if not cursor.rowcount:
+            raise StaleWriteError(profile_id, expected_row_version)
+        profile = await self.get_profile(profile_id)
+        assert profile is not None
+        return profile
+
+    async def profile_emails(self) -> list[dict]:
+        """Every address in use and the profile holding it, Trash included."""
+        rows = self._connection.execute(
+            "SELECT id, name, email, deleted_at FROM profiles WHERE email IS NOT NULL"
+        ).fetchall()
+        return [
+            {
+                "profile_id": row["id"],
+                "profile_name": row["name"],
+                "email": row["email"],
+                "in_trash": row["deleted_at"] is not None,
+            }
+            for row in rows
+        ]
 
     async def set_profile_group(
         self, profile_id: str, group: str | None, expected_row_version: int
@@ -1259,6 +1342,8 @@ class DatabaseManager:
             extensions=extensions,
             storage_path=row["storage_path"],
             notes=row["notes"],
+            email=row["email"] if "email" in keys else None,
+            email_allowed=bool(row["email_allowed"]) if "email_allowed" in keys else False,
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
             last_used=datetime.fromisoformat(row["last_used"]) if row["last_used"] else None,

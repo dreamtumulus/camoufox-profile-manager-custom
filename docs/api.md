@@ -404,12 +404,22 @@ Profile create/update accepts `tags`; `[]` clears them. Tags are normalized,
 deduplicated labels (at most 20, each at most 32 characters). List filters include
 `search`, `group`, `status`, `tag` and repeated `tags`. Multiple tags must all
 match; filtering happens before pagination. `group=__ungrouped__` selects profiles
-without a group, and search matches names or IDs.
+without a group, and search matches names, IDs or email addresses.
 
 `POST /profiles/tags` accepts `{profiles: [{id, row_version}], add: [], remove: []}`.
 It returns `data.updated` and `data.skipped`; a conflict in one profile does not
 silently overwrite it or discard other successes. Tags are metadata and can be
 edited while a browser runs.
+
+## Email addresses
+
+Profile responses include `email`, the account the profile signs in with, or
+`null`, and `email_allowed`, which is false for profiles that existed before
+email addresses were introduced. Create and update accept neither:
+`POST /profiles/emails` writes an address only to a profile without one that has
+`email_allowed` and whose proxy passed a check within the last 30 minutes, and
+`DELETE /profiles/{id}/email?row_version=N` removes it. Both are
+administrator-only. See [profile email addresses](profile-emails.md).
 
 `GET /saved-filters` returns `data.filters`. Create with `POST /saved-filters`
 using `{name, config}`. Config stores `search`, `status`, `group`, `tags`,

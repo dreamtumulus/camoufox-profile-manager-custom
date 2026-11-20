@@ -8,7 +8,7 @@ The profile editor has a comma-separated Tags field. The profile list displays t
 
 `GET /api/v1/profiles` filters before pagination:
 
-- `search`: a literal name or ID substring, up to 255 characters. `%` and `_` are literal characters.
+- `search`: a literal name, ID or email substring, up to 255 characters. `%` and `_` are literal characters.
 - `status`: `active`, `inactive`, `blocked` or `maintenance`.
 - `group`: the group ID; `__ungrouped__` selects profiles without a group.
 - `tag` or repeated `tags`: normalized tags, with every requested tag required. Up to 20 unique tags.

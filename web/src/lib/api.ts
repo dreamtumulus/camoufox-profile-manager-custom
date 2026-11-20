@@ -82,6 +82,10 @@ export interface Profile {
   proxy_config?: ProxyConfig | null
   storage_path?: string | null
   notes?: string | null
+  /** The account this profile signs in with. Set only by the email import. */
+  email?: string | null
+  /** False for profiles that existed before email addresses did: they never receive one. */
+  email_allowed?: boolean
   created_at: string
   updated_at?: string
   last_used?: string | null
@@ -362,7 +366,27 @@ export interface BulkTagsResult {
   skipped: { id: string; reason: string }[]
 }
 
+export interface TakenEmail {
+  email: string
+  profile_id: string
+  profile_name: string
+  in_trash: boolean
+}
+
 export const profilesAPI = {
+  /** One address per profile; the server writes only where the proxy just passed a check. */
+  async importEmails(assignments: { id: string; row_version: number; email: string }[]): Promise<BulkTagsResult> {
+    const body = await request<{ data: BulkTagsResult }>(`${API_PREFIX}/profiles/emails`, { method: 'POST', body: JSON.stringify({ assignments }) })
+    return body.data
+  },
+  async takenEmails(emails: string[]): Promise<TakenEmail[]> {
+    const body = await request<{ data: { taken: TakenEmail[] } }>(`${API_PREFIX}/profiles/emails/taken`, { method: 'POST', body: JSON.stringify({ emails }) })
+    return body.data.taken
+  },
+  async clearEmail(profile: Pick<Profile, 'id' | 'row_version'>): Promise<Profile> {
+    const body = await request<{ data: Profile }>(`${API_PREFIX}/profiles/${profile.id}/email?row_version=${profile.row_version}`, { method: 'DELETE' })
+    return body.data
+  },
   async bulkGroup(profiles: Profile[], group: string | null): Promise<BulkTagsResult> {
     const body = await request<{ data: BulkTagsResult }>(`${API_PREFIX}/profiles/group`, { method: 'POST', body: JSON.stringify({ profiles: profiles.map(({ id, row_version }) => ({ id, row_version })), group }) })
     return body.data

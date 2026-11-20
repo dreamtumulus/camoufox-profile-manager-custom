@@ -10,6 +10,7 @@ import {
   Download,
   Ellipsis,
   Globe,
+  Mail,
   PackageOpen,
   Pencil,
   Play,
@@ -40,6 +41,8 @@ import { ProfileTagsDialog } from '@/components/profile-tags-dialog'
 import { ProfileGroupDialog } from '@/components/profile-group-dialog'
 import { SavedProfileViews } from '@/components/saved-profile-views'
 import { BatchProfileOperations } from '@/components/batch-profile-operations'
+import { ProfileEmailImport } from '@/components/profile-email-import'
+import { copyText } from '@/lib/clipboard'
 import { MAX_BATCH_SIZE, type BatchTarget } from '@/lib/batch-queue'
 import { DEFAULT_VIEW, profileViewQuery, readProfileView } from '@/lib/profile-views'
 import { useToast } from '@/components/toast'
@@ -111,6 +114,7 @@ export default function ProfilesPage() {
   const [tagsFor, setTagsFor] = useState<Profile[] | null>(null)
   const [groupFor, setGroupFor] = useState<Profile[] | null>(null)
   const [batch, setBatch] = useState<{ action: 'launch' | 'close'; targets: BatchTarget[] } | null>(null)
+  const [emailImport, setEmailImport] = useState<{ targets: Profile[]; scope: 'selected' | 'list'; withEmail: number; older: number } | null>(null)
 
   const toast = useToast()
   const importRef = useRef<HTMLInputElement>(null)
@@ -230,7 +234,9 @@ export default function ProfilesPage() {
       if (!tagFilters.every(tag => (profile.tags ?? []).includes(tag))) return false
       if (!needle) return true
       return (
-        profile.name.toLowerCase().includes(needle) || profile.id.toLowerCase().includes(needle)
+        profile.name.toLowerCase().includes(needle) ||
+        profile.id.toLowerCase().includes(needle) ||
+        (profile.email ?? '').toLowerCase().includes(needle)
       )
     })
 
@@ -313,7 +319,53 @@ export default function ProfilesPage() {
     }
   }
 
+  /**
+   * Run copies the row's address, ready to paste into the sign-in page.
+   *
+   * Started here, before the launch request is awaited: a page may write the
+   * clipboard only while it is handling the click, and a launch takes seconds.
+   * It never decides the launch; a refused copy is only said.
+   */
+  function copyEmailForRun(profile: Profile) {
+    const email = profile.email
+    if (!email) return
+    void copyText(email).then((copied) => {
+      if (copied) toast('ok', t('Email copied'), email)
+      else toast('error', t('Email not copied'), t('Copy it from the Email column by hand: {email}', { email }))
+    })
+  }
+
+  /** Addresses go to the selected rows, or to the whole filtered list when none is selected. */
+  function openEmailImport() {
+    const scoped = selected.size > 0 ? visible.filter((profile) => selected.has(profile.id)) : visible
+    const withoutEmail = scoped.filter((profile) => !profile.email)
+    // Profiles that were here before email addresses existed never receive one;
+    // the server refuses them too, so they are not offered as targets.
+    const targets = withoutEmail.filter((profile) => profile.email_allowed === true)
+    setEmailImport({
+      targets,
+      scope: selected.size > 0 ? 'selected' : 'list',
+      withEmail: scoped.length - withoutEmail.length,
+      older: withoutEmail.length - targets.length,
+    })
+  }
+
+  function askClearEmail(profile: Profile) {
+    const email = profile.email ?? ''
+    setConfirm({
+      title: t('Clear email'),
+      body: t('{email} will be removed from "{name}". Another address can then be imported for this profile.', { email, name: profile.name }),
+      label: t('Clear email'),
+      run: async () => {
+        const updated = await profilesAPI.clearEmail(profile)
+        setProfiles((current) => current.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)))
+        toast('ok', t('Email address removed'), email)
+      },
+    })
+  }
+
   async function launch(profile: Profile) {
+    copyEmailForRun(profile)
     await withBusy(profile.id, async () => {
       try {
         await profilesAPI.startProfile(profile.id)
@@ -597,7 +649,7 @@ export default function ProfilesPage() {
           />
           <input
             className="field field-compact pl-7"
-            placeholder={t('Search name or ID')}
+            placeholder={t('Search name, ID or email')}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             aria-label={t('Search profiles')}
@@ -629,6 +681,10 @@ export default function ProfilesPage() {
             <Download size={14} />
           </button>}
           {canManageAccess && <>
+          <button className="btn btn-default" onClick={openEmailImport}>
+            <Mail size={13} aria-hidden="true" />
+            {t('Import emails')}
+          </button>
           <button
             className="btn btn-ghost"
             onClick={() => importRef.current?.click()}
@@ -793,7 +849,7 @@ export default function ProfilesPage() {
                   }
                 />
               </th>
-              {COLUMNS.map((column) => (
+              {COLUMNS.flatMap((column) => [
                 <th key={column.key} className="py-2 pr-4 font-medium">
                   <button
                     className="inline-flex items-center gap-1 hover:text-ink"
@@ -803,8 +859,10 @@ export default function ProfilesPage() {
                     {sortKey === column.key &&
                       (sortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
                   </button>
-                </th>
-              ))}
+                </th>,
+                // Not sortable: saved views store the sort key, and theirs is a closed list.
+                ...(column.key === 'name' ? [<th key="email" className="py-2 pr-4 font-medium">{t('Email')}</th>] : []),
+              ])}
               <th className="py-2 pr-4 font-medium">{t('Proxy')}</th>
               <th className="w-[104px] py-2 pr-5" />
             </tr>
@@ -844,6 +902,9 @@ export default function ProfilesPage() {
                   </td>
 
                   <td className="py-2.5 pr-4 font-medium"><p>{profile.name}</p>{(profile.tags ?? []).length > 0 && <div className="mt-1 flex max-w-[240px] flex-wrap gap-1">{profile.tags?.map(tag => <button key={tag} className="rounded border border-line bg-raised px-1.5 py-px text-[11px] font-normal text-ink-dim hover:text-ink" aria-label={t('Filter by tag {tag}', { tag })} onClick={() => setTagFilters([tag])}>{tag}</button>)}</div>}</td>
+                  <td className="max-w-[240px] truncate py-2.5 pr-4 font-mono text-ink-dim" title={profile.email ?? undefined}>
+                    {profile.email || <span className="text-ink-faint">—</span>}
+                  </td>
                   <td className="py-2.5 pr-4 font-mono text-ink-faint">{profile.id}</td>
                   <td className="py-2.5 pr-4 text-ink-dim">
                     {profile.group ? (groupNames.get(profile.group) ?? profile.group) : '—'}
@@ -951,6 +1012,7 @@ export default function ProfilesPage() {
                                 closeMenu(profile.id)
                               }}
                             />
+                            <MenuItem icon={<Mail size={13} />} allowed={canManageAccess && !!profile.email} label={t('Clear email')} onClick={() => { askClearEmail(profile); closeMenu(profile.id) }} />
                             <MenuItem icon={<Globe size={13} />} allowed={canManageAccess} label={t('Device synchronization')} onClick={() => { setSyncFor(profile); closeMenu(profile.id) }} />
                             <MenuItem icon={<Cookie size={13} />} allowed={can(profile, 'edit') || can(profile, 'export')} label={t('Cookies')} onClick={() => { setCookiesFor(profile); closeMenu(profile.id) }} />
                             <MenuItem icon={<Bookmark size={13} />} allowed={canManageAccess} label={t('Save as template')} onClick={() => { setTemplateFor(profile); closeMenu(profile.id) }} />
@@ -1019,6 +1081,16 @@ export default function ProfilesPage() {
       {extensionsFor && <ProfileExtensionsModal profile={extensionsFor} onClose={() => setExtensionsFor(null)} onSaved={loadProfiles} />}
       {tagsFor && <ProfileTagsDialog profiles={tagsFor} onClose={() => setTagsFor(null)} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
       {groupFor && <ProfileGroupDialog profiles={groupFor} groups={groups} onClose={() => { setGroupFor(null); loadGroups() }} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
+      {emailImport && <ProfileEmailImport
+        targets={emailImport.targets}
+        scope={emailImport.scope}
+        known={profiles}
+        withEmail={emailImport.withEmail}
+        older={emailImport.older}
+        onClose={() => setEmailImport(null)}
+        onChecked={(id, record) => setProfiles((current) => current.map((row) => (row.id === id ? { ...row, proxy_check: record } : row)))}
+        onImported={(updated) => { setProfiles((current) => current.map((row) => { const next = updated.find((item) => item.id === row.id); return next ? { ...row, ...next } : row })); setSelected(new Set()) }}
+      />}
       {batch && <BatchProfileOperations action={batch.action} targets={batch.targets} onClose={() => setBatch(null)} onUpdated={async () => { await Promise.all([loadRunning(), loadProfiles()]) }} />}
 
       <ProfileForm

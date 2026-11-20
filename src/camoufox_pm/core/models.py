@@ -267,6 +267,34 @@ def normalize_tags(values: Any) -> list[str]:
 
 ProfileTags = Annotated[list[str], BeforeValidator(normalize_tags)]
 
+_EMAIL = re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+")
+
+
+def normalize_email(value: Any) -> str:
+    """One mailbox address, trimmed.
+
+    Loose on purpose: this is an address a person signs in with, not one this
+    program sends to, so the only job is to refuse what is plainly not one.
+    """
+    if not isinstance(value, str):
+        raise ValueError("Enter a valid email address")
+    email = unicodedata.normalize("NFC", value).strip()
+    if (
+        len(email) > 254
+        or not _EMAIL.fullmatch(email)
+        or any(unicodedata.category(char).startswith("C") for char in email)
+    ):
+        raise ValueError("Enter a valid email address")
+    return email
+
+
+def email_key(email: str) -> str:
+    """How two addresses are compared: the same mailbox whatever its capitals."""
+    return unicodedata.normalize("NFC", email).strip().casefold()
+
+
+ProfileEmail = Annotated[str, BeforeValidator(normalize_email)]
+
 
 class Profile(BaseModel):
     """Browser profile."""
@@ -288,6 +316,17 @@ class Profile(BaseModel):
     extensions: list[str] = Field(default_factory=list)
     storage_path: str | None = None
     notes: str | None = None
+
+    # The account this profile signs in with. Read with the row, but not written
+    # by a save: only the email import (which requires a proxy check that just
+    # passed) and an administrator clearing it change the column, so an edit, a
+    # clone or a spreadsheet import cannot give a profile an address.
+    email: str | None = None
+    # Whether the email import may give this profile an address. True for every
+    # profile created by a version that has email addresses; false for the rows
+    # a database already held when it was upgraded to one. Like `email`, a save
+    # never writes it: the insert of a new row sets it and nothing changes it.
+    email_allowed: bool = True
 
     # The machine this profile pretends to be, resolved once on first launch and
     # replayed from then on so the profile does not look like new hardware every

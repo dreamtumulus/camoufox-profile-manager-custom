@@ -88,6 +88,9 @@ jobs:
       - name: Proxy protocol guidance and authentication UI contracts
         working-directory: .
         run: uv run python web/tests/proxy_protocol_ui.py
+      - name: Profile email column, checked import and copy-on-run UI contracts
+        working-directory: .
+        run: uv run python web/tests/profile_emails_ui.py
 
       - name: Russian and Chinese onboarding and workflow contracts
         working-directory: .

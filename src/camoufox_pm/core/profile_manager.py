@@ -2,7 +2,7 @@
 
 import asyncio
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +12,7 @@ from camoufox_pm.config import get_settings
 
 from . import fingerprint_store, profile_archive, proxy_check
 from .browser_session import BrowserSessionManager
-from .database import StaleWriteError, StorageManager
+from .database import EmailTaken, StaleWriteError, StorageManager
 from .extension_library import managed_default_exclusions, resolve_profile_addons
 from .fingerprint_generator import FingerprintGenerator
 from .leases import ProfileLocked, make_lease_holder
@@ -27,6 +27,46 @@ from .models import (
 )
 from .profile_operations import profile_data_path, profile_operation, run_file_operation
 from .sync_guard import guard_profile, sync_mutation, sync_mutation_guard
+
+# A check older than this was not made for this import. Long enough for a
+# hundred proxies checked a few at a time, each allowed to run to its timeout,
+# and for the person to read the preview afterwards.
+EMAIL_CHECK_MAX_AGE = timedelta(minutes=30)
+
+EMAIL_PROFILE_MISSING = "Profile not found or in Trash"
+EMAIL_ALREADY_SET = "Profile already has an email address"
+EMAIL_NOT_ALLOWED = (
+    "Profile was created before email addresses were introduced; only newer profiles receive one"
+)
+EMAIL_NO_PROXY = "Profile has no proxy, so there is nothing to check"
+EMAIL_NOT_CHECKED = "Check the proxy before importing an email address"
+EMAIL_PROXY_FAILED = "The proxy did not pass its check"
+EMAIL_CHECK_TOO_OLD = "The proxy check is too old; check the proxy again"
+EMAIL_PROFILE_CHANGED = "Profile changed; reload before importing email addresses"
+EMAIL_TAKEN = "This email address is already on another profile"
+
+
+def _email_refusal(profile: Profile | None) -> str | None:
+    """Why this profile may not be given an address now, or None if it may."""
+    if profile is None:
+        return EMAIL_PROFILE_MISSING
+    if profile.email:
+        return EMAIL_ALREADY_SET
+    if not profile.email_allowed:
+        return EMAIL_NOT_ALLOWED
+    if profile.proxy is None:
+        return EMAIL_NO_PROXY
+    check = profile.proxy_check
+    if check is None:
+        return EMAIL_NOT_CHECKED
+    if not check.reachable:
+        return EMAIL_PROXY_FAILED
+    checked_at = check.checked_at
+    if checked_at.tzinfo is None:
+        checked_at = checked_at.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) - checked_at > EMAIL_CHECK_MAX_AGE:
+        return EMAIL_CHECK_TOO_OLD
+    return None
 
 
 class ProfileManager:
@@ -406,6 +446,44 @@ class ProfileManager:
                     )
         return result
 
+    async def import_emails(self, assignments: list[dict]) -> dict:
+        """Give each listed profile its address, if its proxy has just passed a check.
+
+        The check is not run here. The interface runs it, shows what will be
+        written and only then asks; this is the half that cannot be skipped,
+        whatever sent the request. A stored check exists only for the proxy the
+        profile has now (changing the proxy clears it), so "reachable, and
+        recent" is the whole test. A profile that already has an address is
+        never given another, and one that was in the database before email
+        addresses existed is never given one at all.
+        """
+        result: dict[str, list] = {"updated": [], "skipped": []}
+        for target in assignments:
+            profile_id = target["id"]
+            async with sync_mutation(self, profile_id):
+                reason = _email_refusal(await self.get_profile(profile_id))
+                if reason is None:
+                    try:
+                        result["updated"].append(
+                            await self.storage.db.set_profile_email(
+                                profile_id, target["email"], target["row_version"]
+                            )
+                        )
+                        continue
+                    except StaleWriteError:
+                        reason = EMAIL_PROFILE_CHANGED
+                    except EmailTaken:
+                        reason = EMAIL_TAKEN
+                result["skipped"].append({"id": profile_id, "reason": reason})
+        return result
+
+    async def clear_email(self, profile_id: str, row_version: int) -> Profile:
+        """Remove a profile's address so a corrected one can be imported."""
+        async with sync_mutation(self, profile_id):
+            if await self.get_profile(profile_id) is None:
+                raise LookupError(profile_id)
+            return await self.storage.db.clear_profile_email(profile_id, row_version)
+
     async def clone_profile(
         self, source_id: str, new_name: str, regenerate_fingerprint: bool = True
     ) -> Profile | None:
@@ -435,6 +513,11 @@ class ProfileManager:
         # The copy shares the source's proxy, so the answer would still be true —
         # but it would read as "this profile was checked", and it never was.
         profile_data["proxy_check"] = None
+        # One address, one profile. A save would not write it anyway; cleared so
+        # the copy handed back says what was stored.
+        profile_data["email"] = None
+        # The copy is a new profile, whatever its source was.
+        profile_data["email_allowed"] = True
 
         new_profile = Profile(**profile_data)
 
@@ -878,6 +961,11 @@ class ProfileManager:
         # network, at some point in the past. Whatever it said, it did not say it
         # here — same reasoning as a clone, and stronger.
         profile.proxy_check = None
+        # An address is given only by the email import, after a proxy check on
+        # this machine; the archive's profile may still hold it elsewhere.
+        profile.email = None
+        # Imported now, so it is a new profile here, whatever the record says.
+        profile.email_allowed = True
         data_dir = Path(profile.get_storage_path(str(self.profiles_dir)))
 
         # Extraction writes into the directory before it can fail, and a profile

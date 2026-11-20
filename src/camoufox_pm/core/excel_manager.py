@@ -51,6 +51,9 @@ class ExcelManager:
             ("geo_longitude", "Longitude", "Longitude coordinate (-180 to 180)"),
             ("geo_accuracy", "Geolocation accuracy", "Accuracy in meters (1-10000)"),
             ("notes", "Notes", "Additional information about the profile"),
+            # Last, so the validations below keep their column letters. Never
+            # read on import: an address is given only after a proxy check.
+            ("email", "Email", "Set by Import emails in the app (read-only)"),
         ]
 
     async def export_profiles_to_excel(self, profiles: list[Profile] | None = None) -> bytes:
@@ -116,6 +119,7 @@ class ExcelManager:
         # Prepare the row data
         row_data = {
             "id": profile.id,
+            "email": profile.email or "",
             "name": profile.name,
             "group": profile.group or "",
             "status": profile.status.value

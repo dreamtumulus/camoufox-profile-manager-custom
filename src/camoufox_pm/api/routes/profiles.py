@@ -31,12 +31,16 @@ from camoufox_pm.api.models.profiles import (
     ActiveBrowsersResponse,
     BrowserCloseResponse,
     BrowsersCloseAllResponse,
+    BulkEmailsRequest,
+    BulkEmailsResponse,
     BulkGroupRequest,
     BulkGroupResponse,
     BulkTagsRequest,
     BulkTagsResponse,
     ClearGeographyRequest,
     ClearGeographyResponse,
+    EmailLookupRequest,
+    EmailLookupResponse,
     ProfileCloneRequest,
     ProfileCreateRequest,
     ProfileLaunchRequest,
@@ -56,7 +60,7 @@ from camoufox_pm.core.browser_session import BrowserTerminationError
 from camoufox_pm.core.database import StaleWriteError
 from camoufox_pm.core.excel_manager import ExcelManager
 from camoufox_pm.core.leases import ProfileLocked
-from camoufox_pm.core.models import BrowserSettings, ProfileStatus, ProxyConfig
+from camoufox_pm.core.models import BrowserSettings, ProfileStatus, ProxyConfig, email_key
 
 router = APIRouter()
 
@@ -530,6 +534,75 @@ async def clone_profile(profile_id: str, request: ProfileCloneRequest):
         raise HTTPException(
             status_code=500, detail=str(e) if is_admin() else "Profile operation failed"
         ) from e
+
+
+@router.post(
+    "/profiles/emails",
+    response_model=ApiResponse[BulkEmailsResponse],
+    operation_id="import_profile_emails",
+    summary="Give profiles their email addresses.",
+    description=(
+        "Writes one address per listed profile. A profile is skipped, with the reason, "
+        "unless it has no address yet, was created after email addresses were introduced "
+        "(email_allowed), and its proxy passed a check within the last 30 minutes. An "
+        "address already on another profile is refused."
+    ),
+)
+async def import_emails(request: BulkEmailsRequest):
+    await require_admin()
+    result = await get_profile_manager().import_emails(
+        [item.model_dump() for item in request.assignments]
+    )
+    for profile in result["updated"]:
+        await record_audit("import_profile_email", profile.id)
+    return ApiResponse(
+        success=True,
+        message="Email import completed",
+        data={
+            "updated": [ProfileResponse.from_profile(profile) for profile in result["updated"]],
+            "skipped": result["skipped"],
+        },
+    )
+
+
+@router.post(
+    "/profiles/emails/taken",
+    response_model=ApiResponse[EmailLookupResponse],
+    operation_id="find_taken_profile_emails",
+    summary="Which of these addresses a profile already holds.",
+)
+async def taken_emails(request: EmailLookupRequest, response: Response):
+    await require_admin()
+    response.headers["Cache-Control"] = "no-store"
+    wanted = {email_key(email) for email in request.emails}
+    holders = await get_profile_manager().storage.db.profile_emails()
+    return ApiResponse(
+        success=True,
+        message="Email addresses in use",
+        data={"taken": [holder for holder in holders if email_key(holder["email"]) in wanted]},
+    )
+
+
+@router.delete(
+    "/profiles/{profile_id}/email",
+    response_model=ApiResponse[ProfileResponse],
+    operation_id="clear_profile_email",
+    summary="Remove a profile's email address.",
+    description="Lets a corrected address be imported; the import never replaces one.",
+)
+async def clear_email(profile_id: str, row_version: int = Query(..., ge=0)):
+    await require_admin()
+    try:
+        # A stale version reaches the app-level handler, which renders it as 409.
+        profile = await get_profile_manager().clear_email(profile_id, row_version)
+    except LookupError:
+        raise HTTPException(
+            status_code=404, detail=f"Profile with ID {profile_id} not found"
+        ) from None
+    await record_audit("clear_profile_email", profile_id)
+    return ApiResponse(
+        success=True, message="Email address removed", data=ProfileResponse.from_profile(profile)
+    )
 
 
 @router.post(

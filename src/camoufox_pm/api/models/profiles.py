@@ -4,9 +4,16 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from camoufox_pm.core.models import Profile, ProfileStatus, ProfileTags, ProxyCheckRecord
+from camoufox_pm.core.models import (
+    Profile,
+    ProfileEmail,
+    ProfileStatus,
+    ProfileTags,
+    ProxyCheckRecord,
+    email_key,
+)
 from camoufox_pm.core.proxy_check import Level, ProxyCheckResult
 
 
@@ -148,6 +155,20 @@ class ProfileResponse(BaseModel):
     proxy_config: dict[str, Any] | None
     storage_path: str | None
     notes: str | None
+    email: str | None = Field(
+        None,
+        description=(
+            "The account this profile signs in with, or null. Read-only here: "
+            "POST /profiles/emails sets it and DELETE /profiles/{id}/email clears it."
+        ),
+    )
+    email_allowed: bool = Field(
+        False,
+        description=(
+            "Whether POST /profiles/emails may give this profile an address. False for "
+            "profiles that existed before email addresses were introduced; it never changes."
+        ),
+    )
     created_at: datetime
     updated_at: datetime
     last_used: datetime | None
@@ -208,6 +229,8 @@ class ProfileResponse(BaseModel):
             proxy_config=proxy_config,
             storage_path=profile.storage_path if is_admin() else None,
             notes=profile.notes,
+            email=profile.email,
+            email_allowed=profile.email_allowed,
             created_at=profile.created_at,
             updated_at=profile.updated_at,
             last_used=profile.last_used,
@@ -464,6 +487,51 @@ class TagSkipped(BaseModel):
 class BulkTagsResponse(BaseModel):
     updated: list[ProfileResponse]
     skipped: list[TagSkipped]
+
+
+class EmailAssignment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, max_length=255)
+    row_version: int = Field(ge=0)
+    email: ProfileEmail
+
+
+class BulkEmailsRequest(BaseModel):
+    """One address per profile. The server decides which of them may be written."""
+
+    model_config = ConfigDict(extra="forbid")
+    assignments: list[EmailAssignment] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def one_address_per_profile(self):
+        if len({item.id for item in self.assignments}) != len(self.assignments):
+            raise ValueError("List each profile only once")
+        if len({email_key(item.email) for item in self.assignments}) != len(self.assignments):
+            raise ValueError("List each email address only once")
+        return self
+
+
+class BulkEmailsResponse(BaseModel):
+    updated: list[ProfileResponse]
+    skipped: list[TagSkipped]
+
+
+class EmailLookupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    emails: list[Annotated[str, StringConstraints(max_length=320)]] = Field(
+        min_length=1, max_length=100
+    )
+
+
+class TakenEmail(BaseModel):
+    email: str
+    profile_id: str
+    profile_name: str
+    in_trash: bool
+
+
+class EmailLookupResponse(BaseModel):
+    taken: list[TakenEmail]
 
 
 class BulkGroupRequest(BaseModel):
