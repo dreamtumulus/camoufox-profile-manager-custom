@@ -326,7 +326,7 @@ The legacy `/api/proxies` paths are aliases. See the
 | `PATCH /proxies/{id}` | `row_version` plus changed fields; returns entry |
 | `DELETE /proxies/{id}?row_version=N` | Deletes the entry; assigned profiles retain their copy |
 | `POST /proxies/{id}/check` | Runs a check; returns entry with `last_check` |
-| `POST /proxies/import` | `{ "text": "host:port\\n...", "group_name": "..." }` (`group_name` optional); returns `created` entries and `skipped` line/reason pairs |
+| `POST /proxies/import` | `{ "text": "host:port\\n...", "group_name": "..." }` (`group_name` optional); returns `created` entries, `skipped` line/reason pairs and `also_in_other_groups`, the number of created entries another group also holds. Only a proxy the same group already has is skipped |
 | `POST /proxies/{id}/assign` | `{ "proxy_row_version": N, "profiles": [{"id": "...", "row_version": N}] }`; returns `assigned` IDs and `skipped` ID/reason pairs |
 
 All results use the standard `ApiResponse` envelope. Public entries include

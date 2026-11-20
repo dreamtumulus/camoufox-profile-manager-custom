@@ -286,8 +286,9 @@ async def test_import_skips_exact_duplicates_without_echoing_credentials(invento
     )
     result = await inventory.import_configs([(1, config), (2, config)])
     assert len(result["created"]) == 1 and result["skipped"] == [
-        {"line": 2, "reason": "Proxy already exists"}
+        {"line": 2, "reason": "Proxy already exists among ungrouped proxies"}
     ]
+    assert result["also_in_other_groups"] == 0
     assert result["created"][0]["name"] == "proxy.example:8080"
     assert SECRET not in str(result)
     again = await inventory.import_configs([(1, config)])
@@ -304,30 +305,83 @@ async def test_import_dedup_ignores_country_labels_and_separates_credentials(inv
             (2, ProxyConfig(**{**base, "password": "different-account"})),
         ]
     )
-    assert result["skipped"] == [{"line": 1, "reason": "Proxy already exists"}]
+    assert result["skipped"] == [
+        {"line": 1, "reason": "Proxy already exists among ungrouped proxies"}
+    ]
     assert len(result["created"]) == 1
     assert len(await inventory.list()) == 2
 
 
 @pytest.mark.asyncio
-async def test_import_files_created_entries_under_group_and_leaves_duplicates(inventory):
+async def test_import_adds_a_proxy_another_group_has_and_never_moves_it(inventory):
     existing = await inventory.create({**VALUES, "group_name": "洛杉矶"})
     base = {field: VALUES[field] for field in ("type", "server", "username", "password")}
-    result = await inventory.import_configs(
-        [
-            (1, ProxyConfig(**base)),
-            (2, ProxyConfig(**{**base, "server": "second.example:8080"})),
-        ],
-        "纽约",
-    )
-    assert result["skipped"] == [{"line": 1, "reason": "Proxy already exists"}]
-    assert [proxy["group_name"] for proxy in result["created"]] == ["纽约"]
+    lines = [
+        (1, ProxyConfig(**base)),
+        (2, ProxyConfig(**{**base, "server": "second.example:8080"})),
+    ]
+    result = await inventory.import_configs(lines, "纽约")
+    # Line 1 is in 洛杉矶 already: it is saved again under 纽约, and said to be shared.
+    assert result["skipped"] == []
+    assert [proxy["group_name"] for proxy in result["created"]] == ["纽约", "纽约"]
+    assert result["also_in_other_groups"] == 1
+    assert existing["id"] not in {proxy["id"] for proxy in result["created"]}
     groups = {proxy["id"]: proxy["group_name"] for proxy in await inventory.list()}
     assert groups[existing["id"]] == "洛杉矶"
+    assert sorted(groups.values()) == ["洛杉矶", "纽约", "纽约"]
+    assert SECRET not in str(result)
+
+    # Within one group the same connection is still a duplicate.
+    again = await inventory.import_configs(lines, "纽约")
+    assert again["created"] == [] and again["also_in_other_groups"] == 0
+    assert again["skipped"] == [
+        {"line": 1, "reason": "Proxy already exists in this group"},
+        {"line": 2, "reason": "Proxy already exists in this group"},
+    ]
+    back = await inventory.import_configs(lines[:1], "洛杉矶")
+    assert back["skipped"] == [{"line": 1, "reason": "Proxy already exists in this group"}]
+    assert len(await inventory.list()) == 3
     ungrouped = await inventory.import_configs(
         [(1, ProxyConfig(**{**base, "server": "third.example:8080"}))]
     )
     assert ungrouped["created"][0]["group_name"] is None
+    assert ungrouped["also_in_other_groups"] == 0
+
+
+@pytest.mark.asyncio
+async def test_import_treats_ungrouped_as_a_group_of_its_own(inventory):
+    base = {field: VALUES[field] for field in ("type", "server", "username", "password")}
+    line = [(1, ProxyConfig(**base))]
+    await inventory.import_configs(line, "纽约")
+    # The grouped entry does not stop an ungrouped one, nor the other way round.
+    for blank in (None, ""):
+        loose = await inventory.import_configs(line, blank)
+        if blank is None:
+            assert loose["created"][0]["group_name"] is None
+            assert loose["also_in_other_groups"] == 1
+        else:
+            assert loose["skipped"] == [
+                {"line": 1, "reason": "Proxy already exists among ungrouped proxies"}
+            ]
+    third = await inventory.import_configs(line, "芝加哥")
+    assert third["created"][0]["group_name"] == "芝加哥" and third["also_in_other_groups"] == 1
+    # Another account on the same gateway is a different proxy in any group.
+    other = await inventory.import_configs(
+        [(1, ProxyConfig(**{**base, "password": "different-account"}))], "纽约"
+    )
+    assert len(other["created"]) == 1 and other["also_in_other_groups"] == 0
+    assert len(await inventory.list()) == 4
+
+
+@pytest.mark.asyncio
+async def test_import_repeated_lines_in_one_paste_land_once_per_group(inventory):
+    base = {field: VALUES[field] for field in ("type", "server", "username", "password")}
+    await inventory.create({**VALUES, "group_name": "洛杉矶"})
+    result = await inventory.import_configs(
+        [(1, ProxyConfig(**base)), (2, ProxyConfig(**base))], "纽约"
+    )
+    assert len(result["created"]) == 1 and result["also_in_other_groups"] == 1
+    assert result["skipped"] == [{"line": 2, "reason": "Proxy already exists in this group"}]
 
 
 @pytest.mark.asyncio

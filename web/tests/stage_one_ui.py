@@ -57,6 +57,7 @@ class DesktopUI(unittest.TestCase):
         self.proxy_stale_once = False
         self.proxy_failure_once = False
         self.import_failure = False
+        self.import_elsewhere = 0
         self.assignment_skips = []
         self.browser_state = {"installed": False, "version": None, "state": "idle", "progress": None, "message": "Browser not installed", "error": None}
         self.profiles = []
@@ -188,7 +189,8 @@ class DesktopUI(unittest.TestCase):
                 return
             proxy = {**self.library[0], "id": "imported", "name": "Imported proxy", "server": "imported.example:8080", "group_name": request.post_data_json.get("group_name")}
             self.library.append(proxy)
-            data, envelope = {"created": [proxy], "skipped": [{"line": 2, "reason": "Proxy already exists"}]}, True
+            reason = "Proxy already exists in this group" if proxy["group_name"] else "Proxy already exists among ungrouped proxies"
+            data, envelope = {"created": [proxy], "skipped": [{"line": 2, "reason": reason}], "also_in_other_groups": self.import_elsewhere}, True
         elif path == "/trash/profiles":
             data, envelope = {"profiles": self.trash}, True
         elif path.endswith("?confirm=true"):
@@ -632,7 +634,8 @@ class DesktopUI(unittest.TestCase):
         field.fill("http://user:import-secret-value@imported.example:8080\nimported.example:8080")
         self.page.get_by_role("button", name="Import proxies", exact=True).click()
         expect(self.page.get_by_text("1 proxy imported.", exact=True)).to_be_visible()
-        expect(self.page.get_by_role("dialog")).to_contain_text("Line 2: Proxy already exists")
+        expect(self.page.get_by_role("dialog")).to_contain_text("Line 2: Proxy already exists among ungrouped proxies")
+        expect(self.page.get_by_role("dialog")).not_to_contain_text("Also saved in another group")
         self.assertNotIn("import-secret-value", self.page.locator("body").inner_text())
         # An empty group is left out of the request and out of the result.
         body = next(json.loads(body) for _, path, body in self.calls if path == "/proxies/import")
@@ -661,6 +664,8 @@ class DesktopUI(unittest.TestCase):
         self.page.get_by_label("One proxy per line (up to 100)", exact=True).fill("imported.example:8080")
         self.page.get_by_role("button", name="Import proxies", exact=True).click()
         expect(dialog.get_by_text("Added to group: Datacenter", exact=True)).to_be_visible()
+        expect(dialog).to_contain_text("Line 2: Proxy already exists in this group")
+        expect(dialog).not_to_contain_text("Also saved in another group")
         body = next(json.loads(body) for _, path, body in self.calls if path == "/proxies/import")
         self.assertEqual(body, {"text": "imported.example:8080", "group_name": "Datacenter"})
         self.page.get_by_role("button", name="Done", exact=True).click()
@@ -668,6 +673,21 @@ class DesktopUI(unittest.TestCase):
         # A reopened dialog starts ungrouped rather than reusing the last group.
         self.page.get_by_role("button", name="Import", exact=True).click()
         expect(group).to_have_value("")
+
+    def test_proxy_import_says_when_a_proxy_is_also_saved_in_another_group(self):
+        self.import_elsewhere = 1
+        self.open_proxy_library()
+        self.page.get_by_role("button", name="Import", exact=True).click()
+        dialog = self.page.get_by_role("dialog")
+        # Said before importing: another group's proxy is not a duplicate here.
+        expect(dialog).to_contain_text("A proxy another group already has is imported again into this one")
+        self.page.get_by_label("Proxy group (optional)", exact=True).fill("Second group")
+        self.page.get_by_label("One proxy per line (up to 100)", exact=True).fill("imported.example:8080")
+        self.page.get_by_role("button", name="Import proxies", exact=True).click()
+        expect(dialog.get_by_text("1 proxy imported.", exact=True)).to_be_visible()
+        expect(dialog.get_by_text(
+            "Also saved in another group: 1. Profiles created from both groups would share these proxies.", exact=True
+        )).to_be_visible()
 
     def test_proxy_import_error_exposes_only_safe_line_number(self):
         self.open_proxy_library()

@@ -200,7 +200,10 @@ async def test_import_validates_all_lines_before_write_and_skips_duplicates(prox
     imported = await proxy_client.post("/api/v1/proxies/import", json={"text": text})
     assert imported.status_code == 200 and "import-secret" not in imported.text
     assert len(imported.json()["data"]["created"]) == 1
-    assert imported.json()["data"]["skipped"] == [{"line": 2, "reason": "Proxy already exists"}]
+    assert imported.json()["data"]["skipped"] == [
+        {"line": 2, "reason": "Proxy already exists among ungrouped proxies"}
+    ]
+    assert imported.json()["data"]["also_in_other_groups"] == 0
     repeated = await proxy_client.post("/api/v1/proxies/import", json={"text": text})
     assert repeated.json()["data"]["created"] == []
     assert len(repeated.json()["data"]["skipped"]) == 2
@@ -220,12 +223,18 @@ async def test_import_group_applies_to_created_proxies_only(proxy_client):
         "US residential",
         "US residential",
     ]
-    # A duplicate is skipped, so importing it again never moves it to the new group.
-    moved = await proxy_client.post(
-        "/api/v1/proxies/import",
-        json={"text": "first.example:8080\nthird.example:8080", "group_name": "Other"},
-    )
-    assert moved.json()["data"]["skipped"] == [{"line": 1, "reason": "Proxy already exists"}]
+    # A proxy another group has is added to this one too; it is never moved.
+    other = {"text": "first.example:8080\nthird.example:8080", "group_name": "Other"}
+    copied = (await proxy_client.post("/api/v1/proxies/import", json=other)).json()["data"]
+    assert copied["skipped"] == [] and copied["also_in_other_groups"] == 1
+    assert [proxy["group_name"] for proxy in copied["created"]] == ["Other", "Other"]
+    # Within one group it is still a duplicate.
+    again = (await proxy_client.post("/api/v1/proxies/import", json=other)).json()["data"]
+    assert again["created"] == [] and again["also_in_other_groups"] == 0
+    assert again["skipped"] == [
+        {"line": 1, "reason": "Proxy already exists in this group"},
+        {"line": 2, "reason": "Proxy already exists in this group"},
+    ]
     for index, blank in enumerate(({}, {"group_name": None}, {"group_name": "   "})):
         response = await proxy_client.post(
             "/api/v1/proxies/import", json={"text": f"blank{index}.example:8080", **blank}
@@ -235,13 +244,14 @@ async def test_import_group_applies_to_created_proxies_only(proxy_client):
         "/api/v1/proxies/import", json={"text": "long.example:8080", "group_name": "g" * 65}
     )
     assert too_long.status_code == 422
-    groups = {
-        proxy["server"]: proxy["group_name"]
+    saved = [
+        (proxy["server"], proxy["group_name"])
         for proxy in (await proxy_client.get("/api/v1/proxies")).json()["data"]["proxies"]
-    }
-    assert groups["first.example:8080"] == "US residential"
-    assert groups["third.example:8080"] == "Other"
-    assert "long.example:8080" not in groups and len(groups) == 6
+    ]
+    assert ("first.example:8080", "US residential") in saved
+    assert ("first.example:8080", "Other") in saved
+    assert ("third.example:8080", "Other") in saved
+    assert not any(server == "long.example:8080" for server, _ in saved) and len(saved) == 7
 
 
 @pytest.mark.asyncio

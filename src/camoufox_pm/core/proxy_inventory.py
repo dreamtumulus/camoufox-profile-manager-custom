@@ -38,6 +38,12 @@ class ProxyCredentialsUnavailable(RuntimeError):
     """Credentials must never silently pass through as encrypted text."""
 
 
+# Why an import left a line out. A group holds a connection once; the library
+# may hold it once per group.
+DUPLICATE_IN_GROUP = "Proxy already exists in this group"
+DUPLICATE_UNGROUPED = "Proxy already exists among ungrouped proxies"
+
+
 def _stored_password(password: str | None) -> str | None:
     if not password:
         return None
@@ -337,33 +343,48 @@ class ProxyInventory:
     ) -> dict:
         """Parser validates the whole batch before this safe storage phase begins.
 
-        Country is display metadata, so the same connection imported after its
-        country was labeled still counts as a duplicate. A short write
-        reservation serializes duplicate detection and insert across processes.
+        A duplicate is the same connection in the same group: type, server,
+        username and password. The same connection may be saved again under
+        another group, and ungrouped counts as a group of its own, so a list can
+        be imported into a second group. Country is display metadata, so the
+        same connection imported after its country was labeled still counts as
+        a duplicate. A short write reservation serializes duplicate detection
+        and insert across processes.
 
         ``group_name`` files only the entries this call creates. A skipped
-        duplicate keeps the group it already has: import adds proxies, it never
-        moves saved ones.
+        duplicate keeps what it has, and an entry in another group is left where
+        it is: import adds proxies, it never moves saved ones.
+        ``also_in_other_groups`` counts the created entries whose connection
+        another group already holds, since profiles made from both groups would
+        share those proxies.
         """
         if not 1 <= len(configs) <= 100:
             raise ValueError("Import between 1 and 100 proxies")
-        result: dict[str, builtins.list[Any]] = {"created": [], "skipped": []}
+        group_name = group_name or None
+        result: dict[str, Any] = {"created": [], "skipped": [], "also_in_other_groups": 0}
         for line, config in configs:
             try:
                 with self.connection:
                     self.connection.execute("BEGIN IMMEDIATE")
                     candidates = self.connection.execute(
-                        "SELECT id FROM proxy_inventory WHERE type = ? AND server = ? "
-                        "AND username IS ?",
+                        "SELECT id, group_name FROM proxy_inventory WHERE type = ? "
+                        "AND server = ? AND username IS ?",
                         (config.type.value, config.server, config.username),
                     ).fetchall()
-                    duplicate = any(
-                        self._secret_config(row["id"]).password == config.password
+                    holders = [
+                        row["group_name"] or None
                         for row in candidates
-                    )
-                    if duplicate:
-                        result["skipped"].append({"line": line, "reason": "Proxy already exists"})
+                        if self._secret_config(row["id"]).password == config.password
+                    ]
+                    if group_name in holders:
+                        result["skipped"].append(
+                            {
+                                "line": line,
+                                "reason": DUPLICATE_IN_GROUP if group_name else DUPLICATE_UNGROUPED,
+                            }
+                        )
                         continue
+                    result["also_in_other_groups"] += bool(holders)
                     result["created"].append(
                         await self.create(
                             {

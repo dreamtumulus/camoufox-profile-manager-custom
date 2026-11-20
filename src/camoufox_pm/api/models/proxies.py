@@ -207,3 +207,5 @@ class ImportSkip(BaseModel):
 class ProxyImportData(BaseModel):
     created: list[ProxyResponse]
     skipped: list[ImportSkip]
+    # Created entries whose connection is also saved under another group.
+    also_in_other_groups: int = 0

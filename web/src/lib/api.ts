@@ -291,6 +291,8 @@ export interface ProxyAssignmentResult {
 export interface ProxyImportResult {
   created: LibraryProxy[]
   skipped: { line: number; reason: string }[]
+  /** Created entries whose connection another group already holds. */
+  also_in_other_groups?: number
 }
 
 export const proxiesAPI = {

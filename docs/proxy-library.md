@@ -45,14 +45,25 @@ socks5://[2001:db8::1]:1080
 A bare server uses HTTP. Percent-encode special characters in credentials:
 `p%40ss%3Aword` represents `p@ss:word`. Paths, query strings and fragments are
 not accepted. Validation checks the complete list before saving anything and
-identifies invalid lines without repeating credentials. Exact duplicates are
-skipped; the result reports created entries and skipped line numbers.
+identifies invalid lines without repeating credentials. Duplicates are skipped;
+the result reports created entries and skipped line numbers.
 
 **Proxy group (optional)** files every proxy the import creates under one
 library group. Pick an existing group or type a new name of up to 64
-characters; leave it empty to keep them ungrouped. A proxy that is already
-saved is skipped as a duplicate and stays in its current group, so use
-**Change proxy group** to move saved proxies.
+characters; leave it empty to keep them ungrouped.
+
+A duplicate is the same proxy **in the same group**: the same type, server,
+username and password. A proxy that another group already has is not a
+duplicate: it is saved again under the group of this import, and the entry in
+the other group stays where it is. Ungrouped counts as a group of its own. So
+the same list can be imported into a second group, while importing it twice
+into one group creates nothing. To move saved proxies rather than copy them, use
+**Change proxy group**.
+
+When an import saves proxies that another group also has, the result says how
+many. Profiles created from both groups would share those proxies, because a
+[template batch](template-batches.md) only checks that its proxies come from one
+group, not whether another profile already uses them.
 
 ## Assign to profiles
 
