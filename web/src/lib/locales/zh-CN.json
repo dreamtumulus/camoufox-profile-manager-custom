@@ -1243,6 +1243,7 @@
   "Clear email": "清除邮箱",
   "{email} will be removed from \"{name}\". Another address can then be imported for this profile.": "将从「{name}」移除 {email}。之后可以为这个配置重新导入邮箱。",
   "Email address removed": "邮箱已清除",
+  "Double-click to copy: {email}": "双击复制：{email}",
   "Email copied": "邮箱已复制",
   "Email not copied": "邮箱复制失败",
   "Copy it from the Email column by hand: {email}": "请从「邮箱」列手动复制：{email}",
@@ -1299,5 +1300,17 @@
   "The proxy did not pass its check": "代理检测未通过",
   "The proxy check is too old; check the proxy again": "代理检测结果已过期，请重新检测",
   "Profile changed; reload before importing email addresses": "配置已被修改，请刷新后再导入邮箱",
-  "This email address is already on another profile": "该邮箱已在其他配置上"
+  "This email address is already on another profile": "该邮箱已在其他配置上",
+  "Same as the proxy group (automatic)": "与代理分组相同（自动）",
+  "Select proxies below and the profiles join the profile group with the same name as their proxy group.": "在下方选择代理后，这批配置会放入与代理分组同名的配置分组。",
+  "The selected proxies have no group, so these profiles stay ungrouped.": "所选代理没有分组，这批配置将不分组。",
+  "These profiles join the profile group \"{group}\".": "这批配置会放入配置分组「{group}」。",
+  "These profiles join a new profile group \"{group}\", created with them.": "这批配置会放入新的配置分组「{group}」，创建配置时自动新建。",
+  "This batch uses proxies from the proxy group \"{group}\". Proxies from other groups cannot be added.": "这批使用代理分组「{group}」的代理，其他分组的代理不能加入。",
+  "A batch uses proxies from one proxy group. Choose a proxy group in the filter, or tick one proxy, before Select all.": "一批只能使用同一个代理分组的代理。请先在筛选里选择一个代理分组，或先勾选一个代理，再全选。",
+  "A batch cannot mix proxy groups. Select proxies from one proxy group.": "一批不能混用多个代理分组的代理，请只选择同一个代理分组的代理。",
+  "Proxy group: {group}": "代理分组：{group}",
+  "Profile group: {group}": "配置分组：{group}",
+  "Profile group: {group} (will be created)": "配置分组：{group}（将自动创建）",
+  "Profile group: none, because the proxies are ungrouped": "配置分组：无（所选代理没有分组）"
 }

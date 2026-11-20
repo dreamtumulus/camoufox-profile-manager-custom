@@ -4,8 +4,16 @@ In **Templates**, choose **Create batch** on a saved template. Type the name the
 profiles share (for example `Work `); the profile number, shown as a fixed `{n}`
 beside the field, is always added after it, and the line below shows the first
 resulting name. Set a count from 1 to 100, a starting number and number width.
-Choose an optional group. Existing names are rejected by default;
+Existing names are rejected by default;
 allow duplicates explicitly if you need them. Existing profiles are never overwritten.
+
+**Group** decides the profile group of the new profiles. It starts on **Same as
+the proxy group (automatic)**: the profiles join the profile group that has the
+same name as the proxy-library group their proxies come from, and that profile
+group is created together with the first profile when it does not exist yet.
+Ungrouped proxies, or no proxies, leave the profiles ungrouped. Choose
+**Ungrouped** or a named group instead to decide it yourself. Profile groups and
+proxy-library groups are separate lists; only this choice connects them.
 
 Optionally select one distinct saved proxy for each profile. Selection order
 defines the mapping; selecting fewer proxies than profiles is rejected rather
@@ -14,6 +22,14 @@ Selecting proxies sets **Count** to the number selected, so it does not need to
 be typed; a count edited afterwards must still match the selection. **Select
 all** at the top of the list selects or clears every proxy shown under the
 current group filter, up to the limit of 100 per batch.
+
+A batch takes its proxies from one proxy-library group. The first proxy selected
+decides the group; proxies of other groups are then disabled, and **Select all**
+adds only that group's proxies. While nothing is selected and the list shows
+more than one group, **Select all** is unavailable: choose a group in the filter
+or tick one proxy first. Ungrouped proxies count as a group of their own. The
+server refuses a preview or a creation whose proxies come from more than one
+group, and writes nothing.
 Passwords stay hidden. A preview checks saved proxy versions and access to the
 encryption key, not network connectivity: use **Check** in the proxy library for
 connection tests.

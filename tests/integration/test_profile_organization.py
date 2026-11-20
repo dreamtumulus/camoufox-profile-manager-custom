@@ -157,6 +157,20 @@ async def test_saved_view_crud_persists_and_stale_changes_are_refused(client):
     assert (await client.get("/api/v1/saved-filters")).json()["data"]["filters"] == []
 
 
+async def test_a_saved_view_can_keep_newest_first_and_older_views_keep_name_order(client):
+    newest = await client.post(
+        "/api/v1/saved-filters",
+        json={"name": "Newest", "config": {"sort_key": "created", "sort_direction": "desc"}},
+    )
+    assert newest.status_code == 201, newest.text
+    assert newest.json()["data"]["config"]["sort_key"] == "created"
+    # A view saved without an order means what it always meant, whatever the list starts in.
+    plain = await client.post("/api/v1/saved-filters", json={"name": "Plain", "config": {}})
+    assert plain.status_code == 201
+    config = plain.json()["data"]["config"]
+    assert (config["sort_key"], config["sort_direction"]) == ("name", "asc")
+
+
 @pytest.mark.parametrize(
     "body",
     [

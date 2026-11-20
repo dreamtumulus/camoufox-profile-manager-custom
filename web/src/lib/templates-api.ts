@@ -29,10 +29,16 @@ export interface TemplateBatchRequest {
   group: string | null
   proxy_refs: { id: string; row_version: number }[]
   allow_duplicate_names: boolean
+  /** File the profiles under the profile group named like their proxies' library group. */
+  group_from_proxies?: boolean
 }
 export interface TemplateBatchPreview {
   names: string[]
   proxy_mapping: { id: string; name: string; type: string; server: string }[]
+  /** The one library group the proxies come from; null is ungrouped. Absent without proxies. */
+  proxy_group?: string | null
+  /** Present when the batch follows its proxies: the profile group they join, or null. */
+  profile_group?: { name: string; new: boolean } | null
 }
 export interface TemplateBatch {
   id: string

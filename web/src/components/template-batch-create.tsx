@@ -12,6 +12,10 @@ function endpoint(proxy: { type: string; server: string }) {
   catch { return '—' }
 }
 
+/** The Group choice that files the profiles under their proxies' group. */
+const FOLLOW_PROXY_GROUP = '__proxy__'
+const proxyGroupOf = (proxy: { group_name?: string | null }) => proxy.group_name || ''
+
 export function TemplateBatchCreate({ template, existing = null, onClose }: {
   template: ProfileTemplate | null
   existing?: TemplateBatch | null
@@ -23,7 +27,7 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
   const [count, setCount] = useState(5)
   const [start, setStart] = useState(1)
   const [digits, setDigits] = useState(3)
-  const [group, setGroup] = useState('')
+  const [group, setGroup] = useState(FOLLOW_PROXY_GROUP)
   const [allowDuplicates, setAllowDuplicates] = useState(false)
   const [groups, setGroups] = useState<Group[]>([])
   const [proxies, setProxies] = useState<LibraryProxy[]>([])
@@ -42,11 +46,23 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
   const proxyGroups = [...new Set(proxies.map(proxy => proxy.group_name).filter((group): group is string => !!group))].sort()
   const visibleProxies = proxies.filter(proxy => !proxyGroup || (proxyGroup === '__ungrouped__' ? !proxy.group_name : proxy.group_name === proxyGroup))
 
+  // A batch draws its proxies from one library group, and the first proxy picked
+  // decides which. Mixed, half of a batch named for one country once ended up on
+  // another country's proxies. '' stands for ungrouped proxies.
+  const firstSelected = proxies.find(proxy => proxy.id === selected[0])
+  const selectedGroup = firstSelected ? proxyGroupOf(firstSelected) : null
+  const visibleGroups = new Set(visibleProxies.map(proxyGroupOf))
+  const eligibleIds = (selectedGroup === null
+    ? visibleGroups.size === 1 ? visibleProxies : []
+    : visibleProxies.filter(proxy => proxyGroupOf(proxy) === selectedGroup)).map(proxy => proxy.id)
   const visibleIds = visibleProxies.map(proxy => proxy.id)
   const visibleSelected = visibleIds.filter(id => selected.includes(id)).length
+  const eligibleSelected = eligibleIds.filter(id => selected.includes(id)).length
+  const allEligibleSelected = eligibleIds.length > 0 && eligibleSelected === eligibleIds.length
   const atLimit = selected.length >= MAX_BATCH_PROFILES
-  // "Select all" adds what is shown while the batch has room, otherwise it clears what is shown.
-  const canAddVisible = !atLimit && visibleSelected < visibleIds.length
+  // "Select all" adds what is shown and may join while the batch has room, otherwise it clears what is shown.
+  const canAddVisible = !atLimit && eligibleSelected < eligibleIds.length
+  const follows = group === FOLLOW_PROXY_GROUP
 
   // One proxy per profile, so the count follows the selection while any proxy is selected.
   function choose(next: string[]) {
@@ -57,7 +73,7 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
   function toggleVisibleProxies() {
     // Proxies already picked keep their place: the preview maps them in selection order.
     choose(canAddVisible
-      ? [...selected, ...visibleIds.filter(id => !selected.includes(id))].slice(0, MAX_BATCH_PROFILES)
+      ? [...selected, ...eligibleIds.filter(id => !selected.includes(id))].slice(0, MAX_BATCH_PROFILES)
       : selected.filter(id => !visibleIds.includes(id)))
   }
 
@@ -75,6 +91,7 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
       'Names repeat within this batch; change the pattern or explicitly allow duplicates',
       'Selected group no longer exists', 'Proxy not found',
       'Select one distinct proxy per profile, or no proxies',
+      'A batch cannot mix proxy groups. Select proxies from one proxy group.',
       'Stored proxy credentials are unavailable. Restore the manager encryption key.',
     ]
     if (error instanceof ApiRequestError && known.includes(error.message)) return t(error.message)
@@ -93,7 +110,9 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
     if (selected.length && selected.length !== count) { setError(t('Select exactly {count} distinct proxies, or leave all proxies unselected.', { count })); return }
     const refs = selected.map(id => proxies.find(proxy => proxy.id === id)).filter((proxy): proxy is LibraryProxy => !!proxy)
     if (refs.length !== selected.length) { setError(t('The template or selected proxy changed. Reload and review a new preview.')); return }
-    const data: TemplateBatchRequest = { batch_id: crypto.randomUUID(), row_version: template.row_version, names, group: group || null, proxy_refs: refs.map(({ id, row_version }) => ({ id, row_version })), allow_duplicate_names: allowDuplicates }
+    if (new Set(refs.map(proxyGroupOf)).size > 1) { setError(t('A batch cannot mix proxy groups. Select proxies from one proxy group.')); return }
+    // Without proxies there is no proxy group to follow, and the profiles stay ungrouped.
+    const data: TemplateBatchRequest = { batch_id: crypto.randomUUID(), row_version: template.row_version, names, group: follows ? null : group || null, proxy_refs: refs.map(({ id, row_version }) => ({ id, row_version })), allow_duplicate_names: allowDuplicates, ...(follows && refs.length ? { group_from_proxies: true } : {}) }
     setBusy(true)
     try {
       const checked = await templatesAPI.previewBatch(template, data)
@@ -153,18 +172,38 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
         <label>{t('Start number')}<input className="field mt-1" type="number" min={0} max={999999} value={start} disabled={busy} onChange={event => setStart(Number(event.target.value))} /></label>
         <label>{t('Number digits')}<select className="field mt-1" value={digits} disabled={busy} onChange={event => setDigits(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}</select></label>
       </div>
-      <label className="block">{t('Group')}<select className="field mt-1" value={group} disabled={busy} onChange={event => setGroup(event.target.value)}><option value="">{t('Ungrouped')}</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label>
+      <div>
+        <label className="block" htmlFor="batch-profile-group">{t('Group')}</label>
+        <select id="batch-profile-group" className="field mt-1" value={group} disabled={busy} onChange={event => setGroup(event.target.value)} aria-describedby={follows ? 'batch-group-help' : undefined}><option value={FOLLOW_PROXY_GROUP}>{t('Same as the proxy group (automatic)')}</option><option value="">{t('Ungrouped')}</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}</select>
+        {follows && <p id="batch-group-help" role="status" className="mt-1 text-ink-dim">{selectedGroup === null
+          ? t('Select proxies below and the profiles join the profile group with the same name as their proxy group.')
+          : selectedGroup === ''
+            ? t('The selected proxies have no group, so these profiles stay ungrouped.')
+            : groups.some(item => item.name === selectedGroup)
+              ? t('These profiles join the profile group "{group}".', { group: selectedGroup })
+              : t('These profiles join a new profile group "{group}", created with them.', { group: selectedGroup })}</p>}
+      </div>
       <label className="flex items-start gap-2"><input type="checkbox" checked={allowDuplicates} disabled={busy} onChange={event => setAllowDuplicates(event.target.checked)} /><span>{t('Allow duplicate profile names. Existing profiles will never be overwritten.')}</span></label>
       <fieldset><legend className="font-medium">{t('Optional proxy list')}</legend><p className="mt-1 text-ink-dim">{t('Select one distinct proxy per profile, or none. The preview follows your selection order; passwords remain hidden.')}</p>
         <p className="mt-1 text-ink-dim">{t('Preview checks names and saved proxy selections. Use Check in the proxy library to test connections.')}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2"><select className="field field-compact w-[180px]" aria-label={t('Filter by proxy group')} value={proxyGroup} disabled={busy} onChange={event => setProxyGroup(event.target.value)}><option value="">{t('All proxy groups')}</option><option value="__ungrouped__">{t('Ungrouped')}</option>{proxyGroups.map(item => <option key={item} value={item}>{item}</option>)}</select><span className="text-ink-dim">{t('{count} proxies selected', { count: selected.length })}</span></div>
         <p className="mt-2 text-ink-dim">{t('Selecting proxies sets Count to the number selected.')}</p>
+        {selectedGroup !== null && proxies.some(proxy => proxyGroupOf(proxy) !== selectedGroup) && <p className="mt-1 text-ink-dim" role="status">{t('This batch uses proxies from the proxy group "{group}". Proxies from other groups cannot be added.', { group: selectedGroup || t('Ungrouped') })}</p>}
+        {selectedGroup === null && visibleGroups.size > 1 && <p className="mt-1 text-ink-dim" role="status">{t('A batch uses proxies from one proxy group. Choose a proxy group in the filter, or tick one proxy, before Select all.')}</p>}
         {atLimit && <p className="mt-1 text-ink-dim" role="status">{t('A batch holds up to {count} profiles; no more proxies can be selected.', { count: MAX_BATCH_PROFILES })}</p>}
-        <ul className="mt-2 max-h-[220px] divide-y divide-line overflow-y-auto rounded-md border border-line">{visibleProxies.length > 0 && <li className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-raised px-3 py-2"><label className="flex items-center gap-2 font-medium"><input type="checkbox" ref={element => { if (element) element.indeterminate = visibleSelected > 0 && visibleSelected < visibleIds.length }} checked={visibleSelected === visibleIds.length} disabled={busy || (!canAddVisible && !visibleSelected)} onChange={toggleVisibleProxies} />{t('Select all')}</label><span className="text-ink-dim">{visibleSelected} / {visibleIds.length}</span></li>}{visibleProxies.map(proxy => <li key={proxy.id}><label className="flex items-start gap-2 px-3 py-2"><input type="checkbox" checked={selected.includes(proxy.id)} disabled={busy || (!selected.includes(proxy.id) && atLimit)} onChange={() => choose(selected.includes(proxy.id) ? selected.filter(id => id !== proxy.id) : [...selected, proxy.id])} /><span><span className="block">{proxy.name}{proxy.group_name && <span className="ml-2 text-[11px] text-ink-dim">{proxy.group_name}</span>}</span><span className="break-all font-mono text-[11px] text-ink-dim">{endpoint(proxy)}</span></span></label></li>)}{!loading && !visibleProxies.length && <li className="px-3 py-2 text-ink-dim">{proxies.length ? t('No proxies in this group.') : t('No saved proxies. These profiles will use a direct connection.')}</li>}</ul>
+        <ul className="mt-2 max-h-[220px] divide-y divide-line overflow-y-auto rounded-md border border-line">{visibleProxies.length > 0 && <li className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-raised px-3 py-2"><label className="flex items-center gap-2 font-medium"><input type="checkbox" ref={element => { if (element) element.indeterminate = visibleSelected > 0 && !allEligibleSelected }} checked={allEligibleSelected} disabled={busy || (!canAddVisible && !visibleSelected)} onChange={toggleVisibleProxies} />{t('Select all')}</label><span className="text-ink-dim">{visibleSelected} / {selectedGroup === null ? visibleIds.length : eligibleIds.length}</span></li>}{visibleProxies.map(proxy => { const otherGroup = selectedGroup !== null && proxyGroupOf(proxy) !== selectedGroup; return <li key={proxy.id}><label className={`flex items-start gap-2 px-3 py-2 ${otherGroup ? 'opacity-50' : ''}`}><input type="checkbox" checked={selected.includes(proxy.id)} disabled={busy || (!selected.includes(proxy.id) && (atLimit || otherGroup))} onChange={() => choose(selected.includes(proxy.id) ? selected.filter(id => id !== proxy.id) : [...selected, proxy.id])} /><span><span className="block">{proxy.name}{proxy.group_name && <span className="ml-2 text-[11px] text-ink-dim">{proxy.group_name}</span>}</span><span className="break-all font-mono text-[11px] text-ink-dim">{endpoint(proxy)}</span></span></label></li> })}{!loading && !visibleProxies.length && <li className="px-3 py-2 text-ink-dim">{proxies.length ? t('No proxies in this group.') : t('No saved proxies. These profiles will use a direct connection.')}</li>}</ul>
       </fieldset>
     </div>}
     {preview && <div className="mt-4">
       <p className="text-ink-dim">{submitted ? t('The batch identifier is retained on this manager. Retrying resumes only rows without a committed profile; deleted profiles are never recreated.') : t('Nothing has been created yet. Confirm the exact names and proxy mapping below.')}</p>
+      {(preview.proxy_group !== undefined || preview.profile_group !== undefined) && <p className="mt-2" role="status">
+        {preview.proxy_group !== undefined && <span className="mr-4">{t('Proxy group: {group}', { group: preview.proxy_group ?? t('Ungrouped') })}</span>}
+        {preview.profile_group !== undefined && <span>{preview.profile_group === null
+          ? t('Profile group: none, because the proxies are ungrouped')
+          : preview.profile_group.new && !submitted
+            ? t('Profile group: {group} (will be created)', { group: preview.profile_group.name })
+            : t('Profile group: {group}', { group: preview.profile_group.name })}</span>}
+      </p>}
       {busy && submitted && <p className="mt-2 text-ink-dim" role="status">{t('Creation may continue if this dialog closes or the connection drops. Check Recent batches before starting another batch.')}</p>}
       {request && <p className="mt-2 break-all font-mono text-[11px] text-ink-dim">{request.batch_id}</p>}
       {result && <p className="mt-2" role="status">{t('{created} of {total} profiles created', { created: result.items.filter(item => item.profile_id !== null).length, total: result.items.length })}</p>}

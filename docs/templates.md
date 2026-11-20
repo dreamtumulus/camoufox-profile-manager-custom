@@ -29,7 +29,7 @@ All routes below use `/api/v1` (legacy `/api` aliases remain available), the exi
 | PATCH | `/templates/{id}` | `row_version` plus changed fields; extension IDs replace snapshots only when present |
 | DELETE | `/templates/{id}?row_version=N` | Version required |
 | POST | `/templates/{id}/profiles` | `row_version`, new profile `name`, optional `group` |
-| POST | `/templates/{id}/batch-preview` | Batch UUID, template version, names, optional group and versioned proxy references; no creation |
+| POST | `/templates/{id}/batch-preview` | Batch UUID, template version, names, optional `group` or `group_from_proxies`, and versioned proxy references from one proxy-library group; no creation. Returns `proxy_group` and, when following it, `profile_group` (`name`, `new`) |
 | POST | `/templates/{id}/profile-batches` | Same exact preview intent; returns per-row results and failed positions |
 | GET | `/template-profile-batches` | Latest 20 local batch results; administrator only |
 | GET | `/template-profile-batches/{uuid}` | Saved intent and current per-row results; no automatic resume |

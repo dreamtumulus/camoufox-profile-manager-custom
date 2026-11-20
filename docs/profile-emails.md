@@ -46,7 +46,9 @@ Which profiles are targets:
   address. One import covers the first 100.
 - In both cases, only profiles created since this feature (see above).
 
-Addresses are handed out in list order to the profiles whose proxy passed. A
+Addresses are handed out in list order to the profiles whose proxy passed. The
+list starts newest first, so unless it is sorted otherwise the most recently
+created profile takes the first address. A
 profile that did not pass, or has no proxy, is skipped without using an address
 up: the next profile that passed takes it. Addresses nobody took are listed with
 a **Copy addresses** button; they are recorded nowhere and can be imported again.
@@ -84,6 +86,12 @@ page may write the clipboard only while it is handling the click.
 - Starting several profiles at once with **Launch** copies nothing.
 - If the address cannot be copied the browser still starts, and the notification
   shows the address so it can be copied by hand.
+
+## Double-click copies the address
+
+Double-clicking a row's **Email** cell copies that address and says so in a
+notification, without starting the browser. A row without an address has
+nothing to copy and leaves the clipboard alone.
 
 ## Spreadsheets
 

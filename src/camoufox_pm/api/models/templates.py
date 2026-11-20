@@ -102,6 +102,13 @@ class TemplateBatchRequest(BaseModel):
     group: str | None = Field(None, min_length=1, max_length=255)
     proxy_refs: list[TemplateProxyReference] = Field(default_factory=list, max_length=100)
     allow_duplicate_names: bool = False
+    group_from_proxies: bool = Field(
+        False,
+        description=(
+            "File the profiles under the profile group named like the proxy-library group "
+            "the selected proxies belong to, creating that profile group if it is missing."
+        ),
+    )
 
     @model_validator(mode="after")
     def valid_mapping(self):
@@ -111,6 +118,10 @@ class TemplateBatchRequest(BaseModel):
             raise ValueError("Select one distinct proxy per profile, or no proxies")
         if len({ref.id for ref in self.proxy_refs}) != len(self.proxy_refs):
             raise ValueError("Select one distinct proxy per profile, or no proxies")
+        if self.group_from_proxies and self.group is not None:
+            raise ValueError("Choose a profile group or follow the proxy group, not both")
+        if self.group_from_proxies and not self.proxy_refs:
+            raise ValueError("Following the proxy group requires selected proxies")
         return self
 
 

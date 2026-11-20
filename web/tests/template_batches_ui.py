@@ -36,6 +36,7 @@ class TemplateBatchesUI(StageTwoUI):
         )
         self.library = [{**item, "group_name": "Team proxies"} for item in self.library]
         self.previews = []
+        self.profile_group_names = {"Team"}  # the profile groups stage_two serves
         self.creations = []
         self.saved = {}
         self.drop_once = False
@@ -62,8 +63,35 @@ class TemplateBatchesUI(StageTwoUI):
                 for proxy in self.library
                 if proxy["id"] == ref["id"]
             ]
+            chosen = [
+                proxy
+                for ref in body["proxy_refs"]
+                for proxy in self.library
+                if proxy["id"] == ref["id"]
+            ]
+            proxy_groups = {proxy.get("group_name") for proxy in chosen}
+            if len(proxy_groups) > 1:
+                return route.fulfill(
+                    status=422,
+                    json={
+                        "error": {
+                            "message": "A batch cannot mix proxy groups. Select proxies from one proxy group."
+                        }
+                    },
+                )
+            followed = {}
+            if chosen:
+                followed["proxy_group"] = next(iter(proxy_groups))
+            if body.get("group_from_proxies"):
+                name = next(iter(proxy_groups))
+                followed["profile_group"] = (
+                    {"name": name, "new": name not in self.profile_group_names} if name else None
+                )
             return route.fulfill(
-                json={"success": True, "data": {"names": body["names"], "proxy_mapping": mapping}}
+                json={
+                    "success": True,
+                    "data": {"names": body["names"], "proxy_mapping": mapping, **followed},
+                }
             )
         if path.endswith("/profile-batches"):
             body = route.request.post_data_json
@@ -246,8 +274,18 @@ class TemplateBatchesUI(StageTwoUI):
         expect(dialog.get_by_text("Client-008", exact=True)).to_be_visible()
         self.assertEqual(self.previews[0]["names"], ["Client-007", "Client-008"])
 
+    def third_proxy(self, group):
+        self.library.append(
+            {
+                **self.library[0],
+                "id": "library-three",
+                "name": "Third",
+                "server": "third.example:8080",
+                "group_name": group,
+            }
+        )
+
     def test_selected_proxies_set_the_count_and_select_all_acts_on_the_shown_list(self):
-        self.library[1]["group_name"] = "Other"
         dialog, count, select_all = self.new_batch()
         expect(count).to_have_value("5")
         expect(count).to_have_attribute("max", "100")
@@ -259,15 +297,135 @@ class TemplateBatchesUI(StageTwoUI):
         expect(count).to_have_value("2")
         expect(dialog).to_contain_text("2 proxies selected")
         self.assertFalse(select_all.evaluate("element => element.indeterminate"))
-        # Under a group filter it selects and clears only that group's proxies.
-        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
-        expect(select_all).to_be_checked()
-        select_all.uncheck()
+        dialog.get_by_role("checkbox", name=re.compile("Second")).uncheck()
         expect(count).to_have_value("1")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog.get_by_text("Work 001", exact=True)).to_be_visible()
         self.assertEqual(self.previews[0]["names"], ["Work 001"])
         self.assertEqual([ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one"])
+
+    def test_a_batch_takes_its_proxies_from_one_proxy_group_only(self):
+        """Select all over two groups once put half a batch on the other group's proxies."""
+        self.third_proxy("Other")
+        dialog, count, select_all = self.new_batch()
+        office = dialog.get_by_role("checkbox", name=re.compile("Office"))
+        third = dialog.get_by_role("checkbox", name=re.compile("Third"))
+        # Two groups are shown and nothing says which is meant: Select all cannot guess.
+        expect(select_all).to_be_disabled()
+        expect(dialog).to_contain_text("A batch uses proxies from one proxy group.")
+        expect(third).to_be_enabled()
+
+        office.check()
+        expect(third).to_be_disabled()
+        expect(dialog).to_contain_text(
+            'This batch uses proxies from the proxy group "Team proxies".'
+        )
+        select_all.check()
+        expect(dialog).to_contain_text("2 proxies selected")
+        expect(count).to_have_value("2")
+        expect(third).not_to_be_checked()
+        # Showing only the other group offers nothing to add.
+        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
+        expect(third).to_be_disabled()
+        expect(select_all).to_be_disabled()
+
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 002", exact=True)).to_be_visible()
+        self.assertEqual(
+            [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one", "library-two"]
+        )
+
+    def test_clearing_the_selection_lets_another_proxy_group_be_chosen(self):
+        self.third_proxy("Other")
+        dialog, count, select_all = self.new_batch()
+        dialog.get_by_role("checkbox", name=re.compile("Office")).check()
+        dialog.get_by_role("checkbox", name=re.compile("Office")).uncheck()
+        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
+        select_all.check()
+        expect(count).to_have_value("1")
+        expect(dialog).to_contain_text('This batch uses proxies from the proxy group "Other".')
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 001", exact=True)).to_be_visible()
+        self.assertEqual([ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-three"])
+
+    def test_profiles_follow_the_proxy_group_unless_another_group_is_chosen(self):
+        dialog, count, select_all = self.new_batch()
+        group = dialog.get_by_label("Group", exact=True)
+        expect(group).to_have_value("__proxy__")
+        expect(dialog).to_contain_text(
+            "Select proxies below and the profiles join the profile group"
+        )
+        select_all.check()
+        # No profile group is called "Team proxies" yet, so creating the batch creates it.
+        expect(dialog).to_contain_text(
+            'These profiles join a new profile group "Team proxies", created with them.'
+        )
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog).to_contain_text("Proxy group: Team proxies")
+        expect(dialog).to_contain_text("Profile group: Team proxies (will be created)")
+        self.assertIsNone(self.previews[0]["group"])
+        self.assertIs(self.previews[0]["group_from_proxies"], True)
+        dialog.get_by_role("button", name="Create 2 profiles", exact=True).click()
+        expect(dialog.get_by_text("2 of 2 profiles created", exact=True)).to_be_visible()
+        self.assertEqual(self.creations, self.previews)
+        expect(dialog).not_to_contain_text("(will be created)")
+
+    def test_an_explicit_group_or_no_proxies_does_not_follow(self):
+        dialog, count, select_all = self.new_batch()
+        group = dialog.get_by_label("Group", exact=True)
+        count.fill("1")
+        # Nothing to follow without proxies: the request stays as it always was.
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 001", exact=True)).to_be_visible()
+        self.assertNotIn("group_from_proxies", self.previews[0])
+        self.assertIsNone(self.previews[0]["group"])
+        expect(dialog).not_to_contain_text("Profile group:")
+
+        dialog.get_by_role("button", name="Edit draft", exact=True).click()
+        select_all.check()
+        group.select_option("team")
+        expect(dialog).not_to_contain_text("These profiles join")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog).to_contain_text("Proxy group: Team proxies")
+        self.assertEqual(self.previews[1]["group"], "team")
+        self.assertNotIn("group_from_proxies", self.previews[1])
+
+        dialog.get_by_role("button", name="Edit draft", exact=True).click()
+        group.select_option("")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog).to_contain_text("Proxy group: Team proxies")
+        self.assertIsNone(self.previews[2]["group"])
+        self.assertNotIn("group_from_proxies", self.previews[2])
+
+    def test_ungrouped_proxies_are_one_group_and_leave_the_profiles_ungrouped(self):
+        self.library = [{**item, "group_name": None} for item in self.library]
+        self.third_proxy("Other")
+        dialog, count, select_all = self.new_batch()
+        dialog.get_by_label("Filter by proxy group", exact=True).select_option("__ungrouped__")
+        select_all.check()
+        expect(count).to_have_value("2")
+        expect(dialog).to_contain_text(
+            "The selected proxies have no group, so these profiles stay ungrouped."
+        )
+        expect(dialog).to_contain_text('This batch uses proxies from the proxy group "Ungrouped".')
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog).to_contain_text("Profile group: none, because the proxies are ungrouped")
+
+    def test_a_server_refusal_of_mixed_groups_is_said_in_the_interface_language(self):
+        """The library can change after the dialog loaded it; the server has the last word."""
+        self.page.add_init_script("localStorage.setItem('camoufox-pm.ui-language', 'zh-CN')")
+        self.page.goto(self.origin + "/templates/")
+        self.page.get_by_role("button", name="批量创建", exact=True).click()
+        dialog = self.page.get_by_role("dialog", name="从模板批量创建配置")
+        expect(dialog.get_by_label("分组", exact=True)).to_have_value("__proxy__")
+        dialog.get_by_role("checkbox", name="全选", exact=True).check()
+        expect(dialog).to_contain_text("这批配置会放入新的配置分组「Team proxies」")
+        self.library[1]["group_name"] = "Moved meanwhile"
+        dialog.get_by_role("button", name="预览批次", exact=True).click()
+        expect(dialog.get_by_role("alert")).to_have_text(
+            "一批不能混用多个代理分组的代理，请只选择同一个代理分组的代理。"
+        )
+        self.assertEqual(self.creations, [])
 
     def test_select_all_stops_at_the_batch_limit(self):
         self.library = [

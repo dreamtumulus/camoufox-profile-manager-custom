@@ -423,7 +423,9 @@ administrator-only. See [profile email addresses](profile-emails.md).
 
 `GET /saved-filters` returns `data.filters`. Create with `POST /saved-filters`
 using `{name, config}`. Config stores `search`, `status`, `group`, `tags`,
-`sort_key` and `sort_direction`. Update with `PATCH /saved-filters/{id}` and
+`sort_key` and `sort_direction`. `sort_key` is one of `created` (with `desc`,
+the newest-first order the list starts in), `name`, `id`, `group`, `os`,
+`status` or `last_used`; a config that leaves it out means `name`. Update with `PATCH /saved-filters/{id}` and
 `row_version`; delete with `DELETE /saved-filters/{id}?row_version=N`.
 These views are shared by authorized users of the instance, not private per-user
 records. See [profile organization](profile-organization.md).

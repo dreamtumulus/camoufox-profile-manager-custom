@@ -18,6 +18,8 @@ Example: `/api/v1/profiles?tags=work&tags=client-a&group=team-a&status=active&pe
 
 The desktop list loads the complete collection before applying its local sort and pagination. It never silently filters only the first API page. An explicit limit of 20,000 loaded profiles produces an error if more profiles exist. Filter changes clear the previous selection and return to the first page. Page changes keep selections across pages. The browser URL carries search, group, status, repeated tags, sort, direction and page, so a valid filtered view survives reload. `sort` accepts `name`, `id`, `group`, `os`, `status` or `last_used`; `direction` is `asc` or `desc`. API resource pagination is independent of the desktop URL's client-side sort.
 
+The list starts with the most recently created profile first. Clicking a column header sorts by that column, a second click reverses it, and a third returns to newest first. Profiles created in the same instant, as a batch creates them, stay in name order among themselves. A link carries `sort` and `direction` only when the order differs from newest first; a link made before this was the default, with `direction=desc` alone, still means names descending.
+
 ## Saved views
 
 **Save view** stores search, status, group, tag filters and sort order in the manager's SQLite database. Saved views are instance-wide and shared by authorized users, like other manager resources; they are not personal browser-only preferences. Applying one starts on page one. Saved views can be renamed, updated to the current filters, or deleted without changing any profiles.

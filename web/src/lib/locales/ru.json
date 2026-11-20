@@ -1378,6 +1378,7 @@
   "Clear email": "Убрать адрес почты",
   "{email} will be removed from \"{name}\". Another address can then be imported for this profile.": "Адрес {email} будет убран из профиля «{name}». После этого для профиля можно импортировать другой адрес.",
   "Email address removed": "Адрес почты убран",
+  "Double-click to copy: {email}": "Двойной щелчок — скопировать: {email}",
   "Email copied": "Адрес почты скопирован",
   "Email not copied": "Адрес почты не скопирован",
   "Copy it from the Email column by hand: {email}": "Скопируйте его вручную из столбца «Эл. почта»: {email}",
@@ -1434,5 +1435,17 @@
   "The proxy did not pass its check": "Прокси не прошёл проверку",
   "The proxy check is too old; check the proxy again": "Проверка прокси устарела; проверьте прокси ещё раз",
   "Profile changed; reload before importing email addresses": "Профиль изменился; обновите список перед импортом адресов почты",
-  "This email address is already on another profile": "Этот адрес почты уже принадлежит другому профилю"
+  "This email address is already on another profile": "Этот адрес почты уже принадлежит другому профилю",
+  "Same as the proxy group (automatic)": "Как у группы прокси (автоматически)",
+  "Select proxies below and the profiles join the profile group with the same name as their proxy group.": "Выберите прокси ниже, и профили попадут в группу профилей с тем же названием, что и группа их прокси.",
+  "The selected proxies have no group, so these profiles stay ungrouped.": "У выбранных прокси нет группы, поэтому профили останутся без группы.",
+  "These profiles join the profile group \"{group}\".": "Профили попадут в группу профилей «{group}».",
+  "These profiles join a new profile group \"{group}\", created with them.": "Профили попадут в новую группу профилей «{group}», которая будет создана вместе с ними.",
+  "This batch uses proxies from the proxy group \"{group}\". Proxies from other groups cannot be added.": "В этом пакете используются прокси из группы «{group}». Прокси из других групп добавить нельзя.",
+  "A batch uses proxies from one proxy group. Choose a proxy group in the filter, or tick one proxy, before Select all.": "В одном пакете используются прокси только одной группы. Сначала выберите группу прокси в фильтре или отметьте один прокси, затем нажмите «Выбрать все».",
+  "A batch cannot mix proxy groups. Select proxies from one proxy group.": "В одном пакете нельзя смешивать группы прокси. Выберите прокси из одной группы.",
+  "Proxy group: {group}": "Группа прокси: {group}",
+  "Profile group: {group}": "Группа профилей: {group}",
+  "Profile group: {group} (will be created)": "Группа профилей: {group} (будет создана)",
+  "Profile group: none, because the proxies are ungrouped": "Группа профилей: нет, так как прокси без группы"
 }

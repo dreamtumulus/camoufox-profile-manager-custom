@@ -65,6 +65,59 @@ async def test_the_largest_batch_is_previewed_and_created_in_full(client):
     assert len(await get_profile_manager().storage.list_profiles()) == 100
 
 
+async def saved_proxy(client, number, group):
+    response = await client.post(
+        "/api/v1/proxies",
+        json={
+            "name": f"Proxy {number}",
+            "type": "http",
+            "server": f"host{number}.example:8080",
+            "group_name": group,
+        },
+    )
+    assert response.status_code == 201, response.text
+    proxy = response.json()["data"]
+    return {"id": proxy["id"], "row_version": proxy["row_version"]}
+
+
+@pytest.mark.asyncio
+async def test_mixed_proxy_groups_are_refused_before_anything_is_written(client):
+    entry = await template(client)
+    refs = [await saved_proxy(client, 1, "UK"), await saved_proxy(client, 2, "Belgium")]
+    data = batch(proxy_refs=refs)
+    for path in ("batch-preview", "profile-batches"):
+        response = await client.post(f"/api/v1/templates/{entry['id']}/{path}", json=data)
+        assert response.status_code == 422
+        assert "cannot mix proxy groups" in response.text
+    assert not await get_profile_manager().storage.list_profiles()
+    assert (await client.get("/api/v1/template-profile-batches")).json()["data"]["batches"] == []
+    assert (await client.get("/api/v1/groups")).json()["groups"] == []
+
+
+@pytest.mark.asyncio
+async def test_a_batch_that_follows_its_proxies_shows_up_under_their_group(client):
+    entry = await template(client)
+    refs = [await saved_proxy(client, 1, "UK"), await saved_proxy(client, 2, "UK")]
+    data = batch(proxy_refs=refs, group_from_proxies=True)
+    checked = await client.post(f"/api/v1/templates/{entry['id']}/batch-preview", json=data)
+    assert checked.status_code == 200
+    assert checked.json()["data"]["profile_group"] == {"name": "UK", "new": True}
+    assert (await client.get("/api/v1/groups")).json()["groups"] == []
+
+    created = await client.post(f"/api/v1/templates/{entry['id']}/profile-batches", json=data)
+    assert created.status_code == 200 and created.json()["errors"] == []
+    (group,) = (await client.get("/api/v1/groups")).json()["groups"]
+    assert (group["name"], group["profile_count"]) == ("UK", 2)
+    listed = (await client.get("/api/v1/profiles", params={"group": group["id"]})).json()
+    assert sorted(item["name"] for item in listed["profiles"]) == ["Work 001", "Work 002"]
+
+    both = await client.post(
+        f"/api/v1/templates/{entry['id']}/batch-preview",
+        json=batch(proxy_refs=refs, group_from_proxies=True, group=group["id"]),
+    )
+    assert both.status_code == 422
+
+
 @pytest.mark.asyncio
 async def test_changed_intent_cannot_reuse_a_creation_receipt(client):
     entry = await template(client)

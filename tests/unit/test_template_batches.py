@@ -295,3 +295,211 @@ async def test_receipts_remain_effective_after_reopening_the_database(profile_ma
     )
     assert result == repeated
     assert len(await profile_manager.storage.list_profiles()) == 1
+
+
+async def proxies_in(profile_manager, *groups):
+    """One saved proxy per name given, filed under that library group (None is ungrouped)."""
+    inventory = ProxyInventory(profile_manager)
+    refs = []
+    for group in groups:
+        number = len(await inventory.list())
+        proxy = await inventory.create(
+            {
+                "name": f"Proxy {number}",
+                "type": "http",
+                "server": f"host{number}.example:8080",
+                "group_name": group,
+            }
+        )
+        refs.append({"id": proxy["id"], "row_version": proxy["row_version"]})
+    return refs
+
+
+def profile_groups(profile_manager):
+    return [
+        tuple(row)
+        for row in profile_manager.storage.db._connection.execute(
+            "SELECT id, name FROM profile_groups ORDER BY name"
+        )
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("groups", [("UK", "Belgium"), ("UK", None), (None, "UK", "UK")])
+async def test_a_batch_cannot_mix_proxy_groups(profile_manager, groups):
+    """Half of a batch named for one country was once created on another country's proxies."""
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    refs = await proxies_in(profile_manager, *groups)
+    batches = TemplateBatches(profile_manager)
+    for follow in (False, True):
+        data = request(
+            [f"UK {n:03}" for n in range(len(refs))], proxy_refs=refs, group_from_proxies=follow
+        )
+        with pytest.raises(ValueError, match="cannot mix proxy groups"):
+            batches.preview(template["id"], data)
+        with pytest.raises(ValueError, match="cannot mix proxy groups"):
+            await batches.submit(template["id"], data, authorize=authorized)
+    assert not await profile_manager.storage.list_profiles()
+    assert batches.list() == [] and profile_groups(profile_manager) == []
+    assert not list(profile_manager.profiles_dir.glob("profile_*"))
+
+
+@pytest.mark.asyncio
+async def test_profiles_follow_the_proxy_group_and_the_profile_group_is_created_once(
+    profile_manager,
+):
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    refs = await proxies_in(profile_manager, "UK", "UK")
+    data = request(["UK 001", "UK 002"], proxy_refs=refs, group_from_proxies=True)
+
+    preview = batches.preview(template["id"], data)
+    assert preview["proxy_group"] == "UK"
+    assert preview["profile_group"] == {"name": "UK", "new": True}
+    assert profile_groups(profile_manager) == []  # a preview writes nothing
+
+    result = await batches.submit(template["id"], data, authorize=authorized)
+    assert result["preview"]["profile_group"] == {"name": "UK", "new": True}
+    ((group_id, name),) = profile_groups(profile_manager)
+    assert name == "UK"
+    created = [await profile_manager.get_profile(row["profile_id"]) for row in result["items"]]
+    assert [profile.group for profile in created] == [group_id, group_id]
+    listed = {
+        group.name: group.profile_count
+        for group in await profile_manager.storage.list_profile_groups()
+    }
+    assert listed == {"UK": 2}
+
+    # A later batch from the same library group joins the group that now exists.
+    more = request(
+        ["UK 003"], proxy_refs=await proxies_in(profile_manager, "UK"), group_from_proxies=True
+    )
+    assert batches.preview(template["id"], more)["profile_group"] == {"name": "UK", "new": False}
+    again = await batches.submit(template["id"], more, authorize=authorized)
+    assert (await profile_manager.get_profile(again["items"][0]["profile_id"])).group == group_id
+    assert profile_groups(profile_manager) == [(group_id, "UK")]
+
+
+@pytest.mark.asyncio
+async def test_following_ungrouped_proxies_leaves_the_profiles_ungrouped(profile_manager):
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    refs = await proxies_in(profile_manager, None, None)
+    data = request(["one", "two"], proxy_refs=refs, group_from_proxies=True)
+    preview = batches.preview(template["id"], data)
+    assert preview["proxy_group"] is None and preview["profile_group"] is None
+    result = await batches.submit(template["id"], data, authorize=authorized)
+    created = [await profile_manager.get_profile(row["profile_id"]) for row in result["items"]]
+    assert [profile.group for profile in created] == [None, None]
+    assert profile_groups(profile_manager) == []
+
+
+@pytest.mark.asyncio
+async def test_without_following_the_chosen_group_is_used_and_none_is_created(profile_manager):
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    chosen = await profile_manager.create_group("Chosen")
+    refs = await proxies_in(profile_manager, "UK")
+    data = request(["one"], proxy_refs=refs, group=chosen["id"])
+    preview = batches.preview(template["id"], data)
+    assert preview["proxy_group"] == "UK" and "profile_group" not in preview
+    result = await batches.submit(template["id"], data, authorize=authorized)
+    assert (await profile_manager.get_profile(result["items"][0]["profile_id"])).group == chosen[
+        "id"
+    ]
+    assert [name for _, name in profile_groups(profile_manager)] == ["Chosen"]
+
+
+@pytest.mark.asyncio
+async def test_a_profile_that_is_not_published_leaves_no_group_behind(profile_manager, monkeypatch):
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    refs = await proxies_in(profile_manager, "UK")
+    data = request(["one"], proxy_refs=refs, group_from_proxies=True)
+    publish = profile_manager.storage.db._upsert_profile
+
+    def failed(*_args):
+        raise sqlite3.OperationalError("disk write failed")
+
+    monkeypatch.setattr(profile_manager.storage.db, "_upsert_profile", failed)
+    result = await batches.submit(template["id"], data, authorize=authorized)
+    assert result["items"][0]["status"] == "failed"
+    assert profile_groups(profile_manager) == []
+    monkeypatch.setattr(profile_manager.storage.db, "_upsert_profile", publish)
+    await batches.submit(template["id"], data, authorize=authorized)
+    assert [name for _, name in profile_groups(profile_manager)] == ["UK"]
+
+
+@pytest.mark.parametrize(
+    "values,message",
+    [
+        ({"group_from_proxies": True, "group": "team"}, "not both"),
+        ({"group_from_proxies": True}, "requires selected proxies"),
+    ],
+)
+def test_following_the_proxy_group_needs_proxies_and_no_other_group(values, message):
+    refs = [{"id": "p", "row_version": 0}] if "group" in values else []
+    with pytest.raises(ValueError, match=message):
+        request(["one"], proxy_refs=refs, **values)
+
+
+@pytest.mark.asyncio
+async def test_requests_from_before_the_option_keep_their_receipt(profile_manager):
+    """An incomplete batch recorded by an older version must still match when resumed."""
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    current = request(["one"])
+    older = {key: value for key, value in current.items() if key != "group_from_proxies"}
+    first = await batches.submit(template["id"], older, authorize=authorized)
+    assert "group_from_proxies" not in first["request"]
+    assert await batches.submit(template["id"], current, authorize=authorized) == first
+    with pytest.raises(BatchConflict):
+        refs = await proxies_in(profile_manager, "UK")
+        changed = {**current, "proxy_refs": refs, "group_from_proxies": True}
+        await batches.submit(template["id"], changed, authorize=authorized)
+
+
+@pytest.mark.asyncio
+async def test_a_recorded_batch_resumes_even_if_its_proxies_groups_now_differ(
+    profile_manager, monkeypatch
+):
+    """The rule is for new batches; it must not strand one that is half created."""
+    from camoufox_pm.core import profile_templates as module
+
+    template = await ProfileTemplates(profile_manager).create("Defaults", {})
+    batches = TemplateBatches(profile_manager)
+    refs = await proxies_in(profile_manager, "UK", "UK")
+    data = request(["one", "two"], proxy_refs=refs)
+    install = module._install_snapshots
+    calls = 0
+
+    def second_fails(*args):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("disk full")
+        return install(*args)
+
+    monkeypatch.setattr(module, "_install_snapshots", second_fails)
+    first = await batches.submit(template["id"], data, authorize=authorized)
+    assert [row["status"] for row in first["items"]] == ["created", "failed"]
+    # As a library edited by an older version could leave it: regrouped, version unchanged.
+    connection = profile_manager.storage.db._connection
+    connection.execute(
+        "UPDATE proxy_inventory SET group_name='Belgium' WHERE id=?", (refs[1]["id"],)
+    )
+    connection.commit()
+    final = await batches.submit(template["id"], data, authorize=authorized)
+    assert [row["status"] for row in final["items"]] == ["created", "created"]
+
+
+@pytest.mark.parametrize("locale", ["zh-CN", "ru"])
+def test_the_mixed_groups_refusal_has_an_interface_translation(locale):
+    from pathlib import Path
+
+    from camoufox_pm.core.template_batches import MIXED_PROXY_GROUPS
+
+    catalog = json.loads(
+        (Path(__file__).parents[2] / "web/src/lib/locales" / f"{locale}.json").read_text("utf-8")
+    )
+    assert catalog.get(MIXED_PROXY_GROUPS)

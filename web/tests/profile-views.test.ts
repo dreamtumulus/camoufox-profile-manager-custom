@@ -27,3 +27,27 @@ test('malformed URL sort/status/page cannot select unknown operations', () => {
   assert.equal(result.page, 1)
   assert.deepEqual(result.config, { ...DEFAULT_VIEW, tags: ['work'] })
 })
+
+test('the list starts newest first, and a link names its order only when it differs', () => {
+  assert.equal(DEFAULT_VIEW.sort_key, 'created')
+  assert.equal(DEFAULT_VIEW.sort_direction, 'desc')
+  assert.deepEqual(readProfileView(new URLSearchParams('')).config, DEFAULT_VIEW)
+  for (const [sort_key, sort_direction, query] of [
+    ['created', 'desc', ''],
+    ['created', 'asc', 'sort=created'],
+    ['name', 'asc', 'sort=name'],
+    ['name', 'desc', 'sort=name&direction=desc'],
+    ['last_used', 'desc', 'sort=last_used&direction=desc'],
+  ] as const) {
+    const config = { ...DEFAULT_VIEW, sort_key, sort_direction }
+    assert.equal(profileViewQuery(config, 1), query)
+    assert.deepEqual(readProfileView(new URLSearchParams(query)).config, config)
+  }
+})
+
+test('a link made while name order was the default keeps the order it named', () => {
+  // Such a link left `sort` out for name order, so a lone direction still means names.
+  assert.deepEqual(readProfileView(new URLSearchParams('direction=desc')).config, { ...DEFAULT_VIEW, sort_key: 'name', sort_direction: 'desc' })
+  assert.deepEqual(readProfileView(new URLSearchParams('sort=id&direction=desc')).config, { ...DEFAULT_VIEW, sort_key: 'id', sort_direction: 'desc' })
+  assert.deepEqual(readProfileView(new URLSearchParams('sort=sql&direction=desc')).config, DEFAULT_VIEW)
+})

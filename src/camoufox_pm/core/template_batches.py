@@ -8,6 +8,7 @@ import unicodedata
 from datetime import datetime, timezone
 
 from .database import StaleWriteError
+from .models import generate_group_id
 from .profile_templates import ProfileTemplates
 from .proxy_import import normalize_proxy_server
 from .proxy_inventory import ProxyInventory, _stored_password
@@ -15,6 +16,25 @@ from .proxy_inventory import ProxyInventory, _stored_password
 
 class BatchConflict(ValueError):
     pass
+
+
+# One batch is one set of accounts on one set of proxies. Drawn from two
+# library groups, half of a batch named for one country was created on the
+# other country's proxies, which other profiles were already using.
+MIXED_PROXY_GROUPS = "A batch cannot mix proxy groups. Select proxies from one proxy group."
+
+
+def _canonical(data):
+    """The request as it is hashed and stored.
+
+    A request that does not follow the proxy group is kept exactly as requests
+    were before that option existed, so an older incomplete batch still matches
+    its receipt and can be resumed.
+    """
+    data = dict(data)
+    if not data.get("group_from_proxies"):
+        data.pop("group_from_proxies", None)
+    return data
 
 
 class BatchAccessLost(RuntimeError):
@@ -104,9 +124,63 @@ class TemplateBatches:
             )
         ]
 
+    def _proxy_group(self, data):
+        """The one library group every proxy of this batch is filed under; None is ungrouped."""
+        groups = set()
+        for ref in data["proxy_refs"]:
+            row = self.connection.execute(
+                "SELECT group_name FROM proxy_inventory WHERE id=?", (ref["id"],)
+            ).fetchone()
+            if row is not None:
+                groups.add(row[0] or None)
+        if len(groups) > 1:
+            raise ValueError(MIXED_PROXY_GROUPS)
+        return next(iter(groups), None)
+
+    def _profile_group_id(self, name):
+        row = self.connection.execute(
+            "SELECT id FROM profile_groups WHERE name=?", (name,)
+        ).fetchone()
+        return row[0] if row else None
+
+    def _follow_proxy_group(self, proxy_id):
+        """The profile group named like this proxy's library group, created when missing.
+
+        Called inside the transaction that publishes the profile, so a group
+        exists only once a profile has been filed under it.
+        """
+        row = self.connection.execute(
+            "SELECT group_name FROM proxy_inventory WHERE id=?", (proxy_id,)
+        ).fetchone()
+        name = row[0] if row else None
+        if not name:
+            return None
+        group_id = self._profile_group_id(name)
+        if group_id is None:
+            group_id = generate_group_id()
+            self.connection.execute(
+                "INSERT INTO profile_groups(id,name,description,profile_count,created_at) "
+                "VALUES(?,?,NULL,0,?)",
+                (group_id, name, datetime.now().isoformat()),
+            )
+        return group_id
+
     def preview(self, template_id, data):
         self._validate(template_id, data, list(range(len(data["names"]))))
+        # New batches only: this is what a preview and the first submission of a
+        # batch go through. Resuming a recorded batch does not come back here.
+        proxy_group = self._proxy_group(data)
+        followed = {}
+        if data["proxy_refs"]:
+            followed["proxy_group"] = proxy_group
+        if data.get("group_from_proxies"):
+            followed["profile_group"] = (
+                {"name": proxy_group, "new": self._profile_group_id(proxy_group) is None}
+                if proxy_group
+                else None
+            )
         return {
+            **followed,
             "names": data["names"],
             "proxy_mapping": [
                 {
@@ -163,6 +237,7 @@ class TemplateBatches:
 
     async def submit(self, template_id, data, *, authorize, on_created=None):
         await authorize()
+        data = _canonical(data)
         batch_id = data["batch_id"]
         encoded = json.dumps(data, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256((template_id + "\n" + encoded).encode()).hexdigest()
@@ -220,6 +295,8 @@ class TemplateBatches:
                 if data["proxy_refs"]:
                     ref = data["proxy_refs"][position]
                     profile.proxy = self.proxies._secret_config(ref["id"], ref["row_version"])
+                    if data.get("group_from_proxies"):
+                        profile.group = self._follow_proxy_group(ref["id"])
                 self.connection.execute(
                     "UPDATE template_creation_items SET profile_id=?,error=NULL WHERE batch_id=? AND position=?",
                     (profile.id, batch_id, position),

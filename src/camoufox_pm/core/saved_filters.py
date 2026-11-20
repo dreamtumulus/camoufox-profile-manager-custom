@@ -17,7 +17,7 @@ class ViewConfig(BaseModel):
     status: Literal["all", "active", "inactive", "blocked", "maintenance"] = "all"
     group: str | None = Field(None, max_length=255)
     tags: ProfileTags = Field(default_factory=list)
-    sort_key: Literal["name", "id", "group", "os", "status", "last_used"] = "name"
+    sort_key: Literal["created", "name", "id", "group", "os", "status", "last_used"] = "name"
     sort_direction: Literal["asc", "desc"] = "asc"
 
 

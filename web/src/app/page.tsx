@@ -62,7 +62,7 @@ import {
   type ProxyCheckRecord,
 } from '@/lib/api'
 
-type SortKey = 'name' | 'id' | 'group' | 'os' | 'status' | 'last_used'
+type SortKey = ProfileViewConfig['sort_key']
 
 const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'name', label: 'Name' },
@@ -91,8 +91,8 @@ export default function ProfilesPage() {
   const [groupFilter, setGroupFilter] = useState<string | null>(null)
   const [tagFilters, setTagFilters] = useState<string[]>([])
   const [urlReady, setUrlReady] = useState(false)
-  const [sortKey, setSortKey] = useState<SortKey>('name')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [sortKey, setSortKey] = useState<SortKey>(DEFAULT_VIEW.sort_key)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(DEFAULT_VIEW.sort_direction)
   const [page, setPage] = useState(1)
   const perPage = 25
 
@@ -257,6 +257,13 @@ export default function ProfilesPage() {
           return (
             (new Date(a.last_used ?? 0).getTime() - new Date(b.last_used ?? 0).getTime()) * direction
           )
+        case 'created': {
+          // The timestamps carry microseconds a Date drops, and a batch creates its
+          // profiles within one millisecond: the text settles what the Date cannot.
+          const byDate = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          const byText = a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
+          return (byDate || byText) * direction || a.name.localeCompare(b.name)
+        }
         default:
           return a.name.localeCompare(b.name) * direction
       }
@@ -298,11 +305,15 @@ export default function ProfilesPage() {
     setMenuFor(null)
   }
 
+  /** Ascending, descending, then back to newest first, which has no column to click. */
   function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
-    else {
+    if (sortKey !== key) {
       setSortKey(key)
       setSortDir('asc')
+    } else if (sortDir === 'asc') setSortDir('desc')
+    else {
+      setSortKey(DEFAULT_VIEW.sort_key)
+      setSortDir(DEFAULT_VIEW.sort_direction)
     }
   }
 
@@ -320,13 +331,14 @@ export default function ProfilesPage() {
   }
 
   /**
-   * Run copies the row's address, ready to paste into the sign-in page.
+   * Copy the row's address, ready to paste into the sign-in page: on Run, and
+   * on a double-click of the Email cell.
    *
-   * Started here, before the launch request is awaited: a page may write the
-   * clipboard only while it is handling the click, and a launch takes seconds.
-   * It never decides the launch; a refused copy is only said.
+   * Called straight from the click, before a launch request is awaited: a page
+   * may write the clipboard only while it is handling the click, and a launch
+   * takes seconds. It never decides the launch; a refused copy is only said.
    */
-  function copyEmailForRun(profile: Profile) {
+  function copyEmail(profile: Profile) {
     const email = profile.email
     if (!email) return
     void copyText(email).then((copied) => {
@@ -365,7 +377,7 @@ export default function ProfilesPage() {
   }
 
   async function launch(profile: Profile) {
-    copyEmailForRun(profile)
+    copyEmail(profile)
     await withBusy(profile.id, async () => {
       try {
         await profilesAPI.startProfile(profile.id)
@@ -902,7 +914,11 @@ export default function ProfilesPage() {
                   </td>
 
                   <td className="py-2.5 pr-4 font-medium"><p>{profile.name}</p>{(profile.tags ?? []).length > 0 && <div className="mt-1 flex max-w-[240px] flex-wrap gap-1">{profile.tags?.map(tag => <button key={tag} className="rounded border border-line bg-raised px-1.5 py-px text-[11px] font-normal text-ink-dim hover:text-ink" aria-label={t('Filter by tag {tag}', { tag })} onClick={() => setTagFilters([tag])}>{tag}</button>)}</div>}</td>
-                  <td className="max-w-[240px] truncate py-2.5 pr-4 font-mono text-ink-dim" title={profile.email ?? undefined}>
+                  <td
+                    className={`max-w-[240px] truncate py-2.5 pr-4 font-mono text-ink-dim ${profile.email ? 'cursor-copy' : ''}`}
+                    title={profile.email ? t('Double-click to copy: {email}', { email: profile.email }) : undefined}
+                    onDoubleClick={() => copyEmail(profile)}
+                  >
                     {profile.email || <span className="text-ink-faint">—</span>}
                   </td>
                   <td className="py-2.5 pr-4 font-mono text-ink-faint">{profile.id}</td>

@@ -4,6 +4,7 @@
 Uses the same local server and isolated Chromium fixture as stage_one_ui.
 """
 
+import re
 import unittest
 from urllib.parse import parse_qs, urlsplit
 
@@ -308,6 +309,66 @@ class ProfileEmailsUI(StageTwoUI):
         expect(self.page.get_by_text("by hand: held@example.com")).to_be_visible()
         expect(self.page.get_by_text("Could not launch browser")).to_have_count(0)
         self.assertEqual(self.launched, ["profile-1"])
+
+    def test_double_clicking_the_email_cell_copies_that_rows_address(self):
+        self.context.grant_permissions(["clipboard-read", "clipboard-write"], origin=self.origin)
+        self.open_profiles()
+        cell = self.row(1).get_by_role("cell").nth(2)
+        expect(cell).to_have_attribute("title", "Double-click to copy: held@example.com")
+        cell.dblclick()
+        expect(self.page.get_by_text("Email copied", exact=True)).to_be_visible()
+        self.assertEqual(self.page.evaluate("navigator.clipboard.readText()"), "held@example.com")
+        # Copying is all it does: no browser starts.
+        self.assertEqual(self.launched, [])
+
+        # A row without an address has nothing to copy and leaves the clipboard alone.
+        self.page.evaluate("navigator.clipboard.writeText('untouched')")
+        empty = self.row(2).get_by_role("cell").nth(2)
+        self.assertIsNone(empty.get_attribute("title"))
+        empty.dblclick()
+        self.page.wait_for_timeout(300)
+        self.assertEqual(self.page.evaluate("navigator.clipboard.readText()"), "untouched")
+        expect(self.page.get_by_text("Email not copied", exact=True)).to_have_count(0)
+
+    def test_list_starts_newest_first_and_a_third_click_on_a_column_returns_to_it(self):
+        for number, day in ((1, "03"), (2, "05"), (3, "01"), (4, "04"), (5, "02")):
+            self.find(f"profile-{number}")["created_at"] = f"2026-11-{day}T08:00:00Z"
+        self.open_profiles()
+        names = self.page.locator("tbody tr td:nth-child(2) p")
+        newest_first = ["Account 002", "Account 004", "Account 001", "Account 005", "Account 003"]
+        expect(names).to_have_text(newest_first)
+        expect(self.page).not_to_have_url(re.compile("sort="))
+
+        by_name = self.page.get_by_role("columnheader").get_by_role("button", name="Name")
+        by_name.click()
+        expect(names).to_have_text([f"Account {number:03}" for number in range(1, 6)])
+        expect(self.page).to_have_url(re.compile(r"sort=name(&|$)"))
+        by_name.click()
+        expect(names).to_have_text([f"Account {number:03}" for number in range(5, 0, -1)])
+        expect(self.page).to_have_url(re.compile(r"sort=name&direction=desc"))
+        by_name.click()
+        expect(names).to_have_text(newest_first)
+        expect(self.page).not_to_have_url(re.compile("sort="))
+
+        # Addresses are handed out in the order the list shows: newest profile first.
+        dialog, field = self.open_import()
+        field.fill("first@example.com")
+        dialog.get_by_role("button", name="Check proxies and preview", exact=True).click()
+        dialog.get_by_role("button", name="Import 1 email address", exact=True).click()
+        expect(dialog.get_by_text("Email addresses written: 1.", exact=True)).to_be_visible()
+        self.assertEqual([item["id"] for item in self.imports[0]["assignments"]], ["profile-2"])
+
+    def test_profiles_created_in_one_batch_stay_in_name_order(self):
+        """A batch stamps its profiles within a moment; they must not come out shuffled."""
+        for number in range(1, 6):
+            self.find(f"profile-{number}")["created_at"] = "2026-11-05T08:00:00.123456Z"
+        self.find("profile-4")["created_at"] = (
+            "2026-11-05T08:00:00.123999Z"  # same millisecond, later
+        )
+        self.open_profiles()
+        expect(self.page.locator("tbody tr td:nth-child(2) p")).to_have_text(
+            ["Account 004", "Account 001", "Account 002", "Account 003", "Account 005"]
+        )
 
     def test_clearing_an_address_makes_the_profile_a_target_again(self):
         self.open_profiles()

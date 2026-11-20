@@ -330,7 +330,8 @@ export interface ProfileViewConfig {
   status: 'all' | 'active' | 'inactive' | 'blocked' | 'maintenance'
   group: string | null
   tags: string[]
-  sort_key: 'name' | 'id' | 'group' | 'os' | 'status' | 'last_used'
+  /** `created` has no column of its own: newest first is the order the list starts in. */
+  sort_key: 'created' | 'name' | 'id' | 'group' | 'os' | 'status' | 'last_used'
   sort_direction: 'asc' | 'desc'
 }
 
