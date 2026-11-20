@@ -4,38 +4,52 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '@/components/i18n-provider'
 import { Modal } from '@/components/modal'
 import { useToast } from '@/components/toast'
-import { ApiRequestError, formatProxyString, profilesAPI, type Profile, type ProxyCheckRecord } from '@/lib/api'
+import { ApiRequestError, formatProxyString, profilesAPI, type Group, type Profile, type ProxyCheckRecord } from '@/lib/api'
 import { BatchQueue, MAX_BATCH_SIZE, type BatchSnapshot } from '@/lib/batch-queue'
 import { copyText } from '@/lib/clipboard'
-import { assignEmails, emailKey, MAX_EMAIL_IMPORT, parseEmailLines, type EmailHolder, type EmailProblem } from '@/lib/email-import'
+import { assignEmails, emailKey, groupKey, groupsInScope, MAX_EMAIL_IMPORT, parseEmailLines, startingGroup, type EmailHolder, type EmailProblem } from '@/lib/email-import'
 
 type Step = 'paste' | 'checking' | 'preview' | 'result'
 type Outcome = { updated: Profile[]; skipped: { id: string; reason: string }[]; unused: string[] }
 
 /**
- * Paste addresses, check the target profiles' proxies, confirm the pairs, write.
+ * Choose a group, paste addresses, check the target profiles' proxies, confirm
+ * the pairs, write.
  *
- * Nothing is written before the confirmation, and the server repeats the rule on
- * its own: an address lands only on a profile without one, created since email
- * addresses were introduced, whose proxy has just passed a check.
+ * One import goes to one group: the addresses are handed to that group's
+ * profiles only. Nothing is written before the confirmation, and the server
+ * repeats the rule on its own: an address lands only on a profile without one,
+ * created since email addresses were introduced, whose proxy has just passed a
+ * check.
  */
-export function ProfileEmailImport({ targets, scope, known, withEmail, older, onClose, onChecked, onImported }: {
-  /** Profiles that may receive an address and have none, in list order. */
-  targets: Profile[]
+export function ProfileEmailImport({ candidates, scope, groups, initialGroup, known, onClose, onChecked, onImported }: {
+  /** The selected rows, or the whole filtered list when none is selected, in list order. */
+  candidates: Profile[]
   scope: 'selected' | 'list'
+  groups: Group[]
+  /** The group the list is filtered to, offered as the starting choice. */
+  initialGroup: string | null
   /** Every loaded profile, for telling at once that an address is taken. */
   known: Profile[]
-  /** How many profiles in scope were left out because they already have an address. */
-  withEmail: number
-  /** How many were left out because they existed before email addresses did. */
-  older: number
   onClose: () => void
   onChecked: (id: string, record: ProxyCheckRecord) => void
   onImported: (updated: Profile[]) => void
 }) {
   const { t } = useI18n()
   const toast = useToast()
+  const options = useMemo(() => groupsInScope(candidates, groups), [candidates, groups])
+  const [group, setGroup] = useState(() => startingGroup(groupsInScope(candidates, groups), initialGroup))
+  // Profiles that were here before email addresses existed never receive one;
+  // the server refuses them too, so they are not offered as targets.
+  const { targets, withEmail, older } = useMemo(() => {
+    const members = group ? candidates.filter(profile => groupKey(profile) === group) : []
+    const withoutEmail = members.filter(profile => !profile.email)
+    const allowed = withoutEmail.filter(profile => profile.email_allowed === true)
+    return { targets: allowed, withEmail: members.length - withoutEmail.length, older: withoutEmail.length - allowed.length }
+  }, [candidates, group])
   const used = useMemo(() => targets.slice(0, MAX_BATCH_SIZE), [targets])
+  const groupLabel = (option: { key: string; name: string | null; known: boolean }) => option.name ?? (option.known ? t('Ungrouped') : t('Unavailable group ({id})', { id: option.key }))
+  const chosen = options.find(option => option.key === group)
   const [step, setStep] = useState<Step>('paste')
   const [text, setText] = useState('')
   const [serverHolders, setServerHolders] = useState<Map<string, EmailHolder>>(new Map())
@@ -190,7 +204,7 @@ export function ProfileEmailImport({ targets, scope, known, withEmail, older, on
 
   const nameOf = (id: string) => used.find(profile => profile.id === id)?.name ?? id
   const stepIndex = step === 'paste' ? 0 : step === 'checking' ? 1 : 2
-  const stepNames = [t('Paste addresses'), t('Check proxies'), t('Confirm import')]
+  const stepNames = [t('Choose group and paste addresses'), t('Check proxies'), t('Confirm import')]
 
   const mapping = (done: boolean) => <ul className="max-h-[300px] divide-y divide-line overflow-y-auto rounded-md border border-line" aria-label={t('Profiles and the email address each receives')}>
     {used.map(profile => {
@@ -224,15 +238,24 @@ export function ProfileEmailImport({ targets, scope, known, withEmail, older, on
     </ol>}
 
     {step === 'paste' && <div className="flex flex-col gap-3">
-      <div className="rounded-md border border-line bg-canvas px-3 py-2.5">
-        {used.length === 0
-          ? <p role="alert" className="text-danger">{scope === 'selected' ? t('No selected profile can receive an email address.') : t('No profile in the current list can receive an email address.')}</p>
-          : <>
-            <p>{scope === 'selected'
-              ? t('Addresses go to the selected profiles without an email address ({count}), in list order, one address each.', { count: used.length })
-              : t('Addresses go to the profiles in the current list without an email address ({count}), in list order, one address each.', { count: used.length })}</p>
-            <p className="mt-1 text-ink-dim">{t('To import to particular profiles only, close this dialog and select them first.')}</p>
-          </>}
+      <label htmlFor="email-import-group" className="font-medium">{t('Group to import to')}</label>
+      <select id="email-import-group" className="field" value={group} disabled={busy || options.length === 0} onChange={event => { setGroup(event.target.value); setError(null) }} aria-describedby="email-import-scope" data-modal-autofocus={group ? undefined : ''}>
+        {options.length !== 1 && <option value="">{t('Select a group')}</option>}
+        {options.map(option => <option key={option.key} value={option.key}>{t('{name} ({count} can receive an address)', { name: groupLabel(option), count: option.available })}</option>)}
+      </select>
+      <div id="email-import-scope" className="rounded-md border border-line bg-canvas px-3 py-2.5">
+        {!group && options.length > 0
+          ? <p>{t('Choose the group whose profiles receive the addresses. One import goes to one group.')}</p>
+          : used.length === 0
+            ? <p role="alert" className="text-danger">{!group
+              ? (scope === 'selected' ? t('No selected profile can receive an email address.') : t('No profile in the current list can receive an email address.'))
+              : scope === 'selected' ? t('No selected profile of this group can receive an email address.') : t('No profile of this group in the current list can receive an email address.')}</p>
+            : <>
+              <p>{scope === 'selected'
+                ? t('Addresses go to the selected profiles of this group without an email address ({count}), in list order, one address each.', { count: used.length })
+                : t('Addresses go to the profiles of this group in the current list without an email address ({count}), in list order, one address each.', { count: used.length })}</p>
+              <p className="mt-1 text-ink-dim">{t('To import to particular profiles only, close this dialog and select them first.')}</p>
+            </>}
         {withEmail > 0 && <p className="mt-1 text-ink-dim">{t('Profiles that already have an email address are never changed: {count}.', { count: withEmail })}</p>}
         {older > 0 && <p className="mt-1 text-ink-dim">{t('Profiles created before this version cannot receive an email address: {count}.', { count: older })}</p>}
         {targets.length > used.length && <p className="mt-1 text-ink-dim">{t('One import covers the first {count} profiles.', { count: used.length })}</p>}
@@ -246,6 +269,7 @@ export function ProfileEmailImport({ targets, scope, known, withEmail, older, on
     </div>}
 
     {step === 'checking' && <div className="flex flex-col gap-3">
+      {chosen && <p className="font-medium">{t('Group: {name}', { name: groupLabel(chosen) })}</p>}
       <p>{t('Checking the proxies of the target profiles. No email address has been written yet.')}</p>
       <progress className="w-full accent-signal" aria-label={t('Batch progress')} max={Math.max(rows.length, 1)} value={completed} />
       <p role="status" className="text-ink-dim">{t('{completed} of {total} processed', { completed, total: rows.length })}</p>
@@ -254,6 +278,7 @@ export function ProfileEmailImport({ targets, scope, known, withEmail, older, on
     </div>}
 
     {step === 'preview' && <div className="flex flex-col gap-3">
+      {chosen && <p className="font-medium">{t('Group: {name}', { name: groupLabel(chosen) })}</p>}
       <p>{t('Proxy checks finished. No email address has been written yet. Confirm the pairs below.')}</p>
       <p role="status" className="text-ink-dim">{t('Profiles to receive an address: {assigned}; profiles skipped: {skipped}; addresses left over: {unused}.', { assigned: plan.assigned.size, skipped: used.length - plan.assigned.size, unused: plan.unused.length })}</p>
       {snapshot?.accessLost && <p role="alert" className="text-danger">{t('Access changed. Remaining requests were cancelled. Reopen the queue after signing in and checking permissions.')}</p>}
@@ -263,6 +288,7 @@ export function ProfileEmailImport({ targets, scope, known, withEmail, older, on
     </div>}
 
     {step === 'result' && outcome && <div className="flex flex-col gap-3">
+      {chosen && <p className="font-medium">{t('Group: {name}', { name: groupLabel(chosen) })}</p>}
       <p role="status" className={outcome.updated.length ? 'font-medium text-ok' : 'font-medium'}>{t('Email addresses written: {count}.', { count: outcome.updated.length })}</p>
       {outcome.skipped.length > 0 && <div role="alert"><p className="text-danger">{t('Not written after all: {count}', { count: outcome.skipped.length })}</p><ul className="mt-1 space-y-0.5 text-ink-dim">{outcome.skipped.map(item => <li key={item.id}>{nameOf(item.id)}: {t(item.reason)}</li>)}</ul></div>}
       {mapping(true)}

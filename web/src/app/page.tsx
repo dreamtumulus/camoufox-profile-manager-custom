@@ -114,7 +114,7 @@ export default function ProfilesPage() {
   const [tagsFor, setTagsFor] = useState<Profile[] | null>(null)
   const [groupFor, setGroupFor] = useState<Profile[] | null>(null)
   const [batch, setBatch] = useState<{ action: 'launch' | 'close'; targets: BatchTarget[] } | null>(null)
-  const [emailImport, setEmailImport] = useState<{ targets: Profile[]; scope: 'selected' | 'list'; withEmail: number; older: number } | null>(null)
+  const [emailImport, setEmailImport] = useState<{ candidates: Profile[]; scope: 'selected' | 'list' } | null>(null)
 
   const toast = useToast()
   const importRef = useRef<HTMLInputElement>(null)
@@ -347,18 +347,14 @@ export default function ProfilesPage() {
     })
   }
 
-  /** Addresses go to the selected rows, or to the whole filtered list when none is selected. */
+  /**
+   * Addresses go to one group of the selected rows, or of the whole filtered
+   * list when none is selected. The dialog asks which group.
+   */
   function openEmailImport() {
-    const scoped = selected.size > 0 ? visible.filter((profile) => selected.has(profile.id)) : visible
-    const withoutEmail = scoped.filter((profile) => !profile.email)
-    // Profiles that were here before email addresses existed never receive one;
-    // the server refuses them too, so they are not offered as targets.
-    const targets = withoutEmail.filter((profile) => profile.email_allowed === true)
     setEmailImport({
-      targets,
+      candidates: selected.size > 0 ? visible.filter((profile) => selected.has(profile.id)) : visible,
       scope: selected.size > 0 ? 'selected' : 'list',
-      withEmail: scoped.length - withoutEmail.length,
-      older: withoutEmail.length - targets.length,
     })
   }
 
@@ -1098,11 +1094,11 @@ export default function ProfilesPage() {
       {tagsFor && <ProfileTagsDialog profiles={tagsFor} onClose={() => setTagsFor(null)} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
       {groupFor && <ProfileGroupDialog profiles={groupFor} groups={groups} onClose={() => { setGroupFor(null); loadGroups() }} onUpdated={updated => { setProfiles(current => current.map(profile => updated.find(item => item.id === profile.id) ?? profile)); setSelected(new Set()) }} />}
       {emailImport && <ProfileEmailImport
-        targets={emailImport.targets}
+        candidates={emailImport.candidates}
         scope={emailImport.scope}
+        groups={groups}
+        initialGroup={groupFilter}
         known={profiles}
-        withEmail={emailImport.withEmail}
-        older={emailImport.older}
         onClose={() => setEmailImport(null)}
         onChecked={(id, record) => setProfiles((current) => current.map((row) => (row.id === id ? { ...row, proxy_check: record } : row)))}
         onImported={(updated) => { setProfiles((current) => current.map((row) => { const next = updated.find((item) => item.id === row.id); return next ? { ...row, ...next } : row })); setSelected(new Set()) }}

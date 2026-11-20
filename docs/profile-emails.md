@@ -30,9 +30,15 @@ out; the server refuses them as well. The API reports the mark as
 
 Administrators open **Import emails** above the profile list.
 
-1. **Paste addresses**, one per line, up to 100. Lines that are not addresses,
-   repeat an earlier line, or name an address a profile already holds (in Trash
-   too) are reported by line number and left out; the rest stay usable.
+1. **Choose group and paste addresses.** Pick the profile group the addresses
+   go to; one import goes to one group, and nothing can be checked or written
+   until a group is chosen. The list offers the groups of the profiles in scope
+   (and **Ungrouped**), each with the number of profiles that can receive an
+   address. The group the list is filtered to is chosen already, and so is the
+   only group when there is just one. Then paste the addresses, one per line, up
+   to 100. Lines that are not addresses, repeat an earlier line, or name an
+   address a profile already holds (in Trash too) are reported by line number
+   and left out; the rest stay usable.
 2. **Check proxies.** The proxy of each target profile is checked, a few at a
    time. Nothing has been written yet, and cancelling writes nothing. Checking
    stops early once enough profiles have passed to take every address.
@@ -41,10 +47,14 @@ Administrators open **Import emails** above the profile list.
 
 Which profiles are targets:
 
-- With rows selected, the selected profiles that have no address.
-- With no selection, the profiles in the current (filtered) list that have no
-  address. One import covers the first 100.
+- With rows selected, the selected profiles of the chosen group that have no
+  address.
+- With no selection, the profiles of the chosen group in the current (filtered)
+  list that have no address. One import covers the first 100.
 - In both cases, only profiles created since this feature (see above).
+
+Profiles of other groups are neither checked nor written, whatever their proxy
+would answer.
 
 Addresses are handed out in list order to the profiles whose proxy passed. The
 list starts newest first, so unless it is sorted otherwise the most recently

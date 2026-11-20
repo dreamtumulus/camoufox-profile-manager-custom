@@ -204,7 +204,7 @@ class ProfileEmailsUI(StageTwoUI):
             ).check()
         dialog, field = self.open_import()
         expect(dialog.get_by_role("alert")).to_have_text(
-            "No selected profile can receive an email address."
+            "No selected profile of this group can receive an email address."
         )
         field.fill("a@example.com")
         expect(
@@ -235,7 +235,9 @@ class ProfileEmailsUI(StageTwoUI):
                 "checkbox", name=f"Select Account {number:03}", exact=True
             ).check()
         dialog, field = self.open_import()
-        expect(dialog).to_contain_text("selected profiles without an email address (1)")
+        expect(dialog).to_contain_text(
+            "selected profiles of this group without an email address (1)"
+        )
         field.fill("picked@example.com")
         dialog.get_by_role("button", name="Check proxies and preview", exact=True).click()
         dialog.get_by_role("button", name="Import 1 email address", exact=True).click()
@@ -385,12 +387,123 @@ class ProfileEmailsUI(StageTwoUI):
         dialog, _ = self.open_import()
         expect(dialog).to_contain_text("without an email address (5)")
 
+    def grouped(self):
+        """Team: 2 (reachable), 3 (unreachable). Ungrouped: 1 (has an address), 4, 5."""
+        for number in (2, 3):
+            self.find(f"profile-{number}")["group"] = "team"
+
+    def test_group_must_be_chosen_and_only_its_profiles_are_checked_and_written(self):
+        self.grouped()
+        self.open_profiles()
+        dialog, field = self.open_import()
+        group = dialog.get_by_label("Group to import to", exact=True)
+        expect(group).to_have_value("")
+        self.assertEqual(
+            [text.strip() for text in group.get_by_role("option").all_text_contents()],
+            [
+                "Select a group",
+                "Team (2 can receive an address)",
+                "Ungrouped (2 can receive an address)",
+            ],
+        )
+        expect(dialog).to_contain_text("Choose the group whose profiles receive the addresses.")
+        start = dialog.get_by_role("button", name="Check proxies and preview", exact=True)
+        field.fill("a@example.com\nb@example.com")
+        # Addresses alone are not enough: no group, no import.
+        expect(start).to_be_disabled()
+
+        group.select_option("team")
+        expect(dialog).to_contain_text(
+            "profiles of this group in the current list without an email address (2)"
+        )
+        expect(dialog).not_to_contain_text("already have an email address are never changed")
+        start.click()
+        expect(
+            dialog.get_by_role("button", name="Import 1 email address", exact=True)
+        ).to_be_visible()
+        expect(dialog.get_by_text("Group: Team", exact=True)).to_be_visible()
+        pairs = dialog.get_by_role("list", name="Profiles and the email address each receives")
+        expect(pairs.get_by_role("listitem")).to_have_count(2)
+        expect(pairs).not_to_contain_text("Account 005")
+        # The ungrouped profiles with a working proxy were never touched.
+        self.assertEqual(sorted(self.checked), ["profile-2", "profile-3"])
+        expect(dialog).to_contain_text("Addresses left over: 1")
+        dialog.get_by_role("button", name="Import 1 email address", exact=True).click()
+        expect(dialog.get_by_text("Email addresses written: 1.", exact=True)).to_be_visible()
+        self.assertEqual(
+            self.imports,
+            [{"assignments": [{"id": "profile-2", "row_version": 3, "email": "a@example.com"}]}],
+        )
+
+    def test_changing_the_group_changes_the_targets_and_what_is_said_about_them(self):
+        self.grouped()
+        self.open_profiles()
+        dialog, field = self.open_import()
+        group = dialog.get_by_label("Group to import to", exact=True)
+        group.select_option("__ungrouped__")
+        expect(dialog).to_contain_text("without an email address (2)")
+        expect(dialog).to_contain_text("already have an email address are never changed: 1.")
+        field.fill("a@example.com")
+        dialog.get_by_role("button", name="Check proxies and preview", exact=True).click()
+        dialog.get_by_role("button", name="Import 1 email address", exact=True).click()
+        expect(dialog.get_by_text("Email addresses written: 1.", exact=True)).to_be_visible()
+        expect(dialog.get_by_text("Group: Ungrouped", exact=True)).to_be_visible()
+        # Profile 4 has no proxy; the address went past it to profile 5.
+        self.assertEqual(self.checked, ["profile-5"])
+        self.assertEqual([item["id"] for item in self.imports[0]["assignments"]], ["profile-5"])
+
+    def test_group_the_list_is_filtered_to_is_already_chosen(self):
+        self.grouped()
+        self.open_profiles()
+        self.page.get_by_label("Group", exact=True).select_option("team")
+        expect(self.row(5)).to_have_count(0)
+        dialog, _ = self.open_import()
+        group = dialog.get_by_label("Group to import to", exact=True)
+        expect(group).to_have_value("team")
+        # The list shows one group, so there is nothing else to choose.
+        self.assertEqual(
+            [text.strip() for text in group.get_by_role("option").all_text_contents()],
+            ["Team (2 can receive an address)"],
+        )
+        expect(dialog).to_contain_text("without an email address (2)")
+
+    def test_selected_rows_of_one_group_need_no_choice_and_a_group_with_no_target_says_so(self):
+        self.grouped()
+        self.open_profiles()
+        self.page.get_by_role("checkbox", name="Select Account 002", exact=True).check()
+        dialog, _ = self.open_import()
+        expect(dialog.get_by_label("Group to import to", exact=True)).to_have_value("team")
+        expect(dialog).to_contain_text(
+            "selected profiles of this group without an email address (1)"
+        )
+        dialog.get_by_role("button", name="Cancel", exact=True).click()
+
+        # Rows of two groups: the choice comes back, and a group whose only
+        # selected profile already has an address has nothing to receive one.
+        self.page.get_by_role("checkbox", name="Select Account 001", exact=True).check()
+        dialog, field = self.open_import()
+        group = dialog.get_by_label("Group to import to", exact=True)
+        expect(group).to_have_value("")
+        group.select_option("__ungrouped__")
+        expect(dialog.get_by_role("alert")).to_have_text(
+            "No selected profile of this group can receive an email address."
+        )
+        field.fill("a@example.com")
+        expect(
+            dialog.get_by_role("button", name="Check proxies and preview", exact=True)
+        ).to_be_disabled()
+        self.assertEqual(self.checked, [])
+
     def test_chinese_import_flow(self):
         self.page.add_init_script("localStorage.setItem('camoufox-pm.ui-language', 'zh-CN')")
         self.open_profiles()
         expect(self.page.get_by_role("columnheader", name="邮箱", exact=True)).to_be_visible()
         self.page.get_by_role("button", name="导入邮箱", exact=True).click()
         dialog = self.page.get_by_role("dialog", name="导入邮箱")
+        # Every profile here is ungrouped, so there is one group and it is already chosen.
+        expect(dialog.get_by_role("listitem").first).to_have_text("1. 选择分组并粘贴邮箱")
+        expect(dialog.get_by_label("导入到哪个分组", exact=True)).to_have_value("__ungrouped__")
+        expect(dialog.get_by_label("导入到哪个分组", exact=True)).to_contain_text("未分组（可导入 4 个）")
         dialog.get_by_label("每行一个邮箱（最多 100 个）", exact=True).fill(
             "a@example.com\nb@example.com"
         )
