@@ -6,10 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-This section covers what the custom builds published as `v0.7.0-zhaolusi1` to
+## [0.7.1] - 2026-11-24
+
+This release covers what the custom builds published as `v0.7.0-zhaolusi1` to
 `v0.7.0-zhaolusi13` added to 0.7.0. Every one of those builds reports version
-0.7.0 from the inside; the next release carries these changes as 0.7.1.
-Installers remain unsigned.
+0.7.0 from the inside; this is the first release that says 0.7.1. Installers
+remain unsigned.
 
 Before upgrading, close the manager and its browsers and back up the data
 directory. Profiles that exist when a build with email addresses first starts
@@ -1120,7 +1122,8 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...v0.7.1
 [0.7.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.5.0...v0.6.0
 [0.6.0-rc.8]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0-rc.7...v0.6.0-rc.8
