@@ -485,7 +485,7 @@ POST /api/v1/auto-onboarding/rows/{profile_id}/job/cancel     取消
 
 这只是原型的交互检查，不是业务代码的验证。
 
-目录里另外八张图（`ready.png`、`sso-confirmation.png`、`manual-takeover.png`、`cleanup.png`、`complete.png`、`automation-locked.png`、`mobile.png`、`light-theme.png`）是 R2 自动批次的界面，已经过时，本文不再引用；没有删除，留给用户决定。
+目录里另外八张图（`ready.png`、`sso-confirmation.png`、`manual-takeover.png`、`cleanup.png`、`complete.png`、`automation-locked.png`、`mobile.png`、`light-theme.png`）是 R2 自动批次的界面，已经过时，本文不再引用；按用户要求一并入库，留作 R2 方案的记录。
 
 下面四段是 R2 期间关于平台接入预设卡片的记录，原文保留，卡片的内容和位置没有变。其中「卡片里没有手动生成的入口」仍然成立：R3 的「生成授权链接」在每一行上，不在卡片里。「凭据」一步的说明文字在原型里已改为手动的说法。
 
