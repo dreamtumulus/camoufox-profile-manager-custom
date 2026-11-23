@@ -623,6 +623,165 @@ DELETE /api/v1/groups/{id}
 
 Deleting a group keeps its profiles; they become ungrouped.
 
+## Auto onboarding parameters
+
+The parameters accounts are onboarded with. None of these routes opens a
+browser or creates anything on the platform; the routes that do are under
+[Authorizing a row](#authorizing-a-row). Administrators and operators may call
+them; a viewer gets `403`.
+
+```http
+GET  /api/v1/auto-onboarding/connection      the saved onboarder token, masked
+PUT  /api/v1/auto-onboarding/connection      {"token": "1dk_onb_…"}: save or replace it
+GET  /api/v1/auto-onboarding/presets         what the token may use, and what is chosen
+PUT  /api/v1/auto-onboarding/presets         save what is chosen
+GET  /api/v1/auto-onboarding/scopes          groups that have profiles to onboard
+POST /api/v1/auto-onboarding/preflight       check the saved choices
+```
+
+**The token** is an onboarder token of 1DayAPI. It is sent only to
+`https://1dayapi.com`, kept on this installation (encrypted when
+`CPM_SECRET_KEY` is set, and `encrypted: false` says when it is not), and never
+returned: a response carries its `preview`, the first twelve characters and the
+last four. `PUT` shows the token to the platform first and saves only one the
+platform accepts. A value that does not start with `1dk_onb_` answers `422`
+(`onboard_token_malformed`) without asking; one the platform refuses answers
+`409` (`onboard_token_refused`); either way a token saved earlier stays in use.
+Replacing a token with another clears the node, proxy and organization chosen
+with the old one, and `replaced` says so. An authorization belongs to the token
+that made it, so a token is not replaced while one of its authorizations is
+open: `409` (`authorizations_open`), with the rows' addresses in the message.
+A token the platform already refuses can be replaced; its open authorizations
+are then noted as `lost`.
+
+**`GET /presets`** asks the platform anew each time, so it is also the refresh.
+`options` holds the token's nodes and organization profiles and the proxy pool
+of one node: `?node_id=`, or else the chosen node, or else the first. A pool
+proxy is described by its `exit_ip`, `group` and `slots` (accounts it can still
+take), never by how to reach it. When the platform refuses the saved token,
+`options` is `null` and `connection.refused` is `true`; when it cannot be
+reached, `options` is `null` and `options_error` says why. The saved `preset`
+and its `version` are returned either way.
+
+**The preset** is saved as it is chosen, finished or not: `PUT /presets` only
+holds each field to its shape (`422` otherwise) and does not ask the platform.
+
+| Field | Meaning |
+| --- | --- |
+| `node_id` | The node the accounts go out through |
+| `proxy_mode` | `row`: each profile through the pool proxy that has its own exit; `auto`: the platform picks; `pool`: one pool proxy for every row |
+| `proxy_group` | With `auto`, pick only inside this proxy group |
+| `proxy_id` | With `pool`, the pool proxy |
+| `org_id`, `domain` | An organization profile of the token, and one of its email domains |
+| `org_manual`, `org_uuid` | For a token without organization profiles: name the organization by UUID |
+| `note` | At most 500 characters |
+| `concurrency_limit`, `rpm_limit` | Whole numbers from 0 to 100000, or `null` for the platform default |
+| `scope_group` | The local group whose profiles are to be onboarded |
+
+Accounts onboarded with an onboarder token always join the platform's default
+group, so there is no field for it.
+
+**`GET /scopes`** lists the groups that have at least one profile with an email
+address that is not onboarded yet, with `pending` and `onboarded` counts. With
+`?group=<id>` it also returns that group's profiles that have an address, newest
+first and not paginated. Profiles outside every group are not offered, and an
+operator sees only granted profiles. A row carries `onboarded`, `can_launch`
+(whether the caller may run its browser) and `authorization`, the last
+authorization asked for its address, or `null`. A profile is onboarded once the
+platform has reported its account done, and it is told by profile and address
+together: given another address it is another account. Authorizations still
+open are asked about on the platform when this is read, so one that finished
+while no page was open is counted here.
+
+**`POST /preflight`** reads the platform again and answers
+`{ok, version, issues, rows, ready, blocked}`. `issues` names what is missing
+from the saved choices or no longer on offer, each as a `code` and the `field`
+it is about: `node_missing`, `node_unavailable`, `node_offline`,
+`proxy_group_unavailable`, `proxy_missing`, `proxy_unavailable`, `org_missing`,
+`org_unavailable`, `domain_missing`, `domain_unavailable`, `org_uuid_missing`,
+`org_uuid_invalid`, `scope_missing`, `scope_unavailable`, `no_ready_rows`.
+Every row carries a `status`: `ready`, or the first thing in its way:
+`onboarded`, `domain_mismatch`, and with `proxy_mode: "row"` also
+`exit_unknown` (its proxy was never checked), `exit_failed`, `exit_not_in_pool`
+and `exit_ambiguous`; a ready row in that mode names the pool `proxy_id` it
+matched. It answers `409` without a token (`onboard_token_missing`) or with one
+the platform refuses (`onboard_token_refused`). It does not check how many
+accounts the node or an exit can still take: the platform decides that when a
+job is created.
+
+## Authorizing a row
+
+A row's account is authorized by hand. The platform makes an authorize link,
+which is opened in a new tab of the window the row's running browser already
+shows; the account's owner consents there, and pastes back the code the page
+then shows. Nothing is filled in or pressed on that page, and no route here
+starts or stops a browser: that is
+the profile's own `launch` and `close`. Administrators and operators may call
+these routes for a profile they may launch.
+
+```http
+POST /api/v1/auto-onboarding/rows/{profile_id}/job          make a link and open it in the row's browser
+GET  /api/v1/auto-onboarding/rows/{profile_id}/job          ask the platform how the authorization stands
+POST /api/v1/auto-onboarding/rows/{profile_id}/job/code     {"code": "…"}: hand the pasted code to the platform
+POST /api/v1/auto-onboarding/rows/{profile_id}/job/cancel   cancel an open authorization
+```
+
+Each answers
+`{profile_id, onboarded, authorization, authorize_url, opened, opened_in}`.
+`authorization` is `null` or:
+
+| Field | Meaning |
+| --- | --- |
+| `status` | `pending`: the link waits for its code; `working`: the platform has the code; `done`; `failed`; `lost`: it can no longer be asked about |
+| `outcome` | Of a finished one: `onboarded`; `reused` (an account already on the platform was authorized again, none was added); `mismatch` (another account than the row's was onboarded); `failed` |
+| `error_code` | The platform's code for a failure, such as `account_exists`, `domain_mismatch`, `invalid_grant`, `callback_expired`, `job_cancelled` |
+| `account_email` | The account that was onboarded |
+| `node`, `proxy` | What it was made with; `proxy` is where it comes out, or `auto` / `auto:<group>` when the platform picks |
+| `expires_at` | When the platform lets it lapse: 30 minutes for a link, 3 minutes once it has the code |
+| `cooldown_until` | Until when the platform rests a new account |
+
+Only `done` with `onboarded` or `reused` makes the row onboarded. A link made,
+a code accepted and `working` are not success.
+
+**`POST …/job`** makes the job with the saved choices: the node, the proxy by
+`proxy_mode`, the organization and domain (or UUID), the note and the limits,
+and the row's address as the account's name. `authorize_url` is the link, and
+`opened` says whether it was opened in the row's browser; when it is `false`
+the authorization stands and the link is to be copied there by hand.
+`opened_in` says where: `tab`, a new tab of a window the browser already had,
+or `window`, a new window of the same browser. The browser's driver can only
+open windows, so a tab is had by asking a page that is already there for an
+empty one, which is then sent to the link; that page is neither read nor
+changed. A window is the fallback when no page can be asked (none is open, or
+only the browser's own settings pages are) or none brings a tab up within a
+few seconds. A row that already has an open authorization gets that one back,
+with `opened: null` and nothing opened again, so asking twice never makes two
+jobs. It is refused
+with `409` before the platform is asked for a job, the error code saying why:
+`onboard_token_missing`, `onboard_token_refused`, `row_unavailable` (no
+address, or in no group), `onboarded`, `browser_not_running`, any `issues` code
+of the preflight, or a row `status` other than `ready`. A refusal by the
+platform itself is `409` with its code behind `platform_`:
+`platform_node_at_capacity`, `platform_node_offline`, `platform_proxy_full`,
+`platform_proxy_unassignable`, `platform_proxy_not_found`,
+`platform_proxy_pool_empty`, `platform_invalid_request` and the like.
+
+**`GET …/job`** asks the platform anew while the authorization is open, and
+returns the link while it waits for its code. This is what records the result.
+
+**`POST …/job/code`** hands the pasted text on as it is and does not keep it.
+The authorize page shows the code as `code#state`; the platform holds the state
+against the job, so a code that is incomplete or belongs to another row is
+refused: `422` (`callback_invalid`), and the authorization goes on waiting.
+`409` (`authorization_not_waiting`) when the row has no link waiting.
+
+**`POST …/job/cancel`** has the platform cancel the job and free what it
+reserved. One that finished meanwhile stays finished and is reported as such.
+
+No authorize link, code or state is stored, logged or audited; the audit log
+records `create_onboard_authorization`, `submit_onboard_code` and
+`cancel_onboard_authorization` with the profile id only.
+
 ## Bulk editing
 
 ```http

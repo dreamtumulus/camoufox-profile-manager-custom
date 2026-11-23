@@ -25,6 +25,7 @@ from camoufox_pm.api.models.system import ErrorResponse, HealthResponse
 from camoufox_pm.api.routes import (
     access,
     auth,
+    auto_onboarding,
     cookies,
     extensions,
     groups,
@@ -225,6 +226,13 @@ for _prefix, _in_schema in (("/api/v1", True), ("/api", False)):
         onboarding.router,
         prefix=_prefix,
         tags=["Claude Team"],
+        dependencies=protected,
+        include_in_schema=_in_schema,
+    )
+    app.include_router(
+        auto_onboarding.router,
+        prefix=_prefix,
+        tags=["Auto onboarding"],
         dependencies=protected,
         include_in_schema=_in_schema,
     )

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarClock, Copy, KeyRound, Layers, LogOut, Puzzle, Settings, Network, Trash2, Users, Shield } from 'lucide-react'
+import { CalendarClock, Copy, KeyRound, Layers, LogOut, Puzzle, Settings, Network, Trash2, UserRoundCheck, Users, Shield } from 'lucide-react'
 
 import { useI18n } from '@/components/i18n-provider'
 import { LanguageSelector } from '@/components/language-selector'
@@ -12,6 +12,7 @@ import { systemAPI } from '@/lib/api'
 
 const NAV = [
   { href: '/', label: 'Profiles', icon: Users },
+  { href: '/auto-onboarding/', label: 'Auto onboarding', icon: UserRoundCheck },
   { href: '/onboarding/', label: 'Claude Team onboarding', icon: KeyRound },
   { href: '/proxies/', label: 'Proxy library', icon: Network },
   { href: '/templates/', label: 'Templates', icon: Copy },
@@ -49,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex flex-col gap-px p-2">
-          {NAV.filter(item => canManageAccess || item.href === '/' || (role === 'operator' && ['/schedules/', '/onboarding/'].includes(item.href))).map(({ href, label, icon: Icon }) => {
+          {NAV.filter(item => canManageAccess || item.href === '/' || (role === 'operator' && ['/schedules/', '/onboarding/', '/auto-onboarding/'].includes(item.href))).map(({ href, label, icon: Icon }) => {
             const target = href.replace(/\/+$/, '') || '/'
             const active = current === target
             return (
@@ -92,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto">{canManageAccess || current === '/' || (role === 'operator' && ['/schedules', '/onboarding'].includes(current)) ? children : <div className="p-6" role="alert">{t('Access denied')}</div>}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto">{canManageAccess || current === '/' || (role === 'operator' && ['/schedules', '/onboarding', '/auto-onboarding'].includes(current)) ? children : <div className="p-6" role="alert">{t('Access denied')}</div>}</main>
     </div>
   )
 }

@@ -1,0 +1,3317 @@
+<!doctype html>
+<html lang="en" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/charts/; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Auto Onboarding R2</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+
+</head>
+<body>
+<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Auto Onboarding R2" data-srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com https://persistent.oaistatic.com/plugins/visualize/charts/; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Auto Onboarding R2&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 16px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans:
+    -apple-system-body, ui-sans-serif, -apple-system, system-ui, &quot;Segoe UI&quot;,
+    Helvetica, &quot;Apple Color Emoji&quot;, Arial, sans-serif, &quot;Segoe UI Emoji&quot;,
+    &quot;Segoe UI Symbol&quot;;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 8px);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-weight: var(--font-weight-normal);
+}
+
+.cursor-interaction {
+  cursor: var(--cursor-interaction, pointer);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+  text-underline-offset: 2px;
+  font-weight: inherit;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+li,
+.table {
+  font-family: var(--font-sans);
+}
+
+h1 {
+  font-size: calc(var(--font-size-base) * 1.5);
+  line-height: 1.3333333333;
+}
+
+h2 {
+  font-size: calc(var(--font-size-base) * 1.25);
+  line-height: 1.4;
+}
+h3 {
+  font-size: calc(var(--font-size-base) * 1.125);
+  line-height: 1.5555555556;
+}
+h4 {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+h5,
+h6 {
+  font-size: var(--font-size-base);
+  line-height: calc(var(--font-size-base) * 1.625);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+th {
+  font-weight: 600;
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+pre,
+pre code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: calc(var(--font-size-base) * 0.875);
+  line-height: calc(var(--font-size-base) * 1.625);
+  font-family: var(--font-sans);
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+.table :is(th, td):not(:last-child) {
+  padding-inline-end: calc(var(--font-size-base) * 1.5);
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead :is(th, td) {
+  border-bottom-color: var(--border-strong, var(--input));
+  padding-block: calc(var(--font-size-base) / 2);
+  line-height: var(--font-size-base);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.table tbody :is(th, td) {
+  padding-block: calc(var(--font-size-base) * 0.625);
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 8px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+.widget {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  box-shadow: 0 0 0 0.5px var(--border-strong, var(--border));
+  color: var(--foreground);
+  background: var(--background);
+}
+
+#widget &gt; :not(.card, .widget, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  border: 1px solid var(--border);
+  corner-shape: var(--corner-shape);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-sans);
+  padding: 5px 12px;
+  border-color: color-mix(
+    in oklab,
+    light-dark(var(--primary-foreground), var(--foreground)) 5%,
+    transparent
+  );
+  border-radius: var(--radius-2xl);
+  color: light-dark(var(--primary-foreground), var(--foreground));
+  background: light-dark(var(--foreground), var(--popover));
+  box-shadow: 0 8px 18px rgb(15 23 42 / 20%);
+  letter-spacing: -0.15px;
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: color-mix(in srgb, var(--foreground) 40%, var(--muted-foreground));
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-family: var(--font-sans);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1;
+}
+
+small,
+.text-small {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+/* Match inline alignment without overriding a containing flex or grid layout. */
+.btn,
+.nav-link,
+.form-control,
+.form-select,
+.form-range,
+.form-check {
+  vertical-align: middle;
+}
+
+.btn,
+.nav-link {
+  --btn-size: calc(12px + 2 * var(--control-spacing, 12px));
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: inherit;
+  font-family: var(--font-sans);
+  height: fit-content;
+  min-height: var(--btn-size);
+  padding-inline: var(--control-spacing, 12px);
+  border-color: transparent;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.btn {
+  border-color: var(--border);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+}
+
+/* Codex Button size=&quot;compact&quot;; appearance stays with the button variant. */
+.btn-sm {
+  --btn-size: 24px;
+  padding-inline: 8px;
+  font-size: calc(var(--font-size-base) * 12 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 12 / 16), 1px);
+  line-height: 16px;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: var(--cursor-interaction, pointer);
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.btn-primary {
+  border-color: var(--border);
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: border-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: border-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--muted-foreground);
+  background: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+/* Shared preview chrome; product styles stay inside each variant. */
+.viz-dotted-background {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--foreground) 14%, transparent) 0.8px,
+    transparent 0.8px
+  );
+  background-position: center;
+  background-size: 16px 16px;
+}
+
+.viz-carousel {
+  position: relative;
+  min-width: 0;
+}
+
+.viz-carousel:has(&gt; .viz-carousel-controls) {
+  min-height: calc(60px + var(--viz-carousel-picker-height, 0px));
+  padding-bottom: 60px;
+}
+
+.viz-carousel &gt; [data-variant][hidden] {
+  display: none !important;
+}
+
+.viz-carousel &gt; [data-variant] {
+  isolation: isolate;
+}
+
+.viz-carousel-controls {
+  --viz-carousel-hover: light-dark(
+    color-mix(in srgb, var(--foreground) 5.4%, transparent),
+    color-mix(in srgb, var(--foreground) 7.8%, transparent)
+  );
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  width: max-content;
+  /* Leave room for the host&#x27;s design-controls launcher at the trailing edge. */
+  max-width: calc(100% - 96px);
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+  /* Match the settings dropdown chrome independently of the content font size. */
+  font-size: 13px;
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+  transform: translateX(-50%);
+  user-select: none;
+}
+
+/* Keep authored mockup button styles out of the shared carousel chrome. */
+.viz-carousel-controls button,
+.viz-carousel-picker &gt; summary {
+  display: flex !important;
+  height: auto !important;
+  min-height: 30px;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 0 6px !important;
+  -webkit-app-region: no-drag;
+  border: 0 !important;
+  border-radius: 14px !important;
+  color: inherit !important;
+  background: transparent !important;
+  font: inherit !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-picker &gt; summary {
+  position: relative;
+  isolation: isolate;
+}
+
+.viz-carousel-controls &gt; button {
+  --icon-size: 16px;
+  width: 30px !important;
+  padding: 0 !important;
+}
+
+.viz-carousel-picker &gt; summary {
+  padding-inline: 12px !important;
+}
+
+.viz-carousel-controls .viz-carousel-caret {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  color: inherit;
+  transform: rotate(180deg);
+}
+
+.viz-carousel-controls &gt; button &gt; svg,
+.viz-carousel-controls .viz-carousel-caret,
+.viz-carousel-count {
+  opacity: 0.5;
+}
+
+.viz-carousel-controls &gt; button::before,
+.viz-carousel-picker &gt; summary::before {
+  position: absolute;
+  z-index: -1;
+  inset: 3px;
+  border-radius: 12px;
+  content: &quot;&quot;;
+  pointer-events: none;
+}
+
+.viz-carousel-controls &gt; button:hover::before,
+.viz-carousel-picker &gt; summary:hover::before {
+  background: var(--viz-carousel-hover);
+}
+
+.viz-carousel-controls &gt; button,
+.viz-carousel-controls [data-lucide],
+.viz-carousel-controls .lucide {
+  flex-shrink: 0;
+}
+
+.viz-carousel-picker {
+  min-width: 0;
+}
+
+.viz-carousel-picker &gt; summary {
+  min-width: 0;
+  list-style: none;
+}
+
+.viz-carousel-picker &gt; summary::-webkit-details-marker {
+  display: none;
+}
+
+.viz-carousel-count {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.viz-carousel-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.viz-carousel-options {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  box-shadow: 0 4px 12px light-dark(rgb(0 0 0 / 6%), rgb(0 0 0 / 25%));
+}
+
+.viz-carousel-options &gt; button {
+  border-radius: max(0px, calc(var(--radius-lg) - 5px)) !important;
+  width: 100% !important;
+  min-height: 28px;
+  justify-content: flex-start !important;
+  padding: 4px 8px !important;
+  font-size: var(--font-size-small) !important;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.viz-carousel-options &gt; [aria-current=&quot;true&quot;],
+.viz-carousel-options &gt; button:hover {
+  background: var(--viz-carousel-hover) !important;
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding-inline: calc(4px + var(--control-spacing, 12px) / 2);
+  border-color: var(--input);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--popover) 96%, transparent);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.4285714286;
+}
+.form-control:is(
+  [type=&quot;file&quot;],
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;],
+  [type=&quot;color&quot;]
+) {
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  line-height: 18px;
+}
+.form-control:is(
+  [type=&quot;date&quot;],
+  [type=&quot;datetime-local&quot;],
+  [type=&quot;month&quot;],
+  [type=&quot;week&quot;]
+) {
+  padding-inline: var(--control-spacing, 12px);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+  padding: 0;
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+  min-height: calc(10px + 2 * var(--control-spacing, 12px));
+  padding-inline: var(--control-spacing, 12px);
+  margin-inline-end: var(--control-spacing, 12px);
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  resize: vertical;
+  min-height: 96px;
+  padding: 8px 10px;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: none;
+}
+.form-control:disabled {
+  color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+  opacity: 1;
+}
+.form-control[aria-invalid=&quot;true&quot;] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--red) 20%, transparent);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: fit-content;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  margin: 0;
+  /* The secondary icon role is 14px at compact density and 16px at web density. */
+  --icon-size: calc(10px + var(--control-spacing, 12px) / 2);
+  /* Settings dropdowns retain a 12px inset and a 4px text-to-chevron gap. */
+  padding: 0 calc(16px + var(--icon-size)) 0 12px;
+  outline: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(
+      45deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent calc(50% - 0.6px),
+      var(--muted-foreground) calc(50% - 0.6px) calc(50% + 0.6px),
+      transparent calc(50% + 0.6px)
+    );
+  background-position:
+    calc(100% - 12px - var(--icon-size) / 2) 50%,
+    calc(100% - 12px - var(--icon-size) * 0.18) 50%;
+  background-repeat: no-repeat;
+  background-size: calc(var(--icon-size) * 0.32) calc(var(--icon-size) * 0.32);
+  cursor: var(--cursor-interaction, default);
+  font-size: calc(var(--font-size-base) * 14 / 16);
+  font-size: round(nearest, calc(var(--font-size-base) * 14 / 16), 1px);
+  font-weight: var(--font-weight-normal);
+  line-height: 18px;
+}
+
+.form-select :is(option, optgroup) {
+  color: var(--popover-foreground);
+  background-color: var(--popover);
+}
+
+.form-select :is(option, optgroup):disabled {
+  color: var(--muted-foreground);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: light-dark(
+    color-mix(in srgb, var(--foreground) 5.5%, transparent),
+    color-mix(in srgb, var(--foreground) 8%, transparent)
+  );
+}
+
+.form-select:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.form-select:disabled {
+  opacity: 0.4;
+}
+
+.form-check {
+  display: flex;
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  corner-shape: round;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  width: calc(10px + var(--control-spacing, 12px) / 2);
+  height: calc(10px + var(--control-spacing, 12px) / 2);
+  border-color: var(--border-strong, var(--input));
+  border-radius: calc(var(--radius-sm) / 2);
+  background-color: transparent;
+  color: var(--foreground);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:is(:checked, :indeterminate) {
+  border-color: var(--border-strong, var(--input));
+  background-color: color-mix(in srgb, var(--popover) 96%, transparent);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+  background-color: var(--foreground);
+}
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:indeterminate::before {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 65%;
+  height: 6.65%;
+  margin: auto;
+  border-radius: var(--radius-full);
+  background: var(--foreground);
+  mask: none;
+  content: &quot;&quot;;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  border-radius: var(--radius-full);
+  width: 16px;
+  height: 16px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--input);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 0;
+  background: radial-gradient(
+    circle,
+    var(--primary-foreground) 0 3px,
+    var(--foreground) 3px
+  );
+  box-shadow: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+.form-check:not(.form-switch) .form-check-input[type=&quot;radio&quot;]:disabled,
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;radio&quot;]:disabled
+  + .form-check-label {
+  opacity: 0.5;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+  border-color: #fff;
+  background: #fff;
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--blue);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: none;
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  accent-color: var(--primary);
+  height: calc(12px + 2 * var(--control-spacing, 12px));
+  min-height: calc(12px + 2 * var(--control-spacing, 12px));
+  outline: none;
+  border-radius: var(--radius-full);
+  color: var(--foreground);
+  background: transparent;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  margin-top: -9px;
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline the native track and thumb, preserving the larger input hit area. */
+.form-range:focus-visible::-webkit-slider-runnable-track {
+  outline: 2px auto Highlight;
+  outline-color: -webkit-focus-ring-color;
+}
+
+.form-range::-moz-range-track {
+  background: var(--form-range-track, var(--border));
+  height: 2px;
+  border-radius: var(--radius-full);
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  border-color: transparent;
+  background: currentColor;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.form-range:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--blue);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.viz-carousel-controls :is(button, summary):focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+}
+
+/* Web recipes are the default, including on renderers without inline style queries. */
+@supports (border-radius: if(style(--corner-shape: round): 1px; else: 2px)) {
+  /* Match the host&#x27;s proportional text-sm scale at every text preference. */
+  .tooltip,
+  .viz-badge,
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 14 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 13 / 14), 1px)
+    );
+  }
+
+  .btn-sm {
+    font-size: if(
+      style(--corner-shape: round): round(
+          nearest,
+          calc(var(--font-size-base) * 12 / 16),
+          1px
+        );
+        else: round(nearest, calc(var(--font-size-base) * 12 / 14), 1px)
+    );
+  }
+
+  .btn,
+  .nav-link,
+  .form-select {
+    border-radius: if(
+      style(--corner-shape: round): var(--radius-full); else: var(--radius-lg)
+    );
+  }
+
+  .form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+    border-radius: if(
+      style(--corner-shape: round): calc(var(--radius-sm) / 2);
+        else: calc(var(--radius-lg) * 0.4)
+    );
+  }
+
+  .tooltip {
+    font-weight: if(
+      style(--corner-shape: round): 600; else: var(--font-weight-normal)
+    );
+  }
+}
+
+@media (pointer: coarse) {
+  .viz-carousel:has(&gt; .viz-carousel-controls) {
+    min-height: calc(76px + var(--viz-carousel-picker-height, 0px));
+    padding-bottom: 76px;
+  }
+
+  .btn,
+  .nav-link,
+  .viz-carousel-controls button,
+  .viz-carousel-picker &gt; summary,
+  .form-control,
+  .form-select {
+    --btn-size: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+  .form-control:is(
+    [type=&quot;file&quot;],
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;week&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;color&quot;]
+  ) {
+    height: 44px;
+    min-height: 44px;
+    font-size: max(16px, calc(var(--font-size-base) * 14 / 16));
+    font-size: max(
+      16px,
+      round(nearest, calc(var(--font-size-base) * 14 / 16), 1px)
+    );
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
+&lt;script&gt;(() =&gt; {
+  const root = document.documentElement;
+  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
+  const apply = Reflect.apply;
+  const isArray = Array.isArray;
+  const hasOwn = Object.hasOwn;
+  const parentWindow = globalThis.parent;
+  const stringify = JSON.stringify;
+  const parse = JSON.parse;
+  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
+  const initialStateElement = document.getElementById(
+    &quot;codex-visualization-widget-state&quot;,
+  );
+  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
+  initialStateElement?.remove();
+  /** @type {Record&lt;string, unknown&gt; | null} */
+  let state = initialGlobals.widgetState ?? null;
+  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
+  let nextStateRequestId = 0;
+  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
+  const pendingStateWrites = new Map();
+  const persistenceError = () =&gt;
+    Object.assign(
+      new Error(&quot;The host could not persist the widget state update&quot;),
+      {
+        code: -32000,
+        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
+      },
+    );
+  /**
+   * @param {object} prototype
+   * @param {string} property
+   */
+  const getPrototypeGetter = (prototype, property) =&gt; {
+    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
+    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
+    if (getter == null) {
+      throw new Error(`Missing ${property} getter`);
+    }
+    return getter;
+  };
+  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
+  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
+  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const addHostMessageListener = MessagePort.prototype.addEventListener;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const postHostMessage = MessagePort.prototype.postMessage;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const startHostPort = MessagePort.prototype.start;
+  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
+  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
+  /** @type {MessagePort | null} */
+  let hostPort = null;
+  const postToHost = (type, payload) =&gt; {
+    if (hostPort != null) {
+      apply(postHostMessage, hostPort, [{ type, ...payload }]);
+    }
+  };
+  const openExternal = ({ href }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;open-external&quot;, { href });
+    }
+  };
+  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
+    if (globalThis.navigator.userActivation?.isActive === true) {
+      postToHost(&quot;follow-up&quot;, { context, prompt, title });
+    }
+    return Promise.resolve();
+  };
+  /**
+   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
+   * @returns {Promise&lt;void&gt;}
+   */
+  const setWidgetState = async (next) =&gt; {
+    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
+    if (
+      nextState == null ||
+      typeof nextState !== &quot;object&quot; ||
+      isArray(nextState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const inputState = stringify(
+      nextState,
+      (_key, /** @type {unknown} */ value) =&gt; {
+        if (
+          typeof value === &quot;undefined&quot; ||
+          typeof value === &quot;function&quot; ||
+          typeof value === &quot;symbol&quot; ||
+          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
+        ) {
+          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+        }
+        return value;
+      },
+    );
+    const parsedState = parse(inputState);
+    if (
+      parsedState == null ||
+      typeof parsedState !== &quot;object&quot; ||
+      isArray(parsedState)
+    ) {
+      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
+    }
+    const storedState = {
+      modelContent: null,
+      privateContent: null,
+      ...parsedState,
+    };
+    const serializedState = stringify(storedState);
+    if (encode(serializedState).length &gt; 16 * 1024) {
+      throw new TypeError(
+        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
+      );
+    }
+    if (
+      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
+      (!isArray(storedState.imageIds) ||
+        storedState.imageIds.some(
+          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
+        ))
+    ) {
+      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
+    }
+    if (storedState.imageIds?.length &gt; 0) {
+      throw Object.assign(
+        new TypeError(&quot;Visualization state does not support image attachments&quot;),
+        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
+      );
+    }
+    state = storedState;
+    globalThis.openai.widgetState = state;
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: { widgetState: state } },
+      }),
+    );
+    if (statePersistence === &quot;none&quot;) {
+      throw persistenceError();
+    }
+    const id = ++nextStateRequestId;
+    return new Promise((resolve, reject) =&gt; {
+      const timeout = globalThis.setTimeout(() =&gt; {
+        pendingStateWrites.delete(id);
+        reject(persistenceError());
+      }, 30_000);
+      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
+      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+    });
+  };
+  const bindingElement = document.getElementById(&quot;codex-visualization-bindings&quot;);
+  const mockElement = document.getElementById(&quot;codex-connector-mocks&quot;);
+  const fileElement = document.getElementById(&quot;codex-preview-files&quot;);
+  const connectorGlobals = {};
+  if (bindingElement != null || mockElement != null || fileElement != null) {
+    const bindings = parse(bindingElement?.textContent ?? &quot;{}&quot;);
+    bindingElement?.remove();
+    const values = new Map();
+    for (const [name, binding] of Object.entries(bindings)) {
+      if (binding.type === &quot;json&quot;) values.set(name, structuredClone(binding.value));
+    }
+    const pending = [bindings];
+    while (pending.length) {
+      const object = pending.pop();
+      Object.freeze(object);
+      for (const child of Object.values(object)) {
+        if (child !== null &amp;&amp; typeof child === &quot;object&quot;) pending.push(child);
+      }
+    }
+    const updates = [];
+    if (mockElement != null) {
+      const mocks = Object.entries(parse(mockElement.textContent));
+      mockElement.remove();
+      for (const [name, value] of mocks) {
+        values.set(name, value);
+        updates.push({ name, revision: 1, state: &quot;ready&quot;, value: { type: &quot;json&quot;, value } });
+      }
+    }
+    if (fileElement != null) {
+      const files = parse(fileElement.textContent);
+      fileElement.remove();
+      const blobs = new Map();
+      const urls = [];
+      for (const [name, binding] of Object.entries(bindings)) {
+        if (binding.type !== &quot;file&quot; || !hasOwn(files, binding.path)) continue;
+        const file = files[binding.path];
+        let blob = blobs.get(binding.path);
+        if (blob == null) {
+          const bytes = Uint8Array.fromBase64?.(file.base64) ??
+            Uint8Array.from(atob(file.base64), (char) =&gt; char.charCodeAt(0));
+          blob = new Blob([bytes], { type: file.mimeType });
+          blobs.set(binding.path, blob);
+        }
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        values.set(name, { name: file.name, blob, url });
+        updates.push({ name, revision: 1, state: &quot;ready&quot;, value: { type: &quot;file&quot;, ...file } });
+      }
+      globalThis.addEventListener(&quot;pagehide&quot;, (event) =&gt; {
+        // A persisted pagehide can restore this same document and its subscriptions.
+        if (event.persisted) return;
+        for (const url of urls) URL.revokeObjectURL(url);
+        urls.length = 0;
+      });
+    }
+    if (mockElement != null || fileElement != null) connectorGlobals.visualizationData = { updates };
+    connectorGlobals.visualization = {
+      get bindings() {
+        return bindings;
+      },
+      /** @param {string} name @param {(value: unknown) =&gt; void} callback */
+      onData(name, callback) {
+        if (typeof callback !== &quot;function&quot;) {
+          throw new TypeError(&quot;onData requires a callback&quot;);
+        }
+        try {
+          callback(values.get(name));
+        } catch (error) {
+          // oxlint-disable-next-line no-console -- Keep authored callback failures local.
+          console.error(&quot;Live visualization data callback failed&quot;, error);
+        }
+        // A static preview delivers the current value once per subscription.
+        return () =&gt; {};
+      },
+    };
+  }
+  const syncTheme = () =&gt; {
+    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
+    root.dataset.theme = theme;
+    globalThis.openai = {
+      ...globalThis.openai,
+      ...connectorGlobals,
+      openExternal,
+      sendFollowUpMessage,
+      setWidgetState,
+      theme,
+      visualizationStyleVariables: {},
+      visualizationTheme: theme,
+      widgetState: state,
+      statePersistence,
+      stateModelContext: &quot;none&quot;,
+    };
+    globalThis.dispatchEvent(
+      new CustomEvent(&quot;openai:set_globals&quot;, {
+        detail: { globals: globalThis.openai },
+      }),
+    );
+  };
+  const sendHeight = () =&gt; {
+    postToHost(&quot;height&quot;, {
+      height: Math.ceil(
+        Math.max(
+          document.body.scrollHeight,
+          document.body.getBoundingClientRect().height,
+        ),
+      ),
+    });
+  };
+
+  globalThis.addEventListener(
+    &quot;message&quot;,
+    (event) =&gt; {
+      const data = apply(getMessageData, event, []);
+      const ports = apply(getMessagePorts, event, []);
+      const source = apply(getMessageSource, event, []);
+      if (
+        hostPort != null ||
+        source !== parentWindow ||
+        typeof data !== &quot;object&quot; ||
+        data?.type !== &quot;codex-visualization-initialize&quot; ||
+        !isArray(ports) ||
+        ports.length !== 1
+      ) {
+        return;
+      }
+      apply(stopMessagePropagation, event, []);
+      const nextHostPort = ports[0];
+      try {
+        apply(addHostMessageListener, nextHostPort, [
+          &quot;message&quot;,
+          (event) =&gt; {
+            const data = apply(getMessageData, event, []);
+            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
+              sendHeight();
+            } else if (
+              typeof data === &quot;object&quot; &amp;&amp;
+              data?.type === &quot;widget-state-result&quot;
+            ) {
+              /** @type {unknown} */
+              const id = data.id;
+              if (typeof id !== &quot;number&quot;) {
+                return;
+              }
+              const pending = pendingStateWrites.get(id);
+              if (pending != null) {
+                pendingStateWrites.delete(id);
+                globalThis.clearTimeout(pending.timeout);
+                if (data.ok === true) {
+                  pending.resolve();
+                } else {
+                  pending.reject(persistenceError());
+                }
+              }
+            }
+          },
+        ]);
+        apply(startHostPort, nextHostPort, []);
+      } catch {
+        return;
+      }
+      hostPort = nextHostPort;
+      for (const [id, { serializedState }] of pendingStateWrites) {
+        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
+      }
+      sendHeight();
+    },
+    { capture: true },
+  );
+  document.currentScript?.remove();
+  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
+  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
+    if (event.defaultPrevented) {
+      return;
+    }
+    let element = null;
+    if (event.target instanceof globalThis.Element) {
+      element = event.target;
+    } else if (event.target instanceof globalThis.Node) {
+      element = event.target.parentElement;
+    }
+    const link = element?.closest(&quot;a[href]&quot;);
+    const href = link?.getAttribute(&quot;href&quot;);
+    if (href == null) {
+      return;
+    }
+    if (href.startsWith(&quot;#&quot;)) {
+      let id;
+      try {
+        id = decodeURIComponent(href.slice(1));
+      } catch {
+        return;
+      }
+      const target = id.length === 0 ? root : document.getElementById(id);
+      if (
+        target == null ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      event.preventDefault();
+      postToHost(&quot;scroll-to&quot;, {
+        top: target.getBoundingClientRect().top + globalThis.scrollY,
+      });
+      return;
+    }
+    event.preventDefault();
+    openExternal({ href });
+  });
+  new ResizeObserver(sendHeight).observe(document.body);
+  syncTheme();
+})();
+&lt;/script&gt;
+&lt;div id=&quot;onboard-r2&quot; aria-label=&quot;上号交互原型 R3&quot;&gt;
+&lt;style&gt;
+#onboard-r2{--bg:light-dark(#f6f7f8,#101113);--panel:light-dark(#fff,#17191c);--raised:light-dark(#eef0f3,#22252a);--line:light-dark(#dfe3e8,#30343a);--text:light-dark(#242830,#edf0f4);--muted:light-dark(#626b77,#a1aab7);--orange:light-dark(#b94712,#ff8652);--action:#ff773c;--action-text:#211109;--seg-on:light-dark(#fff,#3a3f47);--green:light-dark(#16714a,#86d7ae);--warn:light-dark(#885b12,#edbd70);--red:light-dark(#b62e37,#ff9297);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,sans-serif;width:100%}
+#onboard-r2 *{box-sizing:border-box}#onboard-r2 [hidden]{display:none!important}#onboard-r2 h2,#onboard-r2 h3,#onboard-r2 p{margin:0}#onboard-r2 h2{font-size:22px;font-weight:500;letter-spacing:-.5px}#onboard-r2 h3{font-size:13px;font-weight:500}#onboard-r2 button,#onboard-r2 input,#onboard-r2 select{font:inherit}#onboard-r2 button,#onboard-r2 summary{cursor:var(--cursor-interaction,pointer)}#onboard-r2 button:disabled{opacity:.45;cursor:default}#onboard-r2 button:focus-visible,#onboard-r2 input:focus-visible,#onboard-r2 select:focus-visible,#onboard-r2 summary:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+#onboard-r2 .window{background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}#onboard-r2 .bar{background:var(--panel);border-bottom:1px solid var(--line);padding:11px 16px;display:flex;gap:7px;align-items:center;padding-right:100px;min-height:45px}#onboard-r2 .dot{width:8px;height:8px;background:var(--muted);opacity:.5;border-radius:50%}#onboard-r2 .appname{margin-left:8px;font-size:11px;color:var(--muted)}#onboard-r2 .body{display:grid;grid-template-columns:156px minmax(0,1fr)}#onboard-r2 aside{padding:18px 9px;background:var(--panel);border-right:1px solid var(--line)}#onboard-r2 .brand{padding:0 9px 22px;font-size:12px;font-weight:500;display:flex;gap:8px;align-items:center}#onboard-r2 .brand i{color:var(--orange)}#onboard-r2 .nav{padding:10px 9px;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);border-radius:6px;margin:2px 0}#onboard-r2 .nav.active{background:var(--raised);color:var(--text);box-shadow:inset 2px 0 var(--orange)}#onboard-r2 .nav.active i{color:var(--orange)}#onboard-r2 main{min-width:0;padding:22px}#onboard-r2 .head{display:flex;gap:12px;align-items:start;justify-content:space-between}#onboard-r2 .muted{color:var(--muted);font-size:12px}#onboard-r2 .small{font-size:11px}#onboard-r2 .sub{margin-top:4px}#onboard-r2 .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:4px 7px;border-radius:4px;white-space:nowrap}#onboard-r2 .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#onboard-r2 .between{justify-content:space-between}#onboard-r2 .btn{border:1px solid var(--line);border-radius:5px;background:var(--raised);color:var(--text);padding:7px 11px;font-size:12px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;max-width:100%;white-space:normal}#onboard-r2 .btn.primary{background:var(--action);color:var(--action-text);border-color:var(--action);font-weight:500}#onboard-r2 .btn.quiet{background:transparent}#onboard-r2 .btn.danger{color:var(--red)}#onboard-r2 .good{color:var(--green)}#onboard-r2 .warn{color:var(--warn)}#onboard-r2 .bad{color:var(--red)}#onboard-r2 .accent{color:var(--orange)}#onboard-r2 .gate{margin:18px 0 12px;padding:11px 13px;border:1px solid var(--line);border-radius:7px;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:10px}#onboard-r2 .gate.off{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}#onboard-r2 .indicator{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--green);margin-right:7px}#onboard-r2 .gate.off .indicator{background:var(--warn)}#onboard-r2 .gate-title{font-size:12px;font-weight:500}#onboard-r2 .settings-edit{padding:14px;background:var(--raised);border:1px solid var(--line);border-radius:7px;margin-bottom:12px}#onboard-r2 .switch{width:36px;min-width:36px;height:21px;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:2px}#onboard-r2 .switch span{display:block;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:transform .15s}#onboard-r2 .switch[aria-checked=true]{background:var(--action);border-color:var(--action)}#onboard-r2 .switch[aria-checked=true] span{background:var(--action-text);transform:translateX(14px)}
+#onboard-r2 .params{background:var(--panel);border:1px solid var(--line);border-radius:8px}#onboard-r2 .params&gt;summary{padding:12px 14px;font-size:13px;font-weight:500;list-style:none;display:flex;justify-content:space-between;gap:8px}#onboard-r2 .params&gt;summary:after{content:&#x27;＋&#x27;;color:var(--muted)}#onboard-r2 .params[open]&gt;summary:after{content:&#x27;−&#x27;}#onboard-r2 .form{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:0 14px 14px}#onboard-r2 label{font-size:12px;color:var(--muted);display:block;min-width:0}#onboard-r2 input:not([type=checkbox]),#onboard-r2 select{width:100%;min-width:0;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 9px;margin-top:5px;font-size:12px}#onboard-r2 input:disabled,#onboard-r2 select:disabled{opacity:.65}#onboard-r2 input[type=checkbox]{width:15px;height:15px;accent-color:var(--action);margin:0;vertical-align:middle}#onboard-r2 .pass{display:flex;align-items:end;gap:5px}#onboard-r2 .pass input{flex:1}#onboard-r2 .pass .btn{flex:none}#onboard-r2 .pcard{margin:0 14px 13px;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}#onboard-r2 .pcard-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 10px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pcard-foot{padding:11px 14px;border-top:1px solid var(--line)}#onboard-r2 .psum{flex-basis:100%;display:flex;flex-wrap:wrap;gap:3px 16px;font-size:12px}#onboard-r2 .psum&gt;span{min-width:0;overflow-wrap:anywhere}#onboard-r2 .psum .k{color:var(--muted);margin-right:6px}#onboard-r2 .ptoken{padding:13px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pempty{padding:16px 14px;font-size:12px}#onboard-r2 .hint.bad{color:var(--red)}#onboard-r2 .hint.warn{color:var(--warn)}#onboard-r2 tr.none td{padding:22px 8px;text-align:center}#onboard-r2 .foot .flex{flex-wrap:wrap;min-width:0}#onboard-r2 .demo-pick{display:flex;align-items:center;gap:8px;min-width:0;font-size:11px}#onboard-r2 .demo-pick span{white-space:nowrap}#onboard-r2 .demo-pick select{width:auto;min-width:0;max-width:100%;margin:0}#onboard-r2 .ptoken .pass{flex-wrap:wrap}#onboard-r2 .ptoken .pass input{flex:1 1 150px}#onboard-r2 .tokenview{flex:1 1 150px;min-width:0;font-family:ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}#onboard-r2 .pstep{padding:13px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pstep:last-child{border-bottom:0}#onboard-r2 .pstep-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin-bottom:10px}#onboard-r2 .pstep-title b{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:500;background:color-mix(in srgb,var(--orange) 16%,var(--panel));color:var(--orange)}#onboard-r2 .pintro{margin-top:9px}#onboard-r2 .field{margin-top:11px}#onboard-r2 .flabel{font-size:12px;color:var(--muted)}#onboard-r2 .hint{display:block;font-size:11px;color:var(--muted);margin-top:5px}#onboard-r2 .pcard :is(input:not([type=checkbox]),select){background:var(--panel)}#onboard-r2 .seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:7px;background:var(--raised);max-width:100%}#onboard-r2 .flabel+.seg{margin-top:5px}#onboard-r2 .seg button{border:0;border-radius:5px;background:transparent;color:var(--muted);padding:6px 11px;font-size:12px;min-height:30px}#onboard-r2 .seg :is(button[aria-pressed=true],.on){background:var(--seg-on);color:var(--text);font-weight:500;box-shadow:0 0 0 1px var(--line)}#onboard-r2 .seg .on{display:inline-flex;align-items:center;border-radius:5px;padding:6px 11px;font-size:12px;min-height:30px}#onboard-r2 .adv{margin-top:12px;border:1px solid var(--line);border-radius:6px;font-size:12px}#onboard-r2 .adv summary{padding:9px 11px;font-weight:500}#onboard-r2 .adv summary span{font-weight:400;color:var(--muted)}#onboard-r2 .adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 13px;padding:2px 11px 12px}#onboard-r2 .adv-grid .wide{grid-column:1/-1}#onboard-r2 .fixed{margin-top:5px;padding:8px 9px;border:1px dashed var(--line);border-radius:5px;font-size:12px;color:var(--text)}#onboard-r2 .policy{padding:0 14px 13px;font-size:11px;color:var(--muted)}#onboard-r2 .error{margin-top:10px;font-size:12px;color:var(--red)}#onboard-r2 .controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:17px 0 11px}#onboard-r2 .counts{display:flex;flex-wrap:wrap;gap:13px;color:var(--muted);font-size:12px;margin-top:4px}#onboard-r2 .counts b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}#onboard-r2 .status{font-size:13px;font-weight:500}#onboard-r2 .track{height:4px;border-radius:3px;background:var(--raised);overflow:hidden;margin-bottom:9px}#onboard-r2 .progress{height:100%;width:0;background:var(--orange);transition:width .2s}#onboard-r2 table{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed}#onboard-r2 th{text-align:left;color:var(--muted);font-weight:400;padding:8px;border-bottom:1px solid var(--line)}#onboard-r2 td{padding:11px 8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}#onboard-r2 th:first-child{width:25%}#onboard-r2 th:nth-child(2){width:19%}#onboard-r2 th:nth-child(3){width:27%}#onboard-r2 th:last-child{width:29%}#onboard-r2 tr.onboarded td{color:var(--muted)}#onboard-r2 tr.current{background:color-mix(in srgb,var(--orange) 7%,var(--bg));box-shadow:inset 2px 0 var(--orange)}#onboard-r2 .email{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,monospace;margin-top:3px}#onboard-r2 .detail{margin-top:17px;padding:15px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}#onboard-r2 .detail-title{font-size:13px;overflow-wrap:anywhere}#onboard-r2 .phases{display:flex;gap:5px;margin:14px 0;flex-wrap:wrap}#onboard-r2 .phase{padding:5px 9px;font-size:11px;border-radius:4px;background:var(--raised);color:var(--muted)}#onboard-r2 .phase.past{color:var(--green)}#onboard-r2 .phase.now{background:color-mix(in srgb,var(--orange) 13%,var(--panel));color:var(--orange)}#onboard-r2 .substeps{display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;margin:10px 0 13px}#onboard-r2 .step{font-size:12px;display:flex;gap:7px;align-items:center;color:var(--muted)}#onboard-r2 .step b{font-size:11px;display:grid;place-items:center;flex:none;width:19px;height:19px;border-radius:50%;border:1px solid var(--line);font-weight:400}#onboard-r2 .step.past{color:var(--green)}#onboard-r2 .step.now{color:var(--orange)}#onboard-r2 .step.now b{border-color:var(--orange)}#onboard-r2 .message{border-top:1px solid var(--line);padding-top:11px;font-size:12px;min-height:42px;overflow-wrap:anywhere}#onboard-r2 .detail-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}#onboard-r2 .browser{margin-top:13px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--bg)}#onboard-r2 .browserbar{padding:9px 11px;background:var(--raised);display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:11px}#onboard-r2 .address{overflow-wrap:anywhere;color:var(--muted)}#onboard-r2 .browsercontent{padding:18px 14px;text-align:center}#onboard-r2 .browsercontent h3{font-size:17px;margin:5px 0}#onboard-r2 .browsercontent .email{margin-bottom:7px}#onboard-r2 .browsercontrol{border-top:1px solid var(--line);padding:11px 14px}#onboard-r2 .browsercontrol label{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;gap:8px}#onboard-r2 .browsercontrol select{margin:0}#onboard-r2 .log{margin-top:14px;font-size:11px;color:var(--muted)}#onboard-r2 .log summary{padding:4px 0}#onboard-r2 .log ol{margin:8px 0 0;padding:0;list-style:none}#onboard-r2 .log li{padding:4px 0;display:flex;gap:9px}#onboard-r2 .log time{font-variant-numeric:tabular-nums;flex:none}#onboard-r2 .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--muted)}#onboard-r2 .review-note{font-size:11px;margin-top:10px;color:var(--muted)}
+#onboard-r2 .body{grid-template-columns:170px minmax(0,1fr)}#onboard-r2 .nav-label{white-space:nowrap}
+@media(max-width:850px){#onboard-r2 .body{grid-template-columns:135px minmax(0,1fr)}#onboard-r2 main{padding:16px}#onboard-r2 .brand{padding-left:3px;font-size:11px}#onboard-r2 .nav{padding:9px 5px;font-size:11px}#onboard-r2 .nav-suffix{display:none}#onboard-r2 .head{flex-wrap:wrap}#onboard-r2 .tag{font-size:11px}}
+@media(max-width:600px){#onboard-r2 .body{display:block}#onboard-r2 aside{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}#onboard-r2 .brand{padding:5px 0;margin-right:auto}#onboard-r2 .nav{display:none}#onboard-r2 .nav.active{display:flex;margin:0}#onboard-r2 main{padding:13px}#onboard-r2 .form{grid-template-columns:1fr}#onboard-r2 .adv-grid{grid-template-columns:1fr}#onboard-r2 th:nth-child(2),#onboard-r2 td:nth-child(2){display:none}#onboard-r2 th:first-child{width:30%}#onboard-r2 th:nth-child(3){width:34%}#onboard-r2 th:last-child{width:36%}#onboard-r2 .detail{padding:12px}#onboard-r2 .gate{align-items:start}#onboard-r2 .gate .btn{flex:none}#onboard-r2 .substeps{gap:9px}#onboard-r2 .bar{padding-right:100px}#onboard-r2 .appname{font-size:11px}#onboard-r2 .phase{padding:5px 7px}#onboard-r2 .controls .flex{width:100%}#onboard-r2 .controls .btn.primary{flex:1}}
+@media(pointer:coarse){#onboard-r2 .btn,#onboard-r2 .seg button{min-height:44px}#onboard-r2 select,#onboard-r2 input:not([type=checkbox]){min-height:44px;font-size:16px}#onboard-r2 td:first-child{padding-top:14px;padding-bottom:14px}}
+@media(prefers-reduced-motion:reduce){#onboard-r2 .progress,#onboard-r2 .switch span{transition:none}}
+#onboard-r2{position:relative}#onboard-r2 .form.one{grid-template-columns:minmax(0,460px)}#onboard-r2 textarea{display:block;width:100%;min-width:0;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 9px;margin-top:5px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;resize:vertical}#onboard-r2 textarea:focus-visible{outline:2px solid var(--orange);outline-offset:3px}#onboard-r2 td .k{color:var(--muted);margin-right:6px}#onboard-r2 .state{margin-top:3px}#onboard-r2 .ops{display:flex;flex-wrap:wrap;gap:6px}#onboard-r2 .ops .btn{min-height:30px;padding:5px 9px}#onboard-r2 .ops svg{width:10px;height:10px;flex:none}#onboard-r2 .why{font-size:11px;color:var(--muted);margin-top:5px}
+#onboard-r2 .overlay{position:absolute;inset:0;z-index:5;display:flex;justify-content:center;align-items:flex-start;padding:0 12px;border-radius:12px;background:color-mix(in srgb,#000 55%,transparent)}#onboard-r2 .modal{width:min(640px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.35);outline:0}#onboard-r2 .modal-head{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}#onboard-r2 .modal-head h3{font-size:15px}#onboard-r2 .modal-body{padding:14px 16px}#onboard-r2 .notice{padding:9px 11px;border-radius:6px;font-size:12px;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--panel))}#onboard-r2 .linkbox{display:flex;align-items:stretch;gap:10px;margin-top:11px;padding:11px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}#onboard-r2 .linkbox code{background:transparent;color:var(--text);padding:0;border:0;border-radius:0;flex:1;min-width:0;max-height:112px;overflow:auto;overflow-wrap:anywhere;user-select:all;font:11px/1.6 ui-monospace,SFMono-Regular,monospace}#onboard-r2 .linkbtns{display:flex;flex-direction:column;gap:6px;flex:none}#onboard-r2 .modal-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line)}#onboard-r2 .modal-tip{margin:0;padding:0 16px 13px}#onboard-r2 .demo-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;padding:7px 10px;border:1px dashed var(--line);border-radius:6px;font-size:11px;color:var(--muted)}#onboard-r2 .demo-box .btn{min-height:28px;padding:4px 9px;font-size:11px}#onboard-r2 .result-title{font-size:14px;font-weight:500}#onboard-r2 .hint.bad{color:var(--red)}
+@media(max-width:600px){#onboard-r2 .linkbox{flex-direction:column}#onboard-r2 .linkbtns{flex-direction:row;flex-wrap:wrap}#onboard-r2 .modal-foot .flex{width:100%}}
+&lt;/style&gt;
+&lt;div class=&quot;window&quot;&gt;
+  &lt;div class=&quot;bar&quot;&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;&lt;span class=&quot;dot&quot;&gt;&lt;/span&gt;&lt;span class=&quot;appname&quot;&gt;赵露思 上号系统 · 交互预览 R3&lt;/span&gt;&lt;/div&gt;
+  &lt;div class=&quot;body&quot;&gt;
+    &lt;aside aria-label=&quot;应用导航&quot;&gt;
+      &lt;div class=&quot;brand&quot;&gt;&lt;i data-lucide=&quot;list-filter&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;赵露思 上号系统&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;users&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;浏览器配置&lt;/div&gt;
+      &lt;div class=&quot;nav active&quot; aria-current=&quot;page&quot;&gt;&lt;i data-lucide=&quot;workflow&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;自动上号&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;key-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;nav-label&quot;&gt;Claude Team&lt;span class=&quot;nav-suffix&quot;&gt; 上号&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;network&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;代理库&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;copy&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;模板&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;puzzle&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;扩展&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;layers&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;分组&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;calendar-clock&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;定时任务&lt;/div&gt;
+      &lt;div class=&quot;nav&quot;&gt;&lt;i data-lucide=&quot;settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;设置&lt;/div&gt;
+    &lt;/aside&gt;
+    &lt;main&gt;
+      &lt;div class=&quot;head&quot;&gt;&lt;div&gt;&lt;h2&gt;自动上号&lt;/h2&gt;&lt;p class=&quot;muted sub&quot;&gt;保存上号参数，按行运行浏览器，由人完成登录和授权。&lt;/p&gt;&lt;/div&gt;&lt;span class=&quot;tag&quot;&gt;本地模拟 · 不连接真实账号&lt;/span&gt;&lt;/div&gt;
+      &lt;details class=&quot;params&quot; id=&quot;r2-params&quot; open&gt;
+        &lt;summary&gt;&lt;span&gt;上号参数&lt;/span&gt;&lt;span class=&quot;muted&quot; id=&quot;r2-param-summary&quot;&gt;&lt;/span&gt;&lt;/summary&gt;
+        &lt;section class=&quot;pcard&quot; id=&quot;r2-preset-card&quot; aria-label=&quot;平台接入预设&quot;&gt;
+          &lt;div class=&quot;pcard-head&quot;&gt;&lt;h3&gt;平台接入预设&lt;/h3&gt;&lt;/div&gt;
+          &lt;div class=&quot;ptoken&quot;&gt;
+            &lt;div class=&quot;flabel&quot; id=&quot;r2-token-label&quot;&gt;上号员令牌（演示值）&lt;/div&gt;
+            &lt;div class=&quot;pass&quot; id=&quot;r2-token-saved&quot;&gt;&lt;div class=&quot;fixed tokenview&quot; id=&quot;r2-token-preview&quot;&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; id=&quot;r2-token-refresh&quot; class=&quot;btn quiet&quot;&gt;刷新&lt;/button&gt;&lt;button type=&quot;button&quot; id=&quot;r2-token-edit&quot; class=&quot;btn quiet&quot;&gt;修改&lt;/button&gt;&lt;/div&gt;
+            &lt;div class=&quot;pass&quot; id=&quot;r2-token-form&quot; hidden&gt;&lt;input id=&quot;r2-token&quot; type=&quot;password&quot; autocomplete=&quot;off&quot; spellcheck=&quot;false&quot; placeholder=&quot;1dk_onb_…&quot; aria-labelledby=&quot;r2-token-label&quot;&gt;&lt;button type=&quot;button&quot; id=&quot;r2-token-reveal&quot; class=&quot;btn quiet&quot; aria-label=&quot;显示输入的令牌&quot;&gt;显示&lt;/button&gt;&lt;button type=&quot;button&quot; id=&quot;r2-token-read&quot; class=&quot;btn&quot;&gt;保存并读取&lt;/button&gt;&lt;button type=&quot;button&quot; id=&quot;r2-token-cancel&quot; class=&quot;btn quiet&quot;&gt;取消&lt;/button&gt;&lt;/div&gt;
+            &lt;p class=&quot;hint&quot; id=&quot;r2-token-status&quot; role=&quot;status&quot;&gt;&lt;/p&gt;
+            &lt;p class=&quot;hint&quot; id=&quot;r2-token-note&quot; role=&quot;status&quot; hidden&gt;&lt;/p&gt;
+            &lt;p class=&quot;hint&quot; id=&quot;r2-token-target&quot;&gt;平台 https://1dayapi.com · 令牌保存在本机，只发往这个地址。&lt;/p&gt;
+          &lt;/div&gt;
+          &lt;p class=&quot;pempty muted&quot; id=&quot;r2-token-empty&quot; hidden&gt;保存并读取上号员令牌后，这里显示这个令牌可用的节点和组织。&lt;/p&gt;
+          &lt;div class=&quot;psteps&quot;&gt;
+            &lt;div class=&quot;pstep&quot;&gt;
+              &lt;div class=&quot;pstep-title&quot;&gt;&lt;b&gt;1&lt;/b&gt;凭据&lt;/div&gt;
+              &lt;div class=&quot;seg&quot;&gt;&lt;span class=&quot;on&quot;&gt;授权链接&lt;/span&gt;&lt;/div&gt;
+              &lt;p class=&quot;muted pintro&quot;&gt;每行点「生成授权链接」后，平台为它生成一条授权链接，并自动在本行浏览器的新标签页打开。在那里同意后，把页面上显示的授权码粘贴回来。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;pstep&quot;&gt;
+              &lt;div class=&quot;pstep-title&quot;&gt;&lt;b&gt;2&lt;/b&gt;出口&lt;/div&gt;
+              &lt;label&gt;出网节点&lt;select id=&quot;r2-node&quot;&gt;&lt;option value=&quot;direct-1&quot;&gt;direct-1 · 在线 · 13/20&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+              &lt;p class=&quot;hint&quot;&gt;该账号运行期的一切请求都经此节点出网。&lt;/p&gt;
+              &lt;div class=&quot;field&quot;&gt;&lt;div class=&quot;flabel&quot; id=&quot;r2-proxy-label&quot;&gt;代理&lt;/div&gt;&lt;div class=&quot;seg&quot; role=&quot;group&quot; aria-labelledby=&quot;r2-proxy-label&quot;&gt;&lt;button type=&quot;button&quot; data-proxy=&quot;row&quot; aria-pressed=&quot;true&quot;&gt;逐行原出口&lt;/button&gt;&lt;button type=&quot;button&quot; data-proxy=&quot;auto&quot; aria-pressed=&quot;false&quot;&gt;自动分配&lt;/button&gt;&lt;button type=&quot;button&quot; data-proxy=&quot;pool&quot; aria-pressed=&quot;false&quot; id=&quot;r2-proxy-pool-tab&quot;&gt;从池中选&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+              &lt;div class=&quot;field&quot; id=&quot;r2-proxy-auto&quot; hidden&gt;&lt;label&gt;分组&lt;select id=&quot;r2-proxy-group&quot;&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;
+              &lt;div class=&quot;field&quot; id=&quot;r2-proxy-pool&quot; hidden&gt;&lt;label&gt;代理&lt;select id=&quot;r2-pool-proxy&quot;&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;
+              &lt;p class=&quot;hint&quot; id=&quot;r2-proxy-hint&quot;&gt;&lt;/p&gt;
+              &lt;p class=&quot;hint&quot;&gt;代理默认绑定两个账号；常规容量不足时才启用第三个名额。账号绑定后保持固定。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;pstep&quot;&gt;
+              &lt;div class=&quot;pstep-title&quot;&gt;&lt;b&gt;3&lt;/b&gt;归属与限额&lt;/div&gt;
+              &lt;div id=&quot;r2-org-profiles&quot;&gt;
+                &lt;label&gt;组织&lt;select id=&quot;r2-org-profile&quot;&gt;&lt;option value=&quot;org-a&quot;&gt;Team 示例 A&lt;/option&gt;&lt;option value=&quot;org-b&quot;&gt;Team 示例 B&lt;/option&gt;&lt;option value=&quot;org-c&quot;&gt;Team 示例 C&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;
+                &lt;p class=&quot;hint&quot;&gt;从这个上号员令牌可用的组织档案中选择，必须选一个。&lt;/p&gt;
+                &lt;div class=&quot;field&quot; id=&quot;r2-domain-field&quot;&gt;&lt;label&gt;邮箱域名&lt;select id=&quot;r2-domain&quot;&gt;&lt;/select&gt;&lt;/label&gt;&lt;p class=&quot;hint&quot;&gt;账号邮箱必须在这个域名下，否则平台拒绝接入、不入池。&lt;/p&gt;&lt;/div&gt;
+              &lt;/div&gt;
+              &lt;div id=&quot;r2-org-legacy&quot; hidden&gt;
+                &lt;label for=&quot;r2-org&quot;&gt;组织 (可选)&lt;/label&gt;
+                &lt;select id=&quot;r2-org&quot;&gt;&lt;option value=&quot;&quot;&gt;不指定——在干净出口上自动识别；账号属于不同组织时各自成为一个组织（一号一组织就这样上）&lt;/option&gt;&lt;option value=&quot;manual&quot;&gt;手动输入…&lt;/option&gt;&lt;/select&gt;
+                &lt;div class=&quot;field&quot; id=&quot;r2-org-uuid-field&quot; hidden&gt;&lt;label&gt;组织 UUID&lt;input id=&quot;r2-org-uuid&quot; type=&quot;text&quot; autocomplete=&quot;off&quot; spellcheck=&quot;false&quot; placeholder=&quot;xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx&quot;&gt;&lt;/label&gt;&lt;/div&gt;
+                &lt;p class=&quot;hint&quot;&gt;这个上号员令牌没有组织档案：可以不指定，或手动输入 UUID。&lt;/p&gt;
+                &lt;p class=&quot;hint&quot; id=&quot;r2-org-virgin&quot;&gt;不指定时，平台要求接入用的出口上还没有账号（平台开启组织与出口绑定时）；自动分配只挑这样的出口，指定的出口已有账号则在生成授权链接时被平台拒绝。&lt;/p&gt;
+              &lt;/div&gt;
+              &lt;div class=&quot;field&quot;&gt;&lt;div class=&quot;flabel&quot;&gt;分组&lt;/div&gt;&lt;div class=&quot;fixed&quot; id=&quot;r2-account-group-fixed&quot;&gt;默认分组&lt;/div&gt;&lt;p class=&quot;hint&quot;&gt;上号员令牌接入的账号一律进平台默认分组，不可选。&lt;/p&gt;&lt;/div&gt;
+              &lt;details class=&quot;adv&quot;&gt;&lt;summary&gt;高级 &lt;span id=&quot;r2-adv-summary&quot;&gt;· 备注、限额&lt;/span&gt;&lt;/summary&gt;
+                &lt;div class=&quot;adv-grid&quot;&gt;
+                  &lt;div&gt;&lt;div class=&quot;flabel&quot;&gt;名称&lt;/div&gt;&lt;div class=&quot;fixed&quot; id=&quot;r2-adv-name-fixed&quot;&gt;每行使用本行邮箱&lt;/div&gt;&lt;/div&gt;
+                  &lt;label&gt;备注 (可选)&lt;input id=&quot;r2-adv-note&quot; type=&quot;text&quot; maxlength=&quot;500&quot; autocomplete=&quot;off&quot;&gt;&lt;/label&gt;
+                  &lt;label&gt;并发上限&lt;input id=&quot;r2-adv-concurrency&quot; type=&quot;number&quot; min=&quot;0&quot; placeholder=&quot;平台默认&quot;&gt;&lt;span class=&quot;hint&quot;&gt;账号最大在途请求数。留空 = 平台默认值（设置 → 上号默认）。&lt;/span&gt;&lt;/label&gt;
+                  &lt;label&gt;RPM 上限&lt;input id=&quot;r2-adv-rpm&quot; type=&quot;number&quot; min=&quot;0&quot; placeholder=&quot;平台默认&quot;&gt;&lt;span class=&quot;hint&quot;&gt;每分钟最大请求数。留空 = 平台默认值。&lt;/span&gt;&lt;/label&gt;
+                &lt;/div&gt;
+              &lt;/details&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;pcard-foot&quot; id=&quot;r2-preset-foot&quot;&gt;&lt;p class=&quot;psum&quot; id=&quot;r2-preset-summary&quot;&gt;&lt;/p&gt;&lt;/div&gt;
+        &lt;/section&gt;
+        &lt;div class=&quot;form one&quot;&gt;
+          &lt;label&gt;配置范围&lt;select id=&quot;r2-group&quot;&gt;&lt;option value=&quot;uk-http&quot;&gt;英国 HTTP 分组 · 待上号 3 · 已上号 1&lt;/option&gt;&lt;/select&gt;&lt;span class=&quot;hint&quot;&gt;按分组选择。只算有邮箱且尚未上号的配置；未分组的配置不能上号。&lt;/span&gt;&lt;/label&gt;
+        &lt;/div&gt;
+      &lt;/details&gt;
+      &lt;p class=&quot;error&quot; id=&quot;r2-error&quot; role=&quot;alert&quot; hidden&gt;&lt;/p&gt;
+      &lt;div class=&quot;controls&quot;&gt;&lt;div&gt;&lt;div class=&quot;status&quot; id=&quot;r2-status&quot; aria-live=&quot;polite&quot;&gt;&lt;/div&gt;&lt;div class=&quot;counts&quot;&gt;&lt;span&gt;待上号 &lt;b id=&quot;r2-pending&quot;&gt;3&lt;/b&gt;&lt;/span&gt;&lt;span&gt;已上号 &lt;b id=&quot;r2-onboarded&quot;&gt;1&lt;/b&gt;&lt;/span&gt;&lt;span&gt;浏览器运行中 &lt;b id=&quot;r2-running&quot;&gt;0&lt;/b&gt;&lt;/span&gt;&lt;span&gt;授权进行中 &lt;b id=&quot;r2-open-jobs&quot;&gt;0&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;flex&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-check&quot;&gt;检查配置&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;table aria-label=&quot;所选分组里的配置&quot;&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;配置 / 邮箱&lt;/th&gt;&lt;th&gt;原出口&lt;/th&gt;&lt;th&gt;状态&lt;/th&gt;&lt;th&gt;操作&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody id=&quot;r2-rows&quot;&gt;&lt;/tbody&gt;&lt;/table&gt;
+      &lt;p class=&quot;review-note&quot; id=&quot;r2-run-note&quot;&gt;「运行」「停止」与浏览器配置页相同：运行会打开启动页；自动化总开关开启时还会填入本行邮箱并点一次 SSO。之后的登录和授权由人完成，程序不替人点击。&lt;/p&gt;
+      &lt;details class=&quot;log&quot;&gt;&lt;summary&gt;操作记录 &lt;span id=&quot;r2-log-count&quot;&gt;0&lt;/span&gt;&lt;/summary&gt;&lt;ol id=&quot;r2-log&quot;&gt;&lt;/ol&gt;&lt;/details&gt;
+      &lt;div class=&quot;foot&quot;&gt;&lt;span id=&quot;r2-foot-note&quot;&gt;&lt;/span&gt;&lt;div class=&quot;flex&quot;&gt;&lt;label class=&quot;demo-pick&quot;&gt;&lt;span&gt;演示情形&lt;/span&gt;&lt;select id=&quot;r2-demo&quot;&gt;&lt;option value=&quot;&quot;&gt;正常&lt;/option&gt;&lt;option value=&quot;refresh-changed&quot;&gt;刷新后所选节点和组织不可用&lt;/option&gt;&lt;option value=&quot;refresh-revoked&quot;&gt;刷新时令牌已被吊销&lt;/option&gt;&lt;option value=&quot;no-pending&quot;&gt;没有待上号的配置&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;label class=&quot;demo-pick&quot;&gt;&lt;span&gt;演示：下一次授权的结果&lt;/span&gt;&lt;select id=&quot;r2-outcome&quot;&gt;&lt;option value=&quot;&quot;&gt;接入成功&lt;/option&gt;&lt;option value=&quot;cooldown&quot;&gt;接入成功 · 新号冷静期&lt;/option&gt;&lt;option value=&quot;reused&quot;&gt;已有账号被原地重新授权&lt;/option&gt;&lt;option value=&quot;exists&quot;&gt;平台上已有这个账号&lt;/option&gt;&lt;option value=&quot;mismatch&quot;&gt;接入的账号不是本行邮箱&lt;/option&gt;&lt;option value=&quot;domain&quot;&gt;账号邮箱不在所选域名下&lt;/option&gt;&lt;option value=&quot;grant&quot;&gt;授权码已失效&lt;/option&gt;&lt;option value=&quot;proxy_full&quot;&gt;生成时被拒绝 · 出口已满&lt;/option&gt;&lt;option value=&quot;node_full&quot;&gt;生成时被拒绝 · 节点已满&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;button type=&quot;button&quot; id=&quot;r2-reset&quot; class=&quot;btn quiet&quot;&gt;重新演示&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;/main&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;div class=&quot;overlay&quot; id=&quot;r2-dialog&quot; hidden&gt;
+  &lt;div class=&quot;modal&quot; role=&quot;dialog&quot; aria-modal=&quot;true&quot; aria-labelledby=&quot;r2-dialog-title&quot; tabindex=&quot;-1&quot;&gt;
+    &lt;div class=&quot;modal-head&quot;&gt;&lt;div&gt;&lt;h3 id=&quot;r2-dialog-title&quot;&gt;完成授权&lt;/h3&gt;&lt;p class=&quot;muted sub&quot; id=&quot;r2-dialog-row&quot;&gt;&lt;/p&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-dialog-x&quot; aria-label=&quot;关闭弹窗，不取消授权&quot;&gt;×&lt;/button&gt;&lt;/div&gt;
+    &lt;div class=&quot;modal-body&quot;&gt;
+      &lt;div id=&quot;r2-d-pending&quot;&gt;
+        &lt;p class=&quot;notice&quot;&gt;请在该账号日常使用的网络环境（如配置了同一代理的指纹浏览器）中打开此链接完成授权。用其他 IP 授权可能导致账号被风控。&lt;/p&gt;
+        &lt;p class=&quot;hint&quot; id=&quot;r2-d-browser&quot; role=&quot;status&quot;&gt;&lt;/p&gt;
+        &lt;div class=&quot;linkbox&quot;&gt;&lt;code id=&quot;r2-d-url&quot; aria-label=&quot;授权链接（演示值）&quot;&gt;&lt;/code&gt;&lt;div class=&quot;linkbtns&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn primary&quot; id=&quot;r2-d-copy&quot;&gt;复制&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;p class=&quot;hint&quot; id=&quot;r2-d-note&quot; role=&quot;status&quot; hidden&gt;&lt;/p&gt;
+        &lt;label class=&quot;field&quot;&gt;授权码&lt;textarea id=&quot;r2-d-callback&quot; rows=&quot;2&quot; autocomplete=&quot;off&quot; spellcheck=&quot;false&quot; placeholder=&quot;粘贴授权页上显示的授权码，形如 xxxxxxxx…#xxxxxxxx…&quot;&gt;&lt;/textarea&gt;&lt;/label&gt;
+        &lt;p class=&quot;hint&quot;&gt;同意授权后，页面上会显示一串授权码。点页面上的复制按钮，把授权码完整粘贴到这里（包括 # 和它后面的部分）。这条链接还有 &lt;span id=&quot;r2-d-left&quot;&gt;&lt;/span&gt; 有效。&lt;/p&gt;
+        &lt;p class=&quot;error&quot; id=&quot;r2-d-error&quot; role=&quot;alert&quot; hidden&gt;&lt;/p&gt;
+        &lt;div class=&quot;demo-box&quot;&gt;&lt;span&gt;演示&lt;/span&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-d-fill&quot;&gt;填入本行的授权码&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-d-fill-other&quot;&gt;填入另一行的授权码&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-d-expire&quot;&gt;让这次授权过期&lt;/button&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div id=&quot;r2-d-working&quot; hidden&gt;&lt;p class=&quot;result-title accent&quot;&gt;平台正在完成接入…&lt;/p&gt;&lt;p class=&quot;hint&quot;&gt;授权码已提交，平台最长处理 3 分钟。可以关掉弹窗，结果会记在这一行。&lt;/p&gt;&lt;/div&gt;
+      &lt;div id=&quot;r2-d-result&quot; hidden&gt;&lt;p class=&quot;result-title&quot; id=&quot;r2-d-result-title&quot;&gt;&lt;/p&gt;&lt;p class=&quot;hint&quot; id=&quot;r2-d-result-note&quot;&gt;&lt;/p&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;modal-foot&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn quiet&quot; id=&quot;r2-d-close-browser&quot;&gt;关闭浏览器&lt;/button&gt;&lt;div class=&quot;flex&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;r2-d-cancel&quot;&gt;取消&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn primary&quot; id=&quot;r2-d-submit&quot;&gt;提交授权码&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;r2-d-regen&quot; hidden&gt;重新生成&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn&quot; id=&quot;r2-d-done&quot; hidden&gt;关闭&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;p class=&quot;hint modal-tip&quot; id=&quot;r2-d-tip&quot;&gt;关掉弹窗（×）不会取消授权，可以从这一行的「继续授权」回来。「取消」会让平台取消这次授权并释放预留的名额。「关闭浏览器」只关本行的浏览器。&lt;/p&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;script&gt;
+(()=&gt;{
+  const root=document.getElementById(&#x27;onboard-r2&#x27;);
+  const el=id=&gt;root.querySelector(&#x27;#r2-&#x27;+id);
+  // The chosen group&#x27;s profiles that have an email address, newest first. 019 was
+  // onboarded earlier: it is listed, its browser can be run, and it gets no authorize link.
+  const seeds=[{id:&#x27;019&#x27;,email:&#x27;user019@example.com&#x27;,ip:&#x27;203.0.113.19&#x27;,prior:true},{id:&#x27;018&#x27;,email:&#x27;user018@example.com&#x27;,ip:&#x27;203.0.113.18&#x27;},{id:&#x27;017&#x27;,email:&#x27;user017@example.com&#x27;,ip:&#x27;203.0.113.17&#x27;},{id:&#x27;016&#x27;,email:&#x27;user016@example.com&#x27;,ip:&#x27;203.0.113.16&#x27;}];
+  const seedOf=id=&gt;seeds.find(x=&gt;x.id===id);
+  // A row keeps two things apart: whether its browser runs, and its authorization
+  // (auth: none yet, or the latest one with status pending / working / done / failed).
+  const freshRows=()=&gt;seeds.map(x=&gt;({id:x.id,running:false,busy:&#x27;&#x27;,onboarded:!!x.prior,attempt:0,auth:null}));
+  function initial(){return {group:&#x27;uk-http&#x27;,node:&#x27;direct-1&#x27;,tokenRead:true,tokenPreview:&#x27;1dk_onb_demo…only&#x27;,tokenLabel:&#x27;演示令牌&#x27;,tokenAt:&#x27;&#x27;,tokenNote:&#x27;&#x27;,tokenEditing:false,tokenInvalid:false,tokenView:&#x27;full&#x27;,demo:&#x27;&#x27;,outcome:&#x27;&#x27;,proxyMode:&#x27;row&#x27;,proxyGroup:&#x27;&#x27;,poolProxy:&#x27;&#x27;,tokenOrgs:true,orgProfile:&#x27;org-a&#x27;,domain:&#x27;example.com&#x27;,org:&#x27;&#x27;,rows:freshRows(),dialog:&#x27;&#x27;,dialogError:&#x27;&#x27;,dialogNote:&#x27;&#x27;,error:&#x27;&#x27;,checked:null,checking:false,paramsOpen:true,logs:[]};}
+  let s=initial(),revision=&#x27;&#x27;,counter=0,tokenBusy=&#x27;&#x27;,tokenSeq=0,anchorY=0,epoch=0;
+  const instance=String(Date.now());
+  // Something that happens a little later, unless the demo was reset in between.
+  const later=(fn,ms)=&gt;{const at=epoch;setTimeout(()=&gt;{if(at===epoch)fn();},ms);};
+  const rowOf=id=&gt;s.rows.find(x=&gt;x.id===id);
+  const rows=()=&gt;s.demo===&#x27;no-pending&#x27;?[]:s.rows;
+  const openAuth=r=&gt;!!r.auth&amp;&amp;(r.auth.status===&#x27;pending&#x27;||r.auth.status===&#x27;working&#x27;);
+  const escape=v=&gt;String(v).replace(/[&amp;&lt;&gt;&quot;&#x27;]/g,c=&gt;({&#x27;&amp;&#x27;:&#x27;&amp;amp;&#x27;,&#x27;&lt;&#x27;:&#x27;&amp;lt;&#x27;,&#x27;&gt;&#x27;:&#x27;&amp;gt;&#x27;,&#x27;&quot;&#x27;:&#x27;&amp;quot;&#x27;,&quot;&#x27;&quot;:&#x27;&amp;#39;&#x27;}[c]));
+  const stamp=()=&gt;new Date().toLocaleTimeString(&#x27;zh-CN&#x27;,{hour12:false});
+  function log(message){s.logs.push({time:stamp(),message});s.logs=s.logs.slice(-14);}
+  function persist(){
+    revision=instance+&#x27;-&#x27;+(++counter);
+    const snapshot={...s,error:&#x27;&#x27;,dialogError:&#x27;&#x27;,dialogNote:&#x27;&#x27;,checking:false,logs:s.logs.slice(-8)};
+    if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{prototype:&#x27;上号 R3&#x27;,browsersRunning:s.rows.filter(r=&gt;r.running).length,authorizationsOpen:s.rows.filter(openAuth).length,onboarded:s.rows.filter(r=&gt;r.onboarded).length,dialog:s.dialog||null},privateContent:{version:3,revision,state:snapshot}}).catch(()=&gt;{});
+  }
+  function saveRender(){render();persist();}
+  function restore(raw){
+    const p=raw?.privateContent;
+    if(!p||p.version!==3||!p.state||p.revision===revision)return;
+    const v=p.state;if(!Array.isArray(v.rows))return;
+    epoch++;s={...initial(),...v};
+    s.rows=freshRows().map(base=&gt;({...base,...(v.rows.find(x=&gt;x.id===base.id)||{}),id:base.id,busy:&#x27;&#x27;}));
+    s.group=initial().group;s.tokenEditing=false;s.checking=false;tokenBusy=&#x27;&#x27;;tokenSeq++;
+    if(![&#x27;refresh-changed&#x27;,&#x27;refresh-revoked&#x27;,&#x27;no-pending&#x27;].includes(s.demo))s.demo=&#x27;&#x27;;
+    s.tokenView=s.tokenView===&#x27;reduced&#x27;?&#x27;reduced&#x27;:&#x27;full&#x27;;s.tokenInvalid=!!s.tokenInvalid&amp;&amp;s.tokenRead;
+    if(!rowOf(s.dialog)||!rowOf(s.dialog).auth)s.dialog=&#x27;&#x27;;
+    // The platform goes on with a submitted callback whether the page is open or not.
+    s.rows.forEach(r=&gt;{if(r.auth?.status===&#x27;working&#x27;){const job=r.auth.job;later(()=&gt;resolve(r.id,job),1200);}});
+    revision=p.revision;el(&#x27;d-callback&#x27;).value=&#x27;&#x27;;render();
+  }
+  // The organization profiles this onboarder token may use (GET /api/onboard/me → orgs), with
+  // each profile&#x27;s email domains. A token with none (tokenOrgs false) may leave the
+  // organization unspecified or name a UUID instead.
+  const orgs=[{id:&#x27;org-a&#x27;,name:&#x27;Team 示例 A&#x27;,domains:[&#x27;example.com&#x27;]},{id:&#x27;org-b&#x27;,name:&#x27;Team 示例 B&#x27;,domains:[&#x27;example.com&#x27;,&#x27;example.net&#x27;]},{id:&#x27;org-c&#x27;,name:&#x27;Team 示例 C&#x27;,domains:[]}];
+  // What a refresh may bring back: another node, and no longer the first organization profile.
+  const nodeSets={full:[{id:&#x27;direct-1&#x27;,label:&#x27;direct-1 · 在线 · 13/20&#x27;}],reduced:[{id:&#x27;direct-2&#x27;,label:&#x27;direct-2 · 在线 · 4/20&#x27;}]};
+  const nodesOf=view=&gt;nodeSets[view]||nodeSets.full;
+  const orgsOf=view=&gt;view===&#x27;reduced&#x27;?orgs.filter(o=&gt;o.id!==&#x27;org-a&#x27;):orgs;
+  const orgNow=()=&gt;{const list=orgsOf(s.tokenView);return list.find(o=&gt;o.id===s.orgProfile)||list[0];};
+  // A saved token the platform still accepts.
+  const usable=()=&gt;s.tokenRead&amp;&amp;!s.tokenInvalid;
+  // The proxy pool of each node this token may use: its proxy groups (GET /api/onboard/node-groups)
+  // and the proxies that can still take an account (GET /api/onboard/proxies).
+  const pools={
+    &#x27;direct-1&#x27;:{groups:[{name:&#x27;英国住宅&#x27;,assignable:12},{name:&#x27;美国住宅&#x27;,assignable:8}],proxies:[{id:&#x27;p1-18&#x27;,ip:&#x27;203.0.113.18&#x27;,group:&#x27;英国住宅&#x27;,left:3},{id:&#x27;p1-17&#x27;,ip:&#x27;203.0.113.17&#x27;,group:&#x27;英国住宅&#x27;,left:3},{id:&#x27;p1-16&#x27;,ip:&#x27;203.0.113.16&#x27;,group:&#x27;英国住宅&#x27;,left:2},{id:&#x27;p1-41&#x27;,ip:&#x27;198.51.100.41&#x27;,group:&#x27;美国住宅&#x27;,left:3},{id:&#x27;p1-42&#x27;,ip:&#x27;198.51.100.42&#x27;,group:&#x27;美国住宅&#x27;,left:1}]},
+    &#x27;direct-2&#x27;:{groups:[{name:&#x27;英国住宅 B&#x27;,assignable:4}],proxies:[{id:&#x27;p2-18&#x27;,ip:&#x27;203.0.113.18&#x27;,group:&#x27;英国住宅 B&#x27;,left:3},{id:&#x27;p2-17&#x27;,ip:&#x27;203.0.113.17&#x27;,group:&#x27;英国住宅 B&#x27;,left:3},{id:&#x27;p2-16&#x27;,ip:&#x27;203.0.113.16&#x27;,group:&#x27;英国住宅 B&#x27;,left:3},{id:&#x27;p2-61&#x27;,ip:&#x27;198.51.100.61&#x27;,group:&#x27;英国住宅 B&#x27;,left:2}]}
+  };
+  const poolNow=()=&gt;pools[s.node]||pools[&#x27;direct-1&#x27;];
+  const proxyHints={
+    row:&#x27;每行按本行浏览器代理的出口 IP，在所选节点的代理池里找到同一出口的那一条来接入。找不到、对应多条或该出口已满时，这一行不能生成授权链接。出口是否已被别的组织占用，事先查不出来：平台在生成授权链接时判断，被拒绝则这一行生成失败。&#x27;,
+    auto:&#x27;平台为每一行各挑一条可用代理，优先挑账号最少的；选了分组就只在这个分组里挑。账号以后固定走平台挑的这条代理，可能和本行浏览器登录时的出口不同。&#x27;,
+    pool:&#x27;所有行都接到选中的这一条代理上。每条代理默认最多 3 个账号，名额用完后，后面的行在生成授权链接时被平台拒绝。账号以后固定走这条代理，可能和本行浏览器登录时的出口不同。&#x27;
+  };
+  // What a row&#x27;s exit column says about the proxy it will be onboarded through.
+  const exitNote=()=&gt;{
+    if(!usable())return s.tokenInvalid?&#x27;令牌无效，无法匹配&#x27;:&#x27;读取令牌后匹配&#x27;;
+    if(s.proxyMode===&#x27;auto&#x27;)return &#x27;接入代理由平台分配&#x27;;
+    if(s.proxyMode===&#x27;pool&#x27;){const p=poolNow().proxies.find(x=&gt;x.id===s.poolProxy);return p?&#x27;接入代理 &#x27;+p.ip:&#x27;尚未选择代理&#x27;;}
+    return &#x27;已匹配节点代理&#x27;;
+  };
+  // The node and proxy an authorization is created with; it keeps them however the card changes later.
+  const proxyUsed=r=&gt;{
+    if(s.proxyMode===&#x27;auto&#x27;)return s.proxyGroup?&#x27;平台在分组 &#x27;+s.proxyGroup+&#x27; 内分配&#x27;:&#x27;平台分配&#x27;;
+    if(s.proxyMode===&#x27;pool&#x27;)return poolNow().proxies.find(x=&gt;x.id===s.poolProxy)?.ip||&#x27;&#x27;;
+    return seedOf(r.id).ip;
+  };
+  // The access preset card: what is chosen, and the one line under its third step that says so.
+  function renderPreset(){
+    const choose=(id,value)=&gt;{const n=el(id);n.value=value;if(n.selectedIndex&lt;0)n.selectedIndex=0;};
+    const o=orgNow(),nodeList=nodesOf(s.tokenView),orgList=orgsOf(s.tokenView);
+    if(!nodeList.some(n=&gt;n.id===s.node))s.node=nodeList[0].id;
+    el(&#x27;node&#x27;).innerHTML=nodeList.map(n=&gt;&#x27;&lt;option value=&quot;&#x27;+n.id+&#x27;&quot;&gt;&#x27;+n.label+&#x27;&lt;/option&gt;&#x27;).join(&#x27;&#x27;);
+    el(&#x27;org-profile&#x27;).innerHTML=orgList.map(x=&gt;&#x27;&lt;option value=&quot;&#x27;+x.id+&#x27;&quot;&gt;&#x27;+x.name+&#x27;&lt;/option&gt;&#x27;).join(&#x27;&#x27;);
+    const pool=poolNow();
+    if(![&#x27;row&#x27;,&#x27;auto&#x27;,&#x27;pool&#x27;].includes(s.proxyMode))s.proxyMode=&#x27;row&#x27;;
+    if(!pool.groups.some(g=&gt;g.name===s.proxyGroup))s.proxyGroup=&#x27;&#x27;;
+    if(!pool.proxies.some(p=&gt;p.id===s.poolProxy))s.poolProxy=&#x27;&#x27;;
+    root.querySelectorAll(&#x27;[data-proxy]&#x27;).forEach(b=&gt;b.setAttribute(&#x27;aria-pressed&#x27;,String(b.dataset.proxy===s.proxyMode)));
+    el(&#x27;proxy-pool-tab&#x27;).textContent=&#x27;从池中选（&#x27;+pool.proxies.length+&#x27;）&#x27;;
+    el(&#x27;proxy-auto&#x27;).hidden=s.proxyMode!==&#x27;auto&#x27;;el(&#x27;proxy-pool&#x27;).hidden=s.proxyMode!==&#x27;pool&#x27;;
+    el(&#x27;proxy-group&#x27;).innerHTML=&#x27;&lt;option value=&quot;&quot;&gt;不限分组&lt;/option&gt;&#x27;+pool.groups.map(g=&gt;&#x27;&lt;option value=&quot;&#x27;+g.name+&#x27;&quot;&gt;&#x27;+g.name+&#x27; · 可分配 &#x27;+g.assignable+&#x27;&lt;/option&gt;&#x27;).join(&#x27;&#x27;);
+    el(&#x27;pool-proxy&#x27;).innerHTML=&#x27;&lt;option value=&quot;&quot;&gt;选择代理…&lt;/option&gt;&#x27;+pool.proxies.map(p=&gt;&#x27;&lt;option value=&quot;&#x27;+p.id+&#x27;&quot;&gt;&#x27;+p.ip+&#x27; · &#x27;+p.group+&#x27; · 还可接 &#x27;+p.left+&#x27; 个&lt;/option&gt;&#x27;).join(&#x27;&#x27;);
+    el(&#x27;proxy-hint&#x27;).textContent=proxyHints[s.proxyMode];
+    const pickedProxy=pool.proxies.find(p=&gt;p.id===s.poolProxy);
+    const proxyText=s.proxyMode===&#x27;auto&#x27;?(s.proxyGroup?&#x27;在分组 &#x27;+s.proxyGroup+&#x27; 内自动分配&#x27;:&#x27;自动分配&#x27;):s.proxyMode===&#x27;pool&#x27;?(pickedProxy?pickedProxy.ip:&#x27;从池中选，未选&#x27;):&#x27;逐行原出口&#x27;;
+    if(!o.domains.includes(s.domain))s.domain=o.domains.length===1?o.domains[0]:&#x27;&#x27;;
+    el(&#x27;org-profiles&#x27;).hidden=!s.tokenOrgs;el(&#x27;org-legacy&#x27;).hidden=s.tokenOrgs;
+    el(&#x27;domain-field&#x27;).hidden=!o.domains.length;
+    el(&#x27;domain&#x27;).innerHTML=(o.domains.length&gt;1?&#x27;&lt;option value=&quot;&quot;&gt;选择域名…&lt;/option&gt;&#x27;:&#x27;&#x27;)+o.domains.map(d=&gt;&#x27;&lt;option value=&quot;&#x27;+d+&#x27;&quot;&gt;@&#x27;+d+&#x27;&lt;/option&gt;&#x27;).join(&#x27;&#x27;);
+    choose(&#x27;node&#x27;,s.node);choose(&#x27;org-profile&#x27;,o.id);choose(&#x27;domain&#x27;,s.domain);choose(&#x27;org&#x27;,s.org);choose(&#x27;proxy-group&#x27;,s.proxyGroup);choose(&#x27;pool-proxy&#x27;,s.poolProxy);
+    el(&#x27;org-uuid-field&#x27;).hidden=s.org!==&#x27;manual&#x27;;el(&#x27;org-virgin&#x27;).hidden=s.org!==&#x27;&#x27;;
+    const set=[[&#x27;adv-concurrency&#x27;,&#x27;并发&#x27;],[&#x27;adv-rpm&#x27;,&#x27;RPM&#x27;]].filter(([id])=&gt;el(id).value.trim()!==&#x27;&#x27;).map(([id,k])=&gt;k+&#x27; &#x27;+el(id).value.trim());
+    if(el(&#x27;adv-note&#x27;).value.trim())set.push(&#x27;有备注&#x27;);
+    el(&#x27;adv-summary&#x27;).textContent=set.length?&#x27;· 已设：&#x27;+set.join(&#x27; · &#x27;):&#x27;· 备注、限额&#x27;;
+    const uuid=el(&#x27;org-uuid&#x27;).value.trim();
+    const org=s.tokenOrgs?o.name+(o.domains.length?(s.domain?&#x27; · @&#x27;+s.domain:&#x27; · 未选域名&#x27;):&#x27;&#x27;):(s.org===&#x27;manual&#x27;?(uuid?uuid.slice(0,8)+&#x27;…&#x27;:&#x27;未填 UUID&#x27;):&#x27;不指定&#x27;);
+    const editing=s.tokenEditing||!s.tokenRead;
+    el(&#x27;token-saved&#x27;).hidden=editing;el(&#x27;token-form&#x27;).hidden=!editing;el(&#x27;token-cancel&#x27;).hidden=!s.tokenRead;
+    el(&#x27;token-preview&#x27;).textContent=s.tokenPreview;
+    el(&#x27;token-status&#x27;).textContent=tokenBusy===&#x27;refresh&#x27;?&#x27;正在刷新…&#x27;:tokenBusy===&#x27;read&#x27;?&#x27;正在读取…&#x27;:s.tokenInvalid?&#x27;令牌无效或已被吊销 · &#x27;+s.tokenAt+&#x27;。修改为有效令牌后才能检查配置和生成授权链接。&#x27;:s.tokenRead?&#x27;已读取 · 令牌「&#x27;+s.tokenLabel+&#x27;」· 可用节点 &#x27;+nodeList.length+&#x27; · 组织档案 &#x27;+(s.tokenOrgs?orgList.length:0)+(s.tokenAt?&#x27; · &#x27;+s.tokenAt:&#x27;&#x27;):&#x27;尚未保存令牌。保存并读取后才能检查配置和生成授权链接。&#x27;;
+    const tokenNote=editing?(s.tokenRead?&#x27;正在修改令牌。新令牌读取成功后才替换现有令牌；取消则保留现有令牌。&#x27;:&#x27;令牌只保存在本机，保存后不再显示全文。&#x27;)+&#x27;演示：以 -revoked 结尾的令牌会被平台拒绝。&#x27;:s.tokenNote;
+    el(&#x27;token-note&#x27;).hidden=!tokenNote;el(&#x27;token-note&#x27;).textContent=tokenNote;
+    el(&#x27;token-status&#x27;).classList.toggle(&#x27;bad&#x27;,s.tokenInvalid&amp;&amp;!tokenBusy);el(&#x27;token-note&#x27;).classList.toggle(&#x27;warn&#x27;,!editing&amp;&amp;tokenNote.startsWith(&#x27;刷新后有变化&#x27;));
+    root.querySelector(&#x27;#r2-preset-card .psteps&#x27;).hidden=!usable();el(&#x27;token-empty&#x27;).hidden=usable();
+    el(&#x27;token-empty&#x27;).textContent=s.tokenInvalid?&#x27;已保存的令牌不能再使用。修改为有效令牌后，这里重新显示它可用的节点和组织。&#x27;:&#x27;保存并读取上号员令牌后，这里显示这个令牌可用的节点和组织。&#x27;;
+    el(&#x27;preset-foot&#x27;).hidden=!usable();el(&#x27;preset-summary&#x27;).innerHTML=!usable()?&#x27;&#x27;:[[&#x27;方式&#x27;,&#x27;授权链接&#x27;],[&#x27;节点&#x27;,el(&#x27;node&#x27;).value],[&#x27;代理&#x27;,proxyText],[&#x27;组织&#x27;,org],[&#x27;分组&#x27;,&#x27;默认分组&#x27;]].map(([k,v])=&gt;&#x27;&lt;span&gt;&lt;span class=&quot;k&quot;&gt;&#x27;+k+&#x27;&lt;/span&gt;&#x27;+escape(v)+&#x27;&lt;/span&gt;&#x27;).join(&#x27;&#x27;);
+    [&#x27;token&#x27;,&#x27;token-read&#x27;,&#x27;token-cancel&#x27;,&#x27;token-refresh&#x27;,&#x27;token-edit&#x27;].forEach(id=&gt;el(id).disabled=!!tokenBusy);
+    el(&#x27;token-refresh&#x27;).textContent=tokenBusy===&#x27;refresh&#x27;?&#x27;刷新中…&#x27;:&#x27;刷新&#x27;;
+  }
+  // What stops the parameters from being used: a message, and where on the page it points.
+  function paramProblem(){
+    if(tokenBusy)return [&#x27;正在读取上号员令牌，请稍候。&#x27;,&#x27;card&#x27;];
+    if(!s.tokenRead)return [&#x27;请先保存并读取上号员令牌。&#x27;,&#x27;card&#x27;];
+    if(s.tokenEditing)return [&#x27;请先完成或取消令牌修改。&#x27;,&#x27;card&#x27;];
+    if(s.tokenInvalid)return [&#x27;已保存的上号员令牌无效或已被吊销，请先修改为有效令牌。&#x27;,&#x27;card&#x27;];
+    if(s.proxyMode===&#x27;pool&#x27;&amp;&amp;!s.poolProxy)return [&#x27;请先从代理池中选择一条代理。&#x27;,&#x27;card&#x27;];
+    if(s.tokenOrgs&amp;&amp;orgNow().domains.length&amp;&amp;!s.domain)return [&#x27;请先为所选组织选择邮箱域名。&#x27;,&#x27;card&#x27;];
+    if(!s.tokenOrgs&amp;&amp;s.org===&#x27;manual&#x27;){
+      const uuid=el(&#x27;org-uuid&#x27;).value.trim();
+      if(!uuid)return [&#x27;请输入组织 UUID，或把组织改为「不指定」。&#x27;,&#x27;card&#x27;];
+      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid))return [&#x27;组织 UUID 的格式应为 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx。&#x27;,&#x27;card&#x27;];
+    }
+    for(const [id,name] of [[&#x27;adv-concurrency&#x27;,&#x27;并发上限&#x27;],[&#x27;adv-rpm&#x27;,&#x27;RPM 上限&#x27;]]){
+      const n=el(id),v=n.value.trim();
+      if(n.validity.badInput||(v!==&#x27;&#x27;&amp;&amp;!/^\d+$/.test(v))||Number(v)&gt;100000)return [name+&#x27;应为 0 到 100000 的整数；留空使用平台默认值。&#x27;,&#x27;adv&#x27;];
+    }
+    return null;
+  }
+  // The platform compares domains without regard to case.
+  const offDomain=r=&gt;s.tokenOrgs&amp;&amp;!!s.domain&amp;&amp;!seedOf(r.id).email.toLowerCase().endsWith(&#x27;@&#x27;+s.domain.toLowerCase());
+  function refuse([message,where]){s.error=message;if(where)s.paramsOpen=true;if(where===&#x27;adv&#x27;)root.querySelector(&#x27;#r2-preset-card details.adv&#x27;).open=true;saveRender();}
+  // A change of what is chosen makes the last check stale.
+  const changed=()=&gt;{s.checked=null;s.error=&#x27;&#x27;;};
+  function check(){
+    if(s.checking)return;
+    const p=paramProblem();if(p)return refuse(p);
+    s.error=&#x27;&#x27;;s.checking=true;s.checked=null;render();
+    later(()=&gt;{
+      const pending=rows().filter(r=&gt;!r.onboarded),off=pending.filter(offDomain).length;
+      s.checking=false;s.checked={ready:pending.length-off,off,onboarded:rows().length-pending.length};
+      log(off?&#x27;检查配置：&#x27;+off+&#x27; 行的邮箱不在所选域名下（模拟）&#x27;:&#x27;检查通过：参数齐全，&#x27;+s.checked.ready+&#x27; 行可以上号（模拟）&#x27;);saveRender();
+    },600);
+  }
+  function statusText(){
+    if(s.demo===&#x27;no-pending&#x27;)return &#x27;没有待上号的配置&#x27;;
+    if(s.checking)return &#x27;正在检查配置&#x27;;
+    const c=s.checked;if(!c)return &#x27;尚未检查&#x27;;
+    if(c.off)return &#x27;参数还不行：&#x27;+c.off+&#x27; 行的邮箱不在 @&#x27;+s.domain+&#x27; 下，平台会拒绝接入&#x27;;
+    return &#x27;检查通过（模拟）：&#x27;+c.ready+&#x27; 行可以上号&#x27;+(c.onboarded?&#x27;，&#x27;+c.onboarded+&#x27; 行已上号&#x27;:&#x27;&#x27;);
+  }
+  // Why a row cannot get an authorize link right now, said beside its button.
+  const genBlock=r=&gt;r.onboarded?&#x27;已上号&#x27;:tokenBusy?&#x27;正在读取令牌&#x27;:!s.tokenRead?&#x27;尚未保存令牌&#x27;:s.tokenInvalid?&#x27;令牌无效&#x27;:s.tokenEditing?&#x27;正在修改令牌&#x27;:r.busy||r.running?&#x27;&#x27;:&#x27;先运行浏览器&#x27;;
+  const urlOf=a=&gt;&#x27;https://claude.ai/oauth/authorize?code=true&amp;client_id=demo-only&amp;response_type=code&amp;redirect_uri=https%3A%2F%2Fplatform.claude.com%2Foauth%2Fcode%2Fcallback&amp;scope=demo-only&amp;code_challenge=demo-only&amp;code_challenge_method=S256&amp;state=&#x27;+a.state;
+  const leftText=a=&gt;{const ms=Math.max(0,a.expires-Date.now());return String(Math.floor(ms/60000)).padStart(2,&#x27;0&#x27;)+&#x27;:&#x27;+String(Math.floor(ms%60000/1000)).padStart(2,&#x27;0&#x27;);};
+  const PLAY=&#x27;&lt;svg viewBox=&quot;0 0 10 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;path d=&quot;M2 1l7 4-7 4z&quot; fill=&quot;currentColor&quot;/&gt;&lt;/svg&gt;&#x27;;
+  const STOP=&#x27;&lt;svg viewBox=&quot;0 0 10 10&quot; aria-hidden=&quot;true&quot;&gt;&lt;rect x=&quot;1.5&quot; y=&quot;1.5&quot; width=&quot;7&quot; height=&quot;7&quot; rx=&quot;1&quot; fill=&quot;currentColor&quot;/&gt;&lt;/svg&gt;&#x27;;
+  function render(){
+    const list=rows(),none=!list.length,pending=s.rows.filter(r=&gt;!r.onboarded).length;
+    root.dataset.dialog=s.dialog;
+    el(&#x27;params&#x27;).open=s.paramsOpen;el(&#x27;param-summary&#x27;).textContent=none?&#x27;没有待上号的配置&#x27;:&#x27;保存在本机 · 生成授权链接时取当前的选择&#x27;;
+    el(&#x27;group&#x27;).value=s.group;el(&#x27;group&#x27;).disabled=none;
+    el(&#x27;group&#x27;).options[0].textContent=none?&#x27;没有待上号的配置&#x27;:&#x27;英国 HTTP 分组 · 待上号 &#x27;+pending+&#x27; · 已上号 &#x27;+(s.rows.length-pending);
+    el(&#x27;demo&#x27;).value=s.demo;el(&#x27;demo&#x27;).disabled=!!tokenBusy||s.rows.some(r=&gt;r.running||r.busy||openAuth(r));el(&#x27;outcome&#x27;).value=s.outcome;
+    renderPreset();
+    el(&#x27;error&#x27;).hidden=!s.error;el(&#x27;error&#x27;).textContent=s.error;
+    el(&#x27;status&#x27;).textContent=statusText();el(&#x27;status&#x27;).classList.toggle(&#x27;good&#x27;,!!s.checked&amp;&amp;!s.checked.off);el(&#x27;status&#x27;).classList.toggle(&#x27;warn&#x27;,!!s.checked?.off);
+    el(&#x27;pending&#x27;).textContent=none?0:pending;el(&#x27;onboarded&#x27;).textContent=none?0:s.rows.length-pending;
+    el(&#x27;running&#x27;).textContent=list.filter(r=&gt;r.running).length;el(&#x27;open-jobs&#x27;).textContent=list.filter(openAuth).length;
+    el(&#x27;check&#x27;).disabled=s.checking||none;el(&#x27;check&#x27;).textContent=s.checking?&#x27;检查中…&#x27;:&#x27;检查配置&#x27;;
+    const focused=root.ownerDocument.activeElement,keep=focused&amp;&amp;el(&#x27;rows&#x27;).contains(focused)?[focused.closest(&#x27;tr&#x27;)?.dataset.row,focused.dataset.kind]:null;
+    el(&#x27;rows&#x27;).innerHTML=none?&#x27;&lt;tr class=&quot;none&quot;&gt;&lt;td colspan=&quot;4&quot; class=&quot;muted&quot;&gt;没有待上号的配置。有邮箱且尚未上号的配置才会列在这里；现在所有分组的待上号数量都是 0。&lt;/td&gt;&lt;/tr&gt;&#x27;:list.map(r=&gt;{
+      const b=seedOf(r.id),a=r.auth,open=openAuth(r),lost=open&amp;&amp;s.tokenInvalid;
+      const browser=r.busy===&#x27;run&#x27;?&#x27;&lt;span class=&quot;accent&quot;&gt;正在启动…&lt;/span&gt;&#x27;:r.busy===&#x27;stop&#x27;?&#x27;&lt;span class=&quot;accent&quot;&gt;正在关闭…&lt;/span&gt;&#x27;:r.running?&#x27;&lt;span class=&quot;good&quot;&gt;运行中&lt;/span&gt;&#x27;:&#x27;已停止&#x27;;
+      let auth=&#x27;未生成&#x27;,detail=&#x27;&#x27;;
+      if(r.busy===&#x27;gen&#x27;)auth=&#x27;&lt;span class=&quot;accent&quot;&gt;正在生成授权链接…&lt;/span&gt;&#x27;;
+      else if(lost){auth=&#x27;&lt;span class=&quot;bad&quot;&gt;无法查询 · 令牌无效&lt;/span&gt;&#x27;;detail=&#x27;本次授权：&#x27;+escape(a.used);}
+      else if(a?.status===&#x27;pending&#x27;){auth=&#x27;&lt;span class=&quot;warn&quot;&gt;待提交授权码&lt;/span&gt; · 剩余 &lt;span data-left=&quot;&#x27;+r.id+&#x27;&quot;&gt;&#x27;+leftText(a)+&#x27;&lt;/span&gt;&#x27;;detail=&#x27;本次授权：&#x27;+escape(a.used);}
+      else if(a?.status===&#x27;working&#x27;){auth=&#x27;&lt;span class=&quot;accent&quot;&gt;平台处理中&lt;/span&gt;&#x27;;detail=&#x27;本次授权：&#x27;+escape(a.used);}
+      else if(a){auth=&#x27;&lt;span class=&quot;&#x27;+a.tone+&#x27;&quot;&gt;&#x27;+escape(a.title)+&#x27;&lt;/span&gt;&#x27;;detail=escape(a.note);}
+      else if(r.onboarded){auth=&#x27;已上号&#x27;;detail=&#x27;以前接入的，不能再次上号&#x27;;}
+      const why=lost?&#x27;令牌无效&#x27;:open?&#x27;&#x27;:genBlock(r);
+      const browserBtn=r.running||r.busy===&#x27;stop&#x27;
+        ?&#x27;&lt;button type=&quot;button&quot; class=&quot;btn&quot; data-kind=&quot;browser&quot; data-stop=&quot;&#x27;+r.id+&#x27;&quot;&#x27;+(r.busy?&#x27; disabled&#x27;:&#x27;&#x27;)+&#x27;&gt;&#x27;+STOP+&#x27;停止&lt;/button&gt;&#x27;
+        :&#x27;&lt;button type=&quot;button&quot; class=&quot;btn&quot; data-kind=&quot;browser&quot; data-run=&quot;&#x27;+r.id+&#x27;&quot;&#x27;+(r.busy?&#x27; disabled&#x27;:&#x27;&#x27;)+&#x27;&gt;&#x27;+PLAY+&#x27;运行&lt;/button&gt;&#x27;;
+      const authBtn=open
+        ?&#x27;&lt;button type=&quot;button&quot; class=&quot;btn primary&quot; data-kind=&quot;auth&quot; data-continue=&quot;&#x27;+r.id+&#x27;&quot;&#x27;+(lost?&#x27; disabled&#x27;:&#x27;&#x27;)+&#x27;&gt;继续授权&lt;/button&gt;&#x27;
+        :&#x27;&lt;button type=&quot;button&quot; class=&quot;btn&quot; data-kind=&quot;auth&quot; data-gen=&quot;&#x27;+r.id+&#x27;&quot;&#x27;+(why||r.busy?&#x27; disabled&#x27;:&#x27;&#x27;)+(why?&#x27; title=&quot;&#x27;+why+&#x27;&quot;&#x27;:&#x27;&#x27;)+&#x27;&gt;生成授权链接&lt;/button&gt;&#x27;;
+      return &#x27;&lt;tr data-row=&quot;&#x27;+r.id+&#x27;&quot;&#x27;+(r.onboarded?&#x27; class=&quot;onboarded&quot;&#x27;:&#x27;&#x27;)+&#x27;&gt;&lt;td&gt;英国 HTTP · &#x27;+r.id+&#x27;&lt;div class=&quot;email&quot;&gt;&#x27;+b.email+&#x27;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;&#x27;+b.ip+&#x27;&lt;div class=&quot;muted small&quot;&gt;&#x27;+exitNote()+&#x27;&lt;/div&gt;&lt;/td&gt;&lt;td&gt;&lt;div&gt;&lt;span class=&quot;k&quot;&gt;浏览器&lt;/span&gt;&#x27;+browser+&#x27;&lt;/div&gt;&lt;div class=&quot;state&quot;&gt;&lt;span class=&quot;k&quot;&gt;授权&lt;/span&gt;&#x27;+auth+&#x27;&lt;/div&gt;&#x27;+(detail?&#x27;&lt;div class=&quot;muted small&quot;&gt;&#x27;+detail+&#x27;&lt;/div&gt;&#x27;:&#x27;&#x27;)+&#x27;&lt;/td&gt;&lt;td&gt;&lt;div class=&quot;ops&quot;&gt;&#x27;+browserBtn+authBtn+&#x27;&lt;/div&gt;&#x27;+(why?&#x27;&lt;div class=&quot;why&quot;&gt;&#x27;+why+&#x27;&lt;/div&gt;&#x27;:&#x27;&#x27;)+&#x27;&lt;/td&gt;&lt;/tr&gt;&#x27;;
+    }).join(&#x27;&#x27;);
+    if(keep){const n=el(&#x27;rows&#x27;).querySelector(&#x27;tr[data-row=&quot;&#x27;+keep[0]+&#x27;&quot;] [data-kind=&quot;&#x27;+keep[1]+&#x27;&quot;]&#x27;);if(n&amp;&amp;!n.disabled)n.focus();}
+    el(&#x27;log-count&#x27;).textContent=s.logs.length;el(&#x27;log&#x27;).innerHTML=s.logs.map(x=&gt;&#x27;&lt;li&gt;&lt;time&gt;&#x27;+escape(x.time)+&#x27;&lt;/time&gt;&lt;span&gt;&#x27;+escape(x.message)+&#x27;&lt;/span&gt;&lt;/li&gt;&#x27;).join(&#x27;&#x27;);
+    el(&#x27;foot-note&#x27;).textContent={&#x27;refresh-changed&#x27;:&#x27;演示情形：点令牌一行的「刷新」，原来选的节点和组织会不在结果里。&#x27;,&#x27;refresh-revoked&#x27;:&#x27;演示情形：点令牌一行的「刷新」，平台会拒绝已保存的令牌。&#x27;,&#x27;no-pending&#x27;:&#x27;演示情形：所有分组的待上号数量都是 0。&#x27;}[s.demo]||&#x27;试一遍：运行一行 → 生成授权链接 → 弹窗里点「演示：填入本行的授权码」→ 提交授权码 → 关闭浏览器。所有状态均为模拟。&#x27;;
+    renderDialog();
+  }
+  function renderDialog(){
+    const r=s.dialog?rowOf(s.dialog):null,box=el(&#x27;dialog&#x27;);
+    box.hidden=!r;if(!r){root.style.minHeight=&#x27;&#x27;;return;}
+    const a=r.auth,st=a.status,finished=st===&#x27;done&#x27;||st===&#x27;failed&#x27;;
+    el(&#x27;dialog-row&#x27;).textContent=&#x27;英国 HTTP · &#x27;+r.id+&#x27; · &#x27;+seedOf(r.id).email;
+    el(&#x27;d-pending&#x27;).hidden=st!==&#x27;pending&#x27;;el(&#x27;d-working&#x27;).hidden=st!==&#x27;working&#x27;;el(&#x27;d-result&#x27;).hidden=!finished;
+    if(st===&#x27;pending&#x27;){
+      el(&#x27;d-url&#x27;).textContent=urlOf(a);
+      el(&#x27;d-browser&#x27;).textContent=r.busy===&#x27;stop&#x27;?&#x27;本行浏览器正在关闭…&#x27;:r.running?(a.opened?&#x27;已在本行浏览器的新标签页打开这条链接（模拟）。请在那里核对登录的是 &#x27;+seedOf(r.id).email+&#x27;，再点同意；程序不会替你点。&#x27;:&#x27;本行浏览器已重新运行，原来打开授权链接的标签页不在了：点「复制」，把链接粘贴到本行浏览器的地址栏打开。&#x27;):&#x27;本行浏览器已停止，授权页也随之关闭。关掉弹窗，在这一行点「运行」，再回来「继续授权」并把链接复制到本行浏览器打开；或者取消这次授权。&#x27;;
+      el(&#x27;d-browser&#x27;).classList.toggle(&#x27;bad&#x27;,!r.running&amp;&amp;r.busy!==&#x27;stop&#x27;);
+      el(&#x27;d-note&#x27;).hidden=!s.dialogNote;el(&#x27;d-note&#x27;).textContent=s.dialogNote;
+      el(&#x27;d-left&#x27;).dataset.left=r.id;el(&#x27;d-left&#x27;).textContent=leftText(a);
+      el(&#x27;d-submit&#x27;).disabled=!el(&#x27;d-callback&#x27;).value.trim();
+    }
+    el(&#x27;d-error&#x27;).hidden=!s.dialogError;el(&#x27;d-error&#x27;).textContent=s.dialogError;
+    if(finished){el(&#x27;d-result-title&#x27;).textContent=a.title+(a.code?&#x27;（&#x27;+a.code+&#x27;）&#x27;:&#x27;&#x27;);el(&#x27;d-result-title&#x27;).className=&#x27;result-title &#x27;+a.tone;el(&#x27;d-result-note&#x27;).textContent=a.note;}
+    el(&#x27;d-cancel&#x27;).hidden=!openAuth(r);el(&#x27;d-submit&#x27;).hidden=st!==&#x27;pending&#x27;;
+    el(&#x27;d-regen&#x27;).hidden=!finished||r.onboarded;
+    el(&#x27;d-done&#x27;).hidden=!finished;el(&#x27;d-done&#x27;).textContent=r.onboarded?&#x27;完成&#x27;:&#x27;关闭&#x27;;el(&#x27;d-done&#x27;).classList.toggle(&#x27;primary&#x27;,r.onboarded);
+    el(&#x27;d-close-browser&#x27;).disabled=!r.running||!!r.busy;el(&#x27;d-close-browser&#x27;).textContent=r.busy===&#x27;stop&#x27;?&#x27;正在关闭…&#x27;:&#x27;关闭浏览器&#x27;;
+    el(&#x27;d-tip&#x27;).hidden=!openAuth(r);
+    place();
+  }
+  // The demo&#x27;s frame is as tall as its page, so the dialog is put beside the row it was
+  // opened from, where the reader is looking. The real page centres it in the window.
+  function place(){
+    const m=el(&#x27;dialog&#x27;).querySelector(&#x27;.modal&#x27;);
+    root.style.minHeight=(m.offsetHeight+24)+&#x27;px&#x27;;
+    const tr=el(&#x27;rows&#x27;).querySelector(&#x27;tr[data-row=&quot;&#x27;+s.dialog+&#x27;&quot;]&#x27;),y=tr?tr.getBoundingClientRect().top-root.getBoundingClientRect().top:anchorY;
+    m.style.marginTop=Math.max(12,Math.min(y-190,root.offsetHeight-m.offsetHeight-12))+&#x27;px&#x27;;
+  }
+  function openDialog(id){s.dialog=id;s.dialogError=&#x27;&#x27;;s.dialogNote=&#x27;&#x27;;el(&#x27;d-callback&#x27;).value=&#x27;&#x27;;saveRender();el(&#x27;dialog&#x27;).querySelector(&#x27;.modal&#x27;).focus();}
+  function closeDialog(){
+    const id=s.dialog;s.dialog=&#x27;&#x27;;s.dialogError=&#x27;&#x27;;s.dialogNote=&#x27;&#x27;;saveRender();
+    const back=[...el(&#x27;rows&#x27;).querySelectorAll(&#x27;tr[data-row=&quot;&#x27;+id+&#x27;&quot;] button&#x27;)].reverse().find(n=&gt;!n.disabled);if(back)back.focus();
+  }
+  function run(id){
+    const r=rowOf(id);if(!r||r.busy||r.running)return;
+    s.error=&#x27;&#x27;;r.busy=&#x27;run&#x27;;render();
+    later(()=&gt;{r.busy=&#x27;&#x27;;r.running=true;log(&#x27;配置 &#x27;+id+&#x27; · 已复制本行邮箱，浏览器已启动并打开启动页（模拟）&#x27;);saveRender();},700);
+  }
+  function stop(id){
+    const r=rowOf(id);if(!r||r.busy||!r.running)return;
+    r.busy=&#x27;stop&#x27;;render();
+    later(()=&gt;{r.busy=&#x27;&#x27;;r.running=false;if(r.auth?.status===&#x27;pending&#x27;)r.auth.opened=false;log(&#x27;配置 &#x27;+id+&#x27; · 浏览器已关闭（模拟）&#x27;);if(s.dialog===id&amp;&amp;r.onboarded){closeDialog();return;}saveRender();},550);
+  }
+  function generate(id){
+    const r=rowOf(id);if(!r||r.busy)return;
+    if(openAuth(r)){openDialog(id);return;}
+    const block=genBlock(r);if(block){s.error=&#x27;配置 &#x27;+id+&#x27; 现在不能生成授权链接：&#x27;+block+&#x27;。&#x27;;saveRender();return;}
+    const p=paramProblem();if(p)return refuse(p);
+    if(offDomain(r))return refuse([&#x27;配置 &#x27;+id+&#x27; 的邮箱不在 @&#x27;+s.domain+&#x27; 下，平台会拒绝接入。请更换邮箱域名。&#x27;,&#x27;card&#x27;]);
+    s.error=&#x27;&#x27;;r.busy=&#x27;gen&#x27;;render();
+    later(()=&gt;{
+      r.busy=&#x27;&#x27;;
+      const refusal={proxy_full:[&#x27;proxy_pool_empty&#x27;,&#x27;出口已满&#x27;,&#x27;这个出口的账号名额已用完（proxy_full）。换一种代理方式，或等名额空出后再生成。&#x27;],node_full:[&#x27;node_at_capacity&#x27;,&#x27;节点已满&#x27;,&#x27;节点的账号名额已用完，这个节点上的每一行现在都生成不了。&#x27;]}[s.outcome];
+      if(refusal){s.outcome=&#x27;&#x27;;r.auth={status:&#x27;failed&#x27;,code:refusal[0],tone:&#x27;bad&#x27;,title:&#x27;生成被平台拒绝 · &#x27;+refusal[1],note:refusal[2]};log(&#x27;配置 &#x27;+id+&#x27; · 生成授权链接被平台拒绝（&#x27;+refusal[0]+&#x27;，模拟）&#x27;);saveRender();return;}
+      r.attempt++;
+      r.auth={status:&#x27;pending&#x27;,job:&#x27;job-&#x27;+id+&#x27;-&#x27;+r.attempt,state:&#x27;demo-state-&#x27;+id+&#x27;-&#x27;+r.attempt,expires:Date.now()+30*60000,used:s.node+&#x27; · &#x27;+proxyUsed(r),opened:true};
+      log(&#x27;配置 &#x27;+id+&#x27; · 已生成授权链接，并在本行浏览器的新标签页打开；30 分钟内有效（模拟）&#x27;);openDialog(id);
+    },650);
+  }
+  // As the platform reads what is pasted: code#state, as the authorize page shows it, or a whole callback URL, must carry this job&#x27;s
+  // state; a bare code is taken as it is.
+  function callbackFits(v,state){
+    if(/^https?:\/\//i.test(v)){let u;try{u=new URL(v);}catch{return false;}return !!u.searchParams.get(&#x27;code&#x27;)&amp;&amp;u.searchParams.get(&#x27;state&#x27;)===state;}
+    const hash=v.indexOf(&#x27;#&#x27;);if(hash&gt;0)return v.slice(hash+1)===state;
+    return true;
+  }
+  function submit(){
+    const r=rowOf(s.dialog),a=r?.auth;if(!a||a.status!==&#x27;pending&#x27;)return;
+    const v=el(&#x27;d-callback&#x27;).value.trim();
+    if(!v){s.dialogError=&#x27;请粘贴授权码。&#x27;;renderDialog();return;}
+    if(v.length&gt;4000){s.dialogError=&#x27;授权码不应超过 4000 个字符。&#x27;;renderDialog();return;}
+    if(!callbackFits(v,a.state)){s.dialogError=&#x27;平台拒绝了这个授权码（callback_invalid）：它不完整，或者不属于这一行的授权。这次授权仍在等待，可以重新粘贴。&#x27;;s.dialogNote=&#x27;&#x27;;log(&#x27;配置 &#x27;+r.id+&#x27; · 授权码被平台拒绝，授权仍在等待（模拟）&#x27;);saveRender();return;}
+    a.status=&#x27;working&#x27;;s.dialogError=&#x27;&#x27;;s.dialogNote=&#x27;&#x27;;el(&#x27;d-callback&#x27;).value=&#x27;&#x27;;log(&#x27;配置 &#x27;+r.id+&#x27; · 授权码已提交，平台处理中（模拟）&#x27;);saveRender();
+    const job=a.job;later(()=&gt;resolve(r.id,job),1600);
+  }
+  // What the platform says in the end. Only a done job whose account is this row&#x27;s counts as onboarded.
+  function resolve(id,job){
+    const r=rowOf(id),a=r?.auth;if(!a||a.job!==job||a.status!==&#x27;working&#x27;)return;
+    const email=seedOf(id).email,o=s.outcome;s.outcome=&#x27;&#x27;;
+    const set=(status,code,tone,title,note,onboarded)=&gt;{Object.assign(a,{status,code,tone,title,note});if(onboarded){r.onboarded=true;s.checked=null;}};
+    if(o===&#x27;exists&#x27;)set(&#x27;failed&#x27;,&#x27;account_exists&#x27;,&#x27;warn&#x27;,&#x27;平台上已有这个账号，待核对&#x27;,&#x27;没有新增账号，已有的账号没有被改动。这一行没有记为已上号。&#x27;);
+    else if(o===&#x27;domain&#x27;)set(&#x27;failed&#x27;,&#x27;domain_mismatch&#x27;,&#x27;bad&#x27;,&#x27;账号邮箱不在所选域名下&#x27;,&#x27;浏览器里登录的账号邮箱不在所选域名下，账号没有写入。&#x27;);
+    else if(o===&#x27;grant&#x27;)set(&#x27;failed&#x27;,&#x27;invalid_grant&#x27;,&#x27;bad&#x27;,&#x27;授权码已用过或已失效&#x27;,&#x27;请重新生成授权链接，再同意一次。&#x27;);
+    else if(o===&#x27;mismatch&#x27;)set(&#x27;done&#x27;,&#x27;&#x27;,&#x27;bad&#x27;,&#x27;接入的账号不是本行邮箱&#x27;,&#x27;接入的是 another-user@example.com，不是本行的 &#x27;+email+&#x27;。账号已经在平台上，本页不能撤回，请联系管理员处理。这一行没有记为已上号。&#x27;);
+    else if(o===&#x27;reused&#x27;)set(&#x27;done&#x27;,&#x27;&#x27;,&#x27;good&#x27;,&#x27;平台上已有这个账号，已重新授权&#x27;,&#x27;没有新增账号。这一行记为已上号。&#x27;,true);
+    else if(o===&#x27;cooldown&#x27;)set(&#x27;done&#x27;,&#x27;&#x27;,&#x27;good&#x27;,&#x27;已接入&#x27;,&#x27;账号 &#x27;+email+&#x27; 已进入平台默认分组。新号冷静期至 &#x27;+new Date(Date.now()+4*3600000).toLocaleTimeString(&#x27;zh-CN&#x27;,{hour12:false,hour:&#x27;2-digit&#x27;,minute:&#x27;2-digit&#x27;})+&#x27;，期间平台不调度它。&#x27;,true);
+    else set(&#x27;done&#x27;,&#x27;&#x27;,&#x27;good&#x27;,&#x27;已接入&#x27;,&#x27;账号 &#x27;+email+&#x27; 已进入平台默认分组。&#x27;,true);
+    log(&#x27;配置 &#x27;+id+&#x27; · &#x27;+a.title+(a.code?&#x27;（&#x27;+a.code+&#x27;）&#x27;:&#x27;&#x27;)+&#x27;（模拟）&#x27;);saveRender();
+  }
+  function cancel(){
+    const r=rowOf(s.dialog);if(!r||!openAuth(r))return;
+    Object.assign(r.auth,{status:&#x27;failed&#x27;,code:&#x27;job_cancelled&#x27;,tone:&#x27;muted&#x27;,title:&#x27;已取消&#x27;,note:&#x27;平台已取消这次授权并释放预留的名额，可以重新生成。&#x27;});
+    log(&#x27;配置 &#x27;+r.id+&#x27; · 已取消授权（模拟）&#x27;);closeDialog();
+  }
+  function expire(id){
+    const r=rowOf(id),a=r?.auth;if(!a||a.status!==&#x27;pending&#x27;)return;
+    Object.assign(a,{status:&#x27;failed&#x27;,code:&#x27;callback_expired&#x27;,tone:&#x27;warn&#x27;,title:&#x27;授权已过期&#x27;,note:&#x27;等待授权码超过 30 分钟，平台已释放预留的名额。请重新生成授权链接。&#x27;});
+    s.dialogError=&#x27;&#x27;;s.dialogNote=&#x27;&#x27;;log(&#x27;配置 &#x27;+id+&#x27; · 授权已过期（模拟）&#x27;);saveRender();
+  }
+  // The time an authorization has left comes from the platform&#x27;s own expiry.
+  setInterval(()=&gt;{s.rows.forEach(r=&gt;{const a=r.auth;if(a?.status!==&#x27;pending&#x27;)return;if(a.expires&lt;=Date.now()){expire(r.id);return;}root.querySelectorAll(&#x27;[data-left=&quot;&#x27;+r.id+&#x27;&quot;]&#x27;).forEach(n=&gt;n.textContent=leftText(a));});},1000);
+  function reset(){epoch++;s=initial();tokenBusy=&#x27;&#x27;;tokenSeq++;el(&#x27;token&#x27;).type=&#x27;password&#x27;;el(&#x27;token-reveal&#x27;).textContent=&#x27;显示&#x27;;[&#x27;token&#x27;,&#x27;adv-note&#x27;,&#x27;adv-concurrency&#x27;,&#x27;adv-rpm&#x27;,&#x27;org-uuid&#x27;,&#x27;d-callback&#x27;].forEach(id=&gt;el(id).value=&#x27;&#x27;);saveRender();}
+  el(&#x27;params&#x27;).ontoggle=()=&gt;{s.paramsOpen=el(&#x27;params&#x27;).open;};
+  el(&#x27;check&#x27;).onclick=check;el(&#x27;reset&#x27;).onclick=reset;
+  el(&#x27;rows&#x27;).onclick=e=&gt;{
+    const b=e.target.closest(&#x27;button&#x27;);if(!b||b.disabled)return;
+    anchorY=b.getBoundingClientRect().top-root.getBoundingClientRect().top;
+    const d=b.dataset;if(d.run)run(d.run);else if(d.stop)stop(d.stop);else if(d.gen)generate(d.gen);else if(d.continue)openDialog(d.continue);
+  };
+  el(&#x27;demo&#x27;).onchange=e=&gt;{s.demo=e.target.value;changed();saveRender();};
+  el(&#x27;outcome&#x27;).onchange=e=&gt;{s.outcome=e.target.value;saveRender();};
+  el(&#x27;group&#x27;).onchange=e=&gt;{s.group=e.target.value;changed();saveRender();};
+  [[&#x27;node&#x27;,&#x27;node&#x27;],[&#x27;org&#x27;,&#x27;org&#x27;],[&#x27;domain&#x27;,&#x27;domain&#x27;],[&#x27;proxy-group&#x27;,&#x27;proxyGroup&#x27;],[&#x27;pool-proxy&#x27;,&#x27;poolProxy&#x27;]].forEach(([id,key])=&gt;el(id).onchange=e=&gt;{s[key]=e.target.value;changed();saveRender();});
+  el(&#x27;preset-card&#x27;).addEventListener(&#x27;click&#x27;,e=&gt;{const b=e.target.closest(&#x27;[data-proxy]&#x27;);if(!b)return;s.proxyMode=b.dataset.proxy;changed();saveRender();});
+  el(&#x27;org-profile&#x27;).onchange=e=&gt;{s.orgProfile=e.target.value;s.domain=&#x27;&#x27;;changed();saveRender();};
+  [&#x27;org-uuid&#x27;,&#x27;adv-note&#x27;,&#x27;adv-concurrency&#x27;,&#x27;adv-rpm&#x27;].forEach(id=&gt;el(id).oninput=()=&gt;{changed();render();});
+  // The dialog.
+  el(&#x27;dialog-x&#x27;).onclick=closeDialog;el(&#x27;d-done&#x27;).onclick=closeDialog;el(&#x27;d-cancel&#x27;).onclick=cancel;el(&#x27;d-submit&#x27;).onclick=submit;
+  el(&#x27;dialog&#x27;).onclick=e=&gt;{if(e.target===el(&#x27;dialog&#x27;))closeDialog();};
+  el(&#x27;d-callback&#x27;).oninput=()=&gt;{s.dialogError=&#x27;&#x27;;renderDialog();};
+  // The demo runs in a frame that may not use the clipboard API, so the link is selected and copied the old way.
+  el(&#x27;d-copy&#x27;).onclick=()=&gt;{const a=rowOf(s.dialog)?.auth;if(!a)return;let ok=false;try{const range=root.ownerDocument.createRange();range.selectNodeContents(el(&#x27;d-url&#x27;));const sel=root.ownerDocument.getSelection();sel.removeAllRanges();sel.addRange(range);ok=root.ownerDocument.execCommand(&#x27;copy&#x27;);}catch{}s.dialogNote=(ok?&#x27;已复制授权链接。&#x27;:&#x27;链接已选中，可以手动复制。&#x27;)+&#x27;请只在本行的浏览器里打开它。&#x27;;renderDialog();};
+  el(&#x27;d-close-browser&#x27;).onclick=()=&gt;stop(s.dialog);
+  el(&#x27;d-regen&#x27;).onclick=()=&gt;{const id=s.dialog;s.dialog=&#x27;&#x27;;s.dialogError=&#x27;&#x27;;s.dialogNote=&#x27;&#x27;;generate(id);};
+  el(&#x27;d-fill&#x27;).onclick=()=&gt;{const r=rowOf(s.dialog);if(!r)return;el(&#x27;d-callback&#x27;).value=&#x27;demo-code-&#x27;+r.id+&#x27;#&#x27;+r.auth.state;s.dialogError=&#x27;&#x27;;renderDialog();};
+  el(&#x27;d-fill-other&#x27;).onclick=()=&gt;{const r=rowOf(s.dialog);if(!r)return;const other=seeds.find(x=&gt;x.id!==r.id&amp;&amp;!x.prior).id;el(&#x27;d-callback&#x27;).value=&#x27;demo-code-&#x27;+other+&#x27;#demo-state-&#x27;+other+&#x27;-1&#x27;;s.dialogError=&#x27;&#x27;;renderDialog();};
+  el(&#x27;d-expire&#x27;).onclick=()=&gt;expire(s.dialog);
+  root.addEventListener(&#x27;keydown&#x27;,e=&gt;{
+    if(!s.dialog)return;
+    if(e.key===&#x27;Escape&#x27;){e.preventDefault();closeDialog();return;}
+    if(e.key!==&#x27;Tab&#x27;)return;
+    const m=el(&#x27;dialog&#x27;).querySelector(&#x27;.modal&#x27;),stops=[...m.querySelectorAll(&#x27;button,textarea&#x27;)].filter(n=&gt;!n.disabled&amp;&amp;n.offsetParent!==null);
+    if(!stops.length)return;
+    const at=stops.indexOf(root.ownerDocument.activeElement);
+    if(e.shiftKey&amp;&amp;at&lt;=0){e.preventDefault();stops[stops.length-1].focus();}else if(!e.shiftKey&amp;&amp;(at&lt;0||at===stops.length-1)){e.preventDefault();stops[0].focus();}
+  });
+  // The onboarder token: masked once saved, replaced only by one the platform accepts.
+  // As the platform previews a token: its first twelve characters and its last four.
+  const mask=v=&gt;v.length&gt;16?v.slice(0,12)+&#x27;…&#x27;+v.slice(-4):v.slice(0,8)+&#x27;…&#x27;;
+  const closeTokenForm=()=&gt;{s.tokenEditing=false;el(&#x27;token&#x27;).value=&#x27;&#x27;;el(&#x27;token&#x27;).type=&#x27;password&#x27;;el(&#x27;token-reveal&#x27;).textContent=&#x27;显示&#x27;;};
+  // An authorization belongs to the token that made it: another token can neither ask
+  // about it nor cancel it. A token the platform already refuses can do neither anyway.
+  const heldBy=()=&gt;s.tokenRead&amp;&amp;!s.tokenInvalid?s.rows.filter(openAuth).map(r=&gt;r.id):[];
+  const heldMessage=ids=&gt;&#x27;有 &#x27;+ids.length+&#x27; 行的授权尚未结束（&#x27;+ids.join(&#x27;、&#x27;)+&#x27;）。授权属于创建它的令牌：先提交授权码或取消，再更换令牌。&#x27;;
+  el(&#x27;token&#x27;).oninput=()=&gt;{if(s.error){s.error=&#x27;&#x27;;render();}};
+  el(&#x27;token&#x27;).onkeydown=e=&gt;{if(e.key===&#x27;Enter&#x27;){e.preventDefault();el(&#x27;token-read&#x27;).click();}else if(e.key===&#x27;Escape&#x27;&amp;&amp;s.tokenRead){e.preventDefault();el(&#x27;token-cancel&#x27;).click();}};
+  el(&#x27;token-reveal&#x27;).onclick=()=&gt;{const p=el(&#x27;token&#x27;);p.type=p.type===&#x27;password&#x27;?&#x27;text&#x27;:&#x27;password&#x27;;el(&#x27;token-reveal&#x27;).textContent=p.type===&#x27;password&#x27;?&#x27;显示&#x27;:&#x27;隐藏&#x27;;};
+  el(&#x27;token-edit&#x27;).onclick=()=&gt;{
+    if(tokenBusy)return;
+    const held=heldBy();if(held.length){s.error=heldMessage(held);saveRender();return;}
+    s.tokenEditing=true;s.tokenNote=&#x27;&#x27;;s.error=&#x27;&#x27;;render();el(&#x27;token&#x27;).focus();
+  };
+  el(&#x27;token-cancel&#x27;).onclick=()=&gt;{if(tokenBusy)return;closeTokenForm();s.error=&#x27;&#x27;;render();};
+  el(&#x27;token-refresh&#x27;).onclick=()=&gt;{
+    if(tokenBusy||!s.tokenRead)return;
+    s.error=&#x27;&#x27;;s.tokenNote=&#x27;&#x27;;tokenBusy=&#x27;refresh&#x27;;const seq=++tokenSeq;render();
+    setTimeout(()=&gt;{
+      if(tokenBusy!==&#x27;refresh&#x27;||seq!==tokenSeq)return;tokenBusy=&#x27;&#x27;;s.checked=null;
+      if(s.demo===&#x27;refresh-revoked&#x27;){s.tokenInvalid=true;s.tokenAt=&#x27;拒绝于 &#x27;+stamp();s.tokenNote=&#x27;&#x27;;log(&#x27;刷新被平台拒绝：上号员令牌无效或已被吊销（模拟）&#x27;);saveRender();return;}
+      const view=s.demo===&#x27;refresh-changed&#x27;?&#x27;reduced&#x27;:&#x27;full&#x27;,moved=[],nodeList=nodesOf(view),orgList=orgsOf(view),was=orgNow();
+      if(!nodeList.some(n=&gt;n.id===s.node)){moved.push(&#x27;原来选的节点 &#x27;+s.node+&#x27; 已不在可用节点里，已改为 &#x27;+nodeList[0].id);if(s.proxyMode===&#x27;auto&#x27;&amp;&amp;s.proxyGroup)moved.push(&#x27;代理分组 &#x27;+s.proxyGroup+&#x27; 属于原节点，已改为不限分组&#x27;);if(s.proxyMode===&#x27;pool&#x27;&amp;&amp;s.poolProxy)moved.push(&#x27;原来选的代理属于原节点，请重新选择代理&#x27;);s.node=nodeList[0].id;s.proxyGroup=&#x27;&#x27;;s.poolProxy=&#x27;&#x27;;}
+      if(s.tokenOrgs&amp;&amp;!orgList.some(o=&gt;o.id===was.id)){const next=orgList[0];moved.push(&#x27;原来选的组织 &#x27;+was.name+&#x27; 已不在组织档案里，已改为 &#x27;+next.name+(next.domains.length&gt;1?&#x27;，请重新选择邮箱域名&#x27;:&#x27;&#x27;));s.orgProfile=next.id;s.domain=&#x27;&#x27;;}
+      s.tokenInvalid=false;s.tokenView=view;s.tokenAt=&#x27;刷新于 &#x27;+stamp();
+      s.tokenNote=moved.length?&#x27;刷新后有变化：&#x27;+moved.join(&#x27;；&#x27;)+&#x27;。请重新确认后再检查配置。&#x27;:&#x27;已重新读取这个令牌可用的节点和组织，当前选择仍然可用。检查配置需要重新进行。&#x27;;
+      log(moved.length?&#x27;已刷新上号员令牌：所选节点或组织已变（模拟）&#x27;:&#x27;已刷新上号员令牌可用的节点和组织（模拟）&#x27;);saveRender();
+    },500);
+  };
+  el(&#x27;token-read&#x27;).onclick=()=&gt;{
+    if(tokenBusy)return;
+    const value=el(&#x27;token&#x27;).value.trim();
+    if(!value){s.error=&#x27;请输入上号员令牌。&#x27;;saveRender();return;}
+    if(!value.startsWith(&#x27;1dk_onb_&#x27;)){s.error=&#x27;这不像上号员令牌：应以 1dk_onb_ 开头。&#x27;;saveRender();return;}
+    const held=heldBy();if(held.length){s.error=heldMessage(held);saveRender();return;}
+    s.error=&#x27;&#x27;;tokenBusy=&#x27;read&#x27;;const seq=++tokenSeq;render();
+    setTimeout(()=&gt;{
+      if(tokenBusy!==&#x27;read&#x27;||seq!==tokenSeq)return;tokenBusy=&#x27;&#x27;;
+      if(value.endsWith(&#x27;-revoked&#x27;)){s.error=&#x27;平台拒绝了这个令牌：无效或已被吊销。&#x27;+(s.tokenRead?&#x27;现有令牌未变。&#x27;:&#x27;&#x27;);saveRender();return;}
+      const replaced=s.tokenRead,fresh=initial();
+      // Authorizations made with a token the platform refused cannot be reached any more.
+      s.rows.forEach(r=&gt;{if(replaced&amp;&amp;openAuth(r))Object.assign(r.auth,{status:&#x27;failed&#x27;,code:&#x27;&#x27;,tone:&#x27;warn&#x27;,title:&#x27;无法查询这次授权&#x27;,note:&#x27;它是用已失效的令牌创建的，平台会在到期后自行释放。可以用新令牌重新生成。&#x27;});});
+      if(s.dialog&amp;&amp;!openAuth(rowOf(s.dialog)))s.dialog=&#x27;&#x27;;
+      Object.assign(s,{tokenRead:true,tokenInvalid:false,tokenView:&#x27;full&#x27;,proxyGroup:&#x27;&#x27;,poolProxy:&#x27;&#x27;,tokenPreview:mask(value),tokenLabel:value===&#x27;1dk_onb_demo-only&#x27;?&#x27;演示令牌&#x27;:&#x27;演示令牌 2&#x27;,tokenAt:&#x27;读取于 &#x27;+stamp(),node:fresh.node,orgProfile:fresh.orgProfile,domain:fresh.domain,org:&#x27;&#x27;,checked:null});
+      el(&#x27;org-uuid&#x27;).value=&#x27;&#x27;;closeTokenForm();
+      s.tokenNote=replaced?&#x27;令牌已更换。节点和组织已按新令牌重新读取，请重新确认。&#x27;:&#x27;&#x27;;
+      log(replaced?&#x27;已更换上号员令牌并重新读取（模拟）&#x27;:&#x27;已读取上号员令牌可用的节点和组织（模拟）&#x27;);saveRender();
+    },500);
+  };
+  render();restore(window.openai?.widgetState);
+  window.addEventListener(&#x27;openai:set_globals&#x27;,e=&gt;{if(e.detail?.globals?.widgetState)restore(e.detail.globals.widgetState);});
+})();
+&lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+(() =&gt; {
+  let positioningReady = window.FloatingUIDOM
+    ? Promise.resolve(window.FloatingUIDOM)
+    : null;
+  const loadScript = (src) =&gt; new Promise((resolve, reject) =&gt; {
+    const script = document.createElement(&quot;script&quot;);
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = () =&gt; {
+      script.remove();
+      reject(new Error(&quot;Could not load tooltip positioning&quot;));
+    };
+    document.head.appendChild(script);
+  });
+  const loadPositioning = async () =&gt; {
+    const domUrl = &quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;;
+    const preload = document.createElement(&quot;link&quot;);
+    preload.rel = &quot;preload&quot;;
+    preload.as = &quot;script&quot;;
+    preload.href = domUrl;
+    document.head.appendChild(preload);
+    try {
+      if (window.FloatingUICore == null) {
+        await loadScript(&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;);
+      }
+      await loadScript(domUrl);
+      return window.FloatingUIDOM;
+    } finally {
+      preload.remove();
+    }
+  };
+  const getPositioning = () =&gt; positioningReady ??= loadPositioning().catch((error) =&gt; {
+    positioningReady = null;
+    throw error;
+  });
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (event) =&gt; {
+    for (const target of event.composedPath()) {
+      if (target?.nodeType === Node.ELEMENT_NODE) {
+        const trigger = target.closest(&quot;[data-tooltip]&quot;);
+        if (trigger) return trigger;
+      }
+    }
+    return null;
+  };
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating, { computePosition, flip, offset, shift, size }) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    const request = positionRequest;
+    void getPositioning().then((positioning) =&gt; {
+      if (request !== positionRequest || !trigger.isConnected) return;
+      autoUpdateCleanup = positioning.autoUpdate(trigger, floating, () =&gt; {
+        updatePosition(trigger, floating, positioning);
+      });
+    }).catch(() =&gt; {
+      if (request === positionRequest) closeTooltip(false);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handlers = {
+    pointerover: handlePointerOpen,
+    pointerdown: handlePointer,
+    pointercancel: handlePointer,
+    click: handleTouchClick,
+    pointerout: handleLeave,
+    focusin: handleFocusIn,
+    focusout: handleLeave,
+    keydown: handleKeyDown,
+    contextmenu: handleContextMenu,
+  };
+  const roots = new Map();
+  const handledEvents = new WeakSet();
+  const handleEvent = (event) =&gt; {
+    if (handledEvents.has(event)) return;
+    handledEvents.add(event);
+    handlers[event.type](event);
+  };
+  const discoverRoots = (node) =&gt; {
+    if (node.shadowRoot) listen(node.shadowRoot);
+    for (const element of node.querySelectorAll(&quot;*&quot;)) {
+      if (element.shadowRoot) listen(element.shadowRoot);
+    }
+  };
+  const listen = (root) =&gt; {
+    if (roots.has(root)) return;
+    for (const type of Object.keys(handlers)) root.addEventListener(type, handleEvent);
+    const observer = new window.MutationObserver((records) =&gt; {
+      for (const { addedNodes } of records) {
+        for (const node of addedNodes) {
+          if (node.nodeType === Node.ELEMENT_NODE) discoverRoots(node);
+        }
+      }
+      for (const [root, cleanup] of roots) {
+        if (root.host &amp;&amp; !root.host.isConnected) {
+          cleanup();
+          roots.delete(root);
+        }
+      }
+      if (activeTrigger &amp;&amp; !activeTrigger.isConnected) closeTooltip(false);
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    roots.set(root, () =&gt; {
+      observer.disconnect();
+      for (const type of Object.keys(handlers)) root.removeEventListener(type, handleEvent);
+    });
+    discoverRoots(root);
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    for (const cleanup of roots.values()) cleanup();
+    roots.clear();
+    tooltip = null;
+  };
+
+  // Events between children of one shadow root never reach the document.
+  listen(document);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-carousel&quot;&gt;
+  (() =&gt; {
+    for (const root of document.querySelectorAll(&quot;.viz-carousel&quot;)) {
+      const panels = Array.from(
+        root.querySelectorAll(&quot;:scope &gt; [data-variant]&quot;),
+      );
+      if (panels.length === 0) {
+        continue;
+      }
+      root.setAttribute(&quot;role&quot;, &quot;group&quot;);
+      panels.forEach((panel, index) =&gt; {
+        panel.hidden = index !== 0;
+        panel.setAttribute(&quot;role&quot;, &quot;group&quot;);
+        if (!panel.hasAttribute(&quot;aria-label&quot;)) {
+          panel.setAttribute(&quot;aria-label&quot;, panel.dataset.variant);
+        }
+      });
+      root.dataset.activeVariant = panels[0].dataset.variant;
+      if (panels.length === 1) {
+        continue;
+      }
+
+      const controls = document.createElement(&quot;div&quot;);
+      controls.className = &quot;viz-carousel-controls&quot;;
+      // Portable copy of the settings dropdown&#x27;s legacy glyph; no 14px icon-package preset matches it.
+      // https://github.com/openai/openai/blob/master/codex/codex-apps/webview/src/icons/chevron.svg
+      controls.innerHTML = `
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-previous cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+      &lt;details class=&quot;viz-carousel-picker&quot;&gt;
+        &lt;summary class=&quot;cursor-interaction&quot;&gt;
+          &lt;span class=&quot;viz-carousel-count tabular-nums&quot;&gt;&lt;/span&gt;
+          &lt;span class=&quot;viz-carousel-name&quot;&gt;&lt;/span&gt;
+          &lt;svg class=&quot;viz-carousel-caret&quot; width=&quot;14&quot; height=&quot;14&quot; viewBox=&quot;0 0 20 21&quot; fill=&quot;none&quot; aria-hidden=&quot;true&quot; focusable=&quot;false&quot;&gt;
+            &lt;path d=&quot;M15.2793 7.71101C15.539 7.45131 15.961 7.45131 16.2207 7.71101C16.4804 7.97071 16.4804 8.39272 16.2207 8.65242L10.4707 14.4024C10.211 14.6621 9.78902 14.6621 9.52932 14.4024L3.77932 8.65242L3.69436 8.54792C3.52385 8.28979 3.55205 7.93828 3.77932 7.71101C4.00659 7.48374 4.3581 7.45554 4.61623 7.62605L4.72073 7.71101L10 12.9903L15.2793 7.71101Z&quot; fill=&quot;currentColor&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;0.6&quot; /&gt;
+          &lt;/svg&gt;
+        &lt;/summary&gt;
+        &lt;div class=&quot;viz-carousel-options&quot;&gt;&lt;/div&gt;
+      &lt;/details&gt;
+      &lt;button type=&quot;button&quot; class=&quot;viz-carousel-next cursor-interaction&quot;&gt;&lt;i data-lucide=&quot;chevron-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;`;
+      const previous = controls.querySelector(&quot;.viz-carousel-previous&quot;);
+      const next = controls.querySelector(&quot;.viz-carousel-next&quot;);
+      const picker = controls.querySelector(&quot;.viz-carousel-picker&quot;);
+      const summary = picker.querySelector(&quot;summary&quot;);
+      const count = controls.querySelector(&quot;.viz-carousel-count&quot;);
+      const name = controls.querySelector(&quot;.viz-carousel-name&quot;);
+      const options = controls.querySelector(&quot;.viz-carousel-options&quot;);
+      const status = document.createElement(&quot;span&quot;);
+      status.className = &quot;sr-only&quot;;
+      status.setAttribute(&quot;role&quot;, &quot;status&quot;);
+      status.setAttribute(&quot;aria-live&quot;, &quot;polite&quot;);
+      status.setAttribute(&quot;aria-atomic&quot;, &quot;true&quot;);
+      previous.setAttribute(
+        &quot;aria-label&quot;,
+        root.dataset.previousLabel ?? &quot;Previous variant&quot;,
+      );
+      next.setAttribute(&quot;aria-label&quot;, root.dataset.nextLabel ?? &quot;Next variant&quot;);
+
+      let active = 0;
+      let mousePointerId = null;
+      let summaryPointerHandled = false;
+      summary.addEventListener(&quot;pointerdown&quot;, (event) =&gt; {
+        summaryPointerHandled =
+          event.pointerType === &quot;mouse&quot; &amp;&amp; event.button === 0 &amp;&amp; !event.ctrlKey;
+        if (!summaryPointerHandled) {
+          return;
+        }
+        event.preventDefault();
+        summary.focus({ preventScroll: true });
+        picker.open = !picker.open;
+        mousePointerId = picker.open ? event.pointerId : null;
+      });
+      summary.addEventListener(&quot;click&quot;, (event) =&gt; {
+        if (summaryPointerHandled &amp;&amp; event.detail &gt; 0) {
+          event.preventDefault();
+        }
+      });
+      const choices = panels.map((panel, index) =&gt; {
+        const choice = document.createElement(&quot;button&quot;);
+        choice.type = &quot;button&quot;;
+        choice.className = &quot;cursor-interaction&quot;;
+        choice.textContent = panel.dataset.variant;
+        choice.addEventListener(&quot;click&quot;, () =&gt; {
+          select(index);
+          summary.focus();
+        });
+        choice.addEventListener(&quot;pointerup&quot;, (event) =&gt; {
+          if (
+            picker.open &amp;&amp;
+            event.pointerType === &quot;mouse&quot; &amp;&amp;
+            event.button === 0 &amp;&amp;
+            event.pointerId === mousePointerId
+          ) {
+            choice.click();
+          }
+        });
+        options.appendChild(choice);
+        return choice;
+      });
+      const select = (index) =&gt; {
+        const changed = active !== index;
+        active = index;
+        panels.forEach((panel, position) =&gt; {
+          panel.hidden = position !== active;
+          choices[position].setAttribute(
+            &quot;aria-current&quot;,
+            String(position === active),
+          );
+        });
+        root.dataset.activeVariant = panels[active].dataset.variant;
+        count.textContent = `${active + 1} / ${panels.length}`;
+        name.textContent = panels[active].dataset.variant;
+        picker.open = false;
+        mousePointerId = null;
+        if (changed) {
+          status.textContent = `${count.textContent}: ${name.textContent}`;
+        }
+      };
+      previous.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + panels.length - 1) % panels.length),
+      );
+      next.addEventListener(&quot;click&quot;, () =&gt;
+        select((active + 1) % panels.length),
+      );
+      picker.addEventListener(&quot;keydown&quot;, (event) =&gt; {
+        if (event.key === &quot;Escape&quot; &amp;&amp; picker.open) {
+          event.preventDefault();
+          picker.open = false;
+          mousePointerId = null;
+          summary.focus();
+          return;
+        }
+        if (event.altKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const index = choices.indexOf(document.activeElement);
+        let nextIndex;
+        if (event.key === &quot;ArrowDown&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + 1) % choices.length;
+        } else if (event.key === &quot;ArrowUp&quot;) {
+          nextIndex = index &lt; 0 ? active : (index + choices.length - 1) % choices.length;
+        } else if (picker.open &amp;&amp; event.key === &quot;Home&quot;) {
+          nextIndex = 0;
+        } else if (picker.open &amp;&amp; event.key === &quot;End&quot;) {
+          nextIndex = choices.length - 1;
+        } else {
+          return;
+        }
+        event.preventDefault();
+        picker.open = true;
+        choices[nextIndex].focus();
+      });
+      picker.addEventListener(&quot;focusout&quot;, (event) =&gt; {
+        if (!picker.contains(event.relatedTarget)) {
+          picker.open = false;
+          mousePointerId = null;
+        }
+      });
+      const dismiss = (event) =&gt; {
+        if (!summary.contains(event.target)) {
+          mousePointerId = null;
+        }
+        if (!picker.contains(event.target)) {
+          picker.open = false;
+        }
+      };
+      const endPointerSelection = () =&gt; {
+        mousePointerId = null;
+      };
+      const sizePicker = () =&gt; {
+        root.style.setProperty(
+          &quot;--viz-carousel-picker-height&quot;,
+          `${picker.open ? options.offsetHeight : 0}px`,
+        );
+      };
+      picker.addEventListener(&quot;toggle&quot;, sizePicker);
+      window.addEventListener(&quot;resize&quot;, sizePicker);
+      document.addEventListener(&quot;pointerdown&quot;, dismiss);
+      document.addEventListener(&quot;pointerup&quot;, endPointerSelection);
+      document.addEventListener(&quot;pointercancel&quot;, endPointerSelection);
+      window.addEventListener(&quot;blur&quot;, endPointerSelection);
+      window.addEventListener(
+        &quot;pagehide&quot;,
+        () =&gt; {
+          document.removeEventListener(&quot;pointerdown&quot;, dismiss);
+          document.removeEventListener(&quot;pointerup&quot;, endPointerSelection);
+          document.removeEventListener(&quot;pointercancel&quot;, endPointerSelection);
+          window.removeEventListener(&quot;blur&quot;, endPointerSelection);
+          window.removeEventListener(&quot;resize&quot;, sizePicker);
+        },
+        { once: true },
+      );
+      root.append(controls, status);
+      select(0);
+    }
+  })();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+
+<script>(() => {
+  const frame = document.getElementById("codex-visualization");
+  if (!(frame instanceof HTMLIFrameElement)) {
+    return;
+  }
+  const isShare = document.documentElement.classList.contains(
+    "visualization-share-root",
+  );
+  let viewportHeight = globalThis.innerHeight;
+  let sizeFingerprint = null;
+  let sizeWriteTimeout;
+  let lastSize = null;
+  let pendingSize = null;
+  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
+    globalThis.location.pathname,
+    globalThis.location.search,
+  ])}`;
+  const sizeStorageKey = `${storageKey}:share-size-v1`;
+  const parseState = (serializedState) => {
+    if (
+      typeof serializedState !== "string" ||
+      new TextEncoder().encode(serializedState).length > 16 * 1024
+    ) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    /** @type {unknown} */
+    const state = JSON.parse(serializedState);
+    if (
+      state == null ||
+      typeof state !== "object" ||
+      Array.isArray(state) ||
+      ("imageIds" in state &&
+        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
+    ) {
+      throw new TypeError("Widget state must be a JSON object");
+    }
+    const storedState = { modelContent: null, privateContent: null, ...state };
+    const canonicalState = JSON.stringify(
+      storedState,
+      (_key, /** @type {unknown} */ value) => {
+        if (typeof value === "number" && !Number.isFinite(value)) {
+          throw new TypeError("Widget state must contain finite numbers");
+        }
+        return value;
+      },
+    );
+    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
+      throw new TypeError(
+        "Widget state must be a JSON object of at most 16 KiB",
+      );
+    }
+    return storedState;
+  };
+  let storage = null;
+  let state = null;
+  try {
+    const localStorage = globalThis.localStorage;
+    const probeKey = `${storageKey}:probe`;
+    localStorage.setItem(probeKey, "1");
+    localStorage.removeItem(probeKey);
+    storage = localStorage;
+    const savedState = storage.getItem(storageKey);
+    if (savedState != null) {
+      try {
+        state = parseState(savedState);
+      } catch {
+        // Invalid saved state does not disable future writes.
+      }
+    }
+  } catch {
+    storage = null;
+  }
+  const persistSize = () => {
+    globalThis.clearTimeout(sizeWriteTimeout);
+    if (pendingSize == null) {
+      return;
+    }
+    try {
+      storage?.setItem(sizeStorageKey, pendingSize);
+    } catch {
+      // A denied or full cache must not affect the visualization.
+    }
+    pendingSize = null;
+  };
+  if (isShare) {
+    globalThis.addEventListener("pagehide", persistSize);
+  }
+  const initialGlobals = {
+    widgetState: state,
+    statePersistence: storage == null ? "none" : "local",
+  };
+
+  const channel = new MessageChannel();
+  channel.port1.addEventListener("message", (event) => {
+    const data = event.data;
+    if (typeof data !== "object" || data == null) {
+      return;
+    }
+    if (data.type === "widget-state-write") {
+      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
+        return;
+      }
+      let ok = false;
+      try {
+        if (storage != null) {
+          const state = parseState(data.state);
+          storage.setItem(storageKey, JSON.stringify(state));
+          ok = true;
+        }
+      } catch {
+        // Storage denial, quota limits, and invalid state return a failed receipt.
+      }
+      channel.port1.postMessage({
+        type: "widget-state-result",
+        id: data.id,
+        ok,
+      });
+      return;
+    }
+    if (data.type === "height") {
+      const height = data.height;
+      if (
+        typeof height !== "number" ||
+        !Number.isFinite(height) ||
+        height < 0
+      ) {
+        return;
+      }
+      if (height <= 10_000) {
+        const width = isShare && storage != null ? frame.clientWidth : null;
+        frame.style.height = Math.ceil(height) + "px";
+        if (isShare && storage != null) {
+          const size = JSON.stringify({
+            fingerprint: sizeFingerprint,
+            width,
+            viewportHeight: globalThis.innerHeight,
+            dark: globalThis.matchMedia("(prefers-color-scheme: dark)").matches,
+            scale: globalThis.devicePixelRatio,
+            height: Math.ceil(height),
+          });
+          if (size !== lastSize) {
+            lastSize = size;
+            pendingSize = size;
+            globalThis.clearTimeout(sizeWriteTimeout);
+            sizeWriteTimeout = globalThis.setTimeout(persistSize, 100);
+          }
+        }
+      }
+      if (isShare) {
+        // Keep unusually tall content accessible without accepting an unbounded height.
+        if (height > 10_000 && Number.parseFloat(frame.style.height) === 0) {
+          frame.style.removeProperty("height");
+        }
+        frame.scrolling = height > 10_000 ? "auto" : "no";
+        document.documentElement.classList.add("visualization-share-ready");
+      }
+      return;
+    }
+    if (data.type === "scroll-to") {
+      const top = data.top;
+      if (
+        typeof top === "number" &&
+        Number.isFinite(top) &&
+        top >= 0 &&
+        globalThis.navigator.userActivation?.isActive === true
+      ) {
+        globalThis.scrollTo({
+          top: Math.ceil(
+            globalThis.scrollY + frame.getBoundingClientRect().top + top,
+          ),
+        });
+      }
+      return;
+    }
+    if (data.type === "open-external") {
+      const rawHref = data.href;
+      if (typeof rawHref !== "string") {
+        return;
+      }
+      let href;
+      try {
+        const url = new URL(rawHref, document.baseURI);
+        if (url.protocol !== "https:") {
+          return;
+        }
+        href = url.href;
+      } catch {
+        return;
+      }
+      if (globalThis.navigator.userActivation?.isActive === true) {
+        const anchor = document.createElement("a");
+        anchor.href = href;
+        anchor.rel = "noopener noreferrer";
+        anchor.target = "_blank";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      return;
+    }
+    if (data.type === "follow-up") {
+      const prompt = data.prompt;
+      if (
+        typeof prompt !== "string" ||
+        globalThis.navigator.userActivation?.isActive !== true
+      ) {
+        return;
+      }
+      const title = data.title;
+      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
+    }
+  });
+  channel.port1.start();
+  const srcdoc = frame.dataset.srcdoc;
+  if (srcdoc == null) {
+    return;
+  }
+  globalThis.addEventListener("resize", () => {
+    const height = Number.parseFloat(frame.style.height);
+    if (!isShare && (!Number.isFinite(height) || height <= viewportHeight)) {
+      frame.style.removeProperty("height");
+    }
+    viewportHeight = globalThis.innerHeight;
+    channel.port1.postMessage({ type: "measure" });
+  });
+  frame.addEventListener(
+    "load",
+    () => {
+      frame.contentWindow?.postMessage(
+        { type: "codex-visualization-initialize" },
+        "*",
+        [channel.port2],
+      );
+    },
+    { once: true },
+  );
+  // Match the trusted bootstrap element, not the same text in an authored title.
+  const frameHtml = srcdoc.replace(
+    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
+    () =>
+      '<script type="application/json" id="codex-visualization-widget-state">' +
+      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
+      "<\/script>",
+  );
+  if (isShare && storage != null) {
+    // Fingerprint the rendered document, including restored widget state, without
+    // storing its content. This is a layout cache, not a security identity.
+    let hash = 5381;
+    for (let index = 0; index < frameHtml.length; index += 1) {
+      hash = (hash * 33 + frameHtml.charCodeAt(index)) % 4_294_967_296;
+    }
+    sizeFingerprint = hash.toString(36);
+    try {
+      const size = JSON.parse(storage.getItem(sizeStorageKey) ?? "null");
+      if (
+        size?.fingerprint === sizeFingerprint &&
+        size.width === frame.clientWidth &&
+        size.viewportHeight === globalThis.innerHeight &&
+        size.dark ===
+          globalThis.matchMedia("(prefers-color-scheme: dark)").matches &&
+        size.scale === globalThis.devicePixelRatio &&
+        typeof size.height === "number" &&
+        Number.isFinite(size.height) &&
+        size.height >= 0 &&
+        size.height <= 10_000
+      ) {
+        frame.style.height = size.height + "px";
+      }
+    } catch {
+      // Ignore missing or invalid cache entries and measure the live frame.
+    }
+  }
+  frame.srcdoc = frameHtml;
+  delete frame.dataset.srcdoc;
+})();
+</script>
+</body>
+</html>

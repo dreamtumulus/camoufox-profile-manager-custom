@@ -1516,3 +1516,251 @@ async def test_what_was_done_on_the_sign_in_form_is_logged_without_the_address(
 def test_the_sso_button_is_a_control_with_nothing_pressable_inside_it():
     """A wrapper around the form contains the same letters; its middle is some other button."""
     assert ":not(:has(" in bs.SSO_BUTTON and "button" in bs.SSO_BUTTON.split(":not(")[1]
+
+
+# --- a link opened in a running browser --------------------------------------
+
+LINK = "https://claude.example/oauth/authorize?state=secret"
+
+
+class LinkPage:
+    """A tab. `asks` is what comes of asking it for an empty tab beside it:
+    "tab", "nothing" (the browser opens none), "hang" (the page never answers),
+    "error", or an address: somebody opens a tab on that site just then.
+    """
+
+    def __init__(self, url: str = "about:blank", asks: str = "tab", fail: bool = False):
+        self.url = url
+        self.asks = asks
+        self.fail = fail
+        self.asked = 0
+        self.fronted = 0
+        self.went_to: list[str] = []
+        self.context: LinkContext | None = None
+
+    def is_closed(self) -> bool:
+        return False
+
+    async def evaluate(self, script: str) -> None:
+        self.asked += 1
+        assert "window.open('about:blank', '_blank'" in script and "noopener" in script
+        assert self.context is not None
+        if self.asks == "error":
+            raise RuntimeError("Execution context was destroyed")
+        if self.asks == "hang":
+            await asyncio.Event().wait()
+        if self.asks == "tab":
+            self.context.arrive(LinkPage(), self.context.tabs)
+        elif self.asks != "nothing":
+            self.context.arrive(LinkPage(self.asks), self.context.strangers)
+
+    async def bring_to_front(self) -> None:
+        self.fronted += 1
+        if self.fail:
+            raise RuntimeError("Target page, context or browser has been closed")
+
+    async def goto(self, url: str) -> None:
+        if self.fail:
+            raise RuntimeError("net::ERR_PROXY_CONNECTION_FAILED")
+        self.went_to.append(url)
+        self.url = url
+
+
+class Arriving:
+    """What `expect_page` gives: entered before the page is asked, awaited on leaving."""
+
+    def __init__(self, context: "LinkContext", predicate, timeout: float):
+        self.context, self.predicate, self.timeout = context, predicate, timeout
+
+    async def __aenter__(self) -> "Arriving":
+        self.value = asyncio.get_running_loop().create_future()
+        self.context.waiting = self
+        return self
+
+    async def __aexit__(self, failed, *_: object) -> None:
+        self.context.waiting = None
+        if failed is not None:
+            self.value.cancel()
+            return
+        try:
+            await asyncio.wait_for(self.value, self.timeout / 1000)
+        except asyncio.TimeoutError:
+            raise TimeoutError('Timeout exceeded while waiting for event "page"') from None
+
+
+class LinkContext:
+    """A browser: its pages, the tabs it opened when asked, and the windows `new_page` made."""
+
+    def __init__(self, *pages: LinkPage, closed: bool = False, fail: bool = False):
+        self.pages = list(pages)
+        for page in pages:
+            page.context = self
+        self.closed, self.fail = closed, fail
+        self.tabs: list[LinkPage] = []
+        self.strangers: list[LinkPage] = []
+        self.windows: list[LinkPage] = []
+        self.waiting: Arriving | None = None
+
+    def expect_page(self, predicate=None, timeout: float = 30000) -> Arriving:
+        return Arriving(self, predicate, timeout)
+
+    def arrive(self, page: LinkPage, kind: list[LinkPage]) -> None:
+        page.context, page.fail = self, self.fail
+        self.pages.append(page)
+        kind.append(page)
+        waiting = self.waiting
+        if waiting is not None and (waiting.predicate is None or waiting.predicate(page)):
+            waiting.value.set_result(page)
+
+    async def new_page(self) -> LinkPage:
+        if self.closed:
+            raise RuntimeError("Target page, context or browser has been closed")
+        page = LinkPage(fail=self.fail)
+        page.context = self
+        self.pages.append(page)
+        self.windows.append(page)
+        return page
+
+
+@pytest.fixture(autouse=True)
+def quick_tabs(monkeypatch):
+    """A page that does not answer is given up on at once."""
+    monkeypatch.setattr(bs, "NEW_TAB_TIMEOUT", 0.05)
+
+
+def running_with(context: LinkContext) -> BrowserSessionManager:
+    mgr = BrowserSessionManager()
+    session = BrowserSession("p1", camoufox=None, process_id=None)
+    session.context = context
+    mgr.active_sessions["p1"] = session
+    return mgr
+
+
+async def drain_link_pages(manager: BrowserSessionManager) -> None:
+    while manager._page_tasks:
+        await asyncio.gather(*list(manager._page_tasks))
+
+
+async def test_a_link_is_opened_in_a_new_tab_beside_the_page_that_is_there():
+    there = LinkPage("https://claude.example/new")
+    context = LinkContext(there)
+    mgr = running_with(context)
+
+    assert await mgr.open_page("p1", LINK) == "tab"
+    await drain_link_pages(mgr)
+
+    assert context.windows == [], "no other window of the browser is opened"
+    (tab,) = context.tabs
+    assert (tab.went_to, tab.fronted) == ([LINK], 1)
+    assert (there.asked, there.went_to, there.fronted) == (1, [], 0), (
+        "the page there is left as it is"
+    )
+
+
+@pytest.mark.parametrize(
+    "url", ["http://claude.example/authorize", "file:///etc/passwd", "javascript:alert(1)", ""]
+)
+async def test_only_an_https_address_is_opened(url):
+    there = LinkPage("https://claude.example/new")
+    context = LinkContext(there)
+
+    assert await running_with(context).open_page("p1", url) is None
+    assert (there.asked, context.tabs, context.windows) == (0, [], [])
+
+
+async def test_nothing_is_opened_where_no_browser_runs_or_it_went_away():
+    assert await BrowserSessionManager().open_page("p1", LINK) is None
+    assert await running_with(LinkContext(closed=True)).open_page("p1", LINK) is None
+
+
+async def test_without_a_page_to_ask_the_link_gets_a_window_of_the_same_browser():
+    context = LinkContext()
+    mgr = running_with(context)
+
+    assert await mgr.open_page("p1", LINK) == "window"
+    await drain_link_pages(mgr)
+
+    (window,) = context.windows
+    assert window.went_to == [LINK]
+
+
+@pytest.mark.parametrize("asks", ["nothing", "hang", "error"])
+async def test_a_page_that_brings_no_tab_up_leaves_it_to_a_window(asks):
+    there = LinkPage("https://claude.example/new", asks=asks)
+    context = LinkContext(there)
+    mgr = running_with(context)
+
+    assert await mgr.open_page("p1", LINK) == "window"
+    await drain_link_pages(mgr)
+
+    assert (there.asked, there.went_to) == (1, [])
+    assert [page.went_to for page in context.windows] == [[LINK]]
+
+
+async def test_the_browsers_own_settings_pages_are_not_asked():
+    settings = LinkPage("about:preferences")
+    alone = LinkContext(settings)
+    assert await running_with(alone).open_page("p1", LINK) == "window"
+    assert settings.asked == 0
+
+    site, newer = LinkPage("https://claude.example/new"), LinkPage("about:config")
+    both = LinkContext(site, newer)
+    assert await running_with(both).open_page("p1", LINK) == "tab"
+    assert (site.asked, newer.asked) == (1, 0)
+
+
+async def test_the_newest_pages_are_asked_first_and_no_more_than_two():
+    oldest = LinkPage("https://a.example/", asks="nothing")
+    middle = LinkPage("https://b.example/", asks="error")
+    newest = LinkPage("about:blank", asks="nothing")
+    context = LinkContext(oldest, middle, newest)
+
+    assert await running_with(context).open_page("p1", LINK) == "window"
+    assert (newest.asked, middle.asked, oldest.asked) == (1, 1, 0)
+
+    answering = LinkPage("https://a.example/")
+    failing = LinkPage("https://b.example/", asks="error")
+    second = LinkContext(answering, failing)
+    assert await running_with(second).open_page("p1", LINK) == "tab"
+    assert (failing.asked, answering.asked, second.windows) == (1, 1, [])
+
+
+async def test_a_tab_somebody_opens_on_a_site_just_then_is_not_taken():
+    there = LinkPage("https://claude.example/new", asks="https://elsewhere.example/")
+    context = LinkContext(there)
+    mgr = running_with(context)
+
+    assert await mgr.open_page("p1", LINK) == "window"
+    await drain_link_pages(mgr)
+
+    (theirs,) = context.strangers
+    assert (theirs.went_to, theirs.fronted) == ([], 0)
+    assert [page.went_to for page in context.windows] == [[LINK]]
+
+
+async def test_a_page_that_does_not_load_is_the_browsers_to_report(caplog):
+    context = LinkContext(LinkPage("https://claude.example/new"), fail=True)
+    mgr = running_with(context)
+
+    assert await mgr.open_page("p1", LINK) == "tab"
+    await drain_link_pages(mgr)
+
+    (tab,) = context.tabs
+    assert tab.fronted == 1, "the tab is there; the page failing is shown in it"
+    assert "secret" not in caplog.text and "claude.example" not in caplog.text
+
+
+async def test_a_window_is_said_in_the_log_without_the_address(caplog):
+    import logging
+
+    from loguru import logger as log
+
+    sink = log.add(lambda message: logging.getLogger("captured").info(message), level="INFO")
+    try:
+        with caplog.at_level(logging.INFO, logger="captured"):
+            assert await running_with(LinkContext()).open_page("p1", LINK) == "window"
+    finally:
+        log.remove(sink)
+
+    assert "a new window was opened" in caplog.text
+    assert "secret" not in caplog.text and "claude.example" not in caplog.text

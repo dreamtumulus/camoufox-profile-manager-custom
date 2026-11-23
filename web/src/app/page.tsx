@@ -42,7 +42,7 @@ import { ProfileGroupDialog } from '@/components/profile-group-dialog'
 import { SavedProfileViews } from '@/components/saved-profile-views'
 import { BatchProfileOperations } from '@/components/batch-profile-operations'
 import { ProfileEmailImport } from '@/components/profile-email-import'
-import { copyText } from '@/lib/clipboard'
+import { copyEmailOnClick, launchBrowser, stopBrowser, syncBlocksLaunch } from '@/lib/browser-runs'
 import { MAX_BATCH_SIZE, type BatchTarget } from '@/lib/batch-queue'
 import { DEFAULT_VIEW, profileViewQuery, readProfileView } from '@/lib/profile-views'
 import { useToast } from '@/components/toast'
@@ -339,12 +339,7 @@ export default function ProfilesPage() {
    * takes seconds. It never decides the launch; a refused copy is only said.
    */
   function copyEmail(profile: Profile) {
-    const email = profile.email
-    if (!email) return
-    void copyText(email).then((copied) => {
-      if (copied) toast('ok', t('Email copied'), email)
-      else toast('error', t('Email not copied'), t('Copy it from the Email column by hand: {email}', { email }))
-    })
+    copyEmailOnClick(profile.email, t, toast)
   }
 
   /**
@@ -375,25 +370,13 @@ export default function ProfilesPage() {
   async function launch(profile: Profile) {
     copyEmail(profile)
     await withBusy(profile.id, async () => {
-      try {
-        await profilesAPI.startProfile(profile.id)
-        await Promise.all([loadRunning(), loadProfiles()])
-      } catch (err) {
-        // The manager's own launch refusals are fixed sentences with translations;
-        // anything else falls through t() unchanged.
-        toast('error', t('Could not launch browser'), err instanceof Error ? t(err.message) : String(err))
-      }
+      if (await launchBrowser(profile.id, t, toast)) await Promise.all([loadRunning(), loadProfiles()])
     })
   }
 
   async function stop(profile: Profile) {
     await withBusy(profile.id, async () => {
-      try {
-        await profilesAPI.closeProfile(profile.id)
-        await loadRunning()
-      } catch (err) {
-        toast('error', t('Could not close browser'), browserCloseFailure(err, t) ?? String(err))
-      }
+      if (await stopBrowser(profile.id, t, toast)) await loadRunning()
     })
   }
 
@@ -878,7 +861,7 @@ export default function ProfilesPage() {
           <tbody>
             {pageRows.map((profile, index) => {
               const syncBinding = syncBindings.find(binding => binding.local_id === profile.id)
-              const syncBlocked = !!syncBinding && (syncBinding.phase !== 'held' || syncBinding.lifecycle?.state === 'trashed' || syncBinding.local_trashed === true)
+              const syncBlocked = syncBlocksLaunch(syncBinding)
               const isRunning = running.has(profile.id)
               const isBusy = busy.has(profile.id)
               return (

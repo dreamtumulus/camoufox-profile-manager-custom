@@ -25,6 +25,9 @@ class OnboardingError(RuntimeError):
         super().__init__(message)
         self.status_code = status_code
         self.code = code
+        # Set when the error relays another service's refusal.
+        self.upstream_status: int | None = None
+        self.upstream_code: str | None = None
 
 
 class Selection(BaseModel):
@@ -275,10 +278,12 @@ async def write_remote_config(request: RemoteConfig) -> None:
 
 def _response_error(response: httpx.Response, service: str) -> OnboardingError:
     message = f"{service}返回 HTTP {response.status_code}"
+    upstream_code = None
     try:
         body = response.json()
         error = body.get("error", body)
         if isinstance(error, dict):
+            upstream_code = error.get("code")
             message = error.get("message") or error.get("code") or error.get("detail") or message
         elif isinstance(error, str):
             message = error
@@ -287,7 +292,11 @@ def _response_error(response: httpx.Response, service: str) -> OnboardingError:
     except (ValueError, TypeError):
         if response.text.strip():
             message = f"{message}: {response.text[:200]}"
-    return OnboardingError(str(message), 502, "upstream_error")
+    failure = OnboardingError(str(message), 502, "upstream_error")
+    # What the other side answered, for a caller that tells its answers apart.
+    failure.upstream_status = response.status_code
+    failure.upstream_code = upstream_code if isinstance(upstream_code, str) else None
+    return failure
 
 
 class RemoteClient:

@@ -20,7 +20,7 @@ from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlsplit
 
 import psutil
@@ -250,6 +250,14 @@ def _linux_ime_startup_preferences(options: dict[str, Any]) -> Iterator[None]:
 # What a tab shows before anyone has used it.
 _BLANK_PAGES = frozenset({"", "about:blank", "about:newtab", "about:home"})
 START_PAGE_TIMEOUT = 60.0
+# Asks the browser for an empty tab beside the page this runs in. It runs in the
+# driver's own world, apart from the page's scripts, and neither reads nor
+# changes the page; the tab it opens knows nothing of the page that asked.
+_BLANK_TAB = "() => { window.open('about:blank', '_blank', 'noopener,noreferrer'); }"
+# How long a page is given to bring an empty tab up, and how many pages are asked.
+# A tab arrives within a second; a page the driver cannot script never answers.
+NEW_TAB_TIMEOUT = 3.0
+_NEW_TAB_OPENERS = 2
 
 
 def _site(url: str) -> str:
@@ -418,6 +426,39 @@ async def _show_start_page(context: Any, url: str) -> Any:
     return page
 
 
+async def _new_tab(context: Any) -> Any:
+    """An empty tab in a window that is already open, or None when none could be had.
+
+    The driver's own `new_page()` always opens another window; it has no way to
+    ask for a tab. A page that is already there can: the browser puts what such
+    a page opens in a tab beside it. So a page of the window is asked for an
+    empty tab, and the caller navigates that tab as it would any page of its
+    own, which is the same request as from `new_page()`.
+
+    Pages on a site or blank are asked, newest first; the browser's own
+    settings pages cannot be scripted and are not. None is returned when there
+    is no such page, or none answers in time, and the caller falls back.
+    """
+    pages = [page for page in context.pages if not page.is_closed()]
+    askable = [
+        page
+        for page in reversed(pages)
+        if page.url in _BLANK_PAGES or page.url.startswith(("https://", "http://"))
+    ]
+    for opener in askable[:_NEW_TAB_OPENERS]:
+        try:
+            # Only a blank tab is taken: a tab the person opens on a site in the
+            # same moment is theirs.
+            async with context.expect_page(
+                predicate=lambda page: page.url in _BLANK_PAGES, timeout=NEW_TAB_TIMEOUT * 1000
+            ) as arriving:
+                await asyncio.wait_for(opener.evaluate(_BLANK_TAB), NEW_TAB_TIMEOUT)
+            return await arriving.value
+        except Exception:  # noqa: BLE001 - this page could not; another may, or a window will do
+            continue
+    return None
+
+
 def _resolve_process_id(obj: Any) -> int | None:
     """Best-effort resolution of a driver/browser OS process id.
 
@@ -555,6 +596,8 @@ class BrowserSessionManager:
         # suspended inside camoufox.__aexit__ could be garbage-collected and take
         # the primary cleanup path with it. Hold a strong reference until done.
         self._exit_tasks: set[asyncio.Task[None]] = set()
+        # Pages still loading in tabs opened by `open_page`; held so they are not collected.
+        self._page_tasks: set[asyncio.Task[None]] = set()
         self._closing: dict[str, asyncio.Task[bool]] = {}
         self._release_after_close: set[str] = set()
         # Lease bookkeeping. Without a storage and a holder id (unit tests, and
@@ -790,6 +833,50 @@ class BrowserSessionManager:
         task = asyncio.create_task(_open_start_page(session.context, url, email, profile_id))
         task.add_done_callback(finished)
         session.start_page_task = task
+
+    async def open_page(self, profile_id: str, url: str) -> Literal["tab", "window"] | None:
+        """Open `url` in the browser running for this profile, in a new tab of its window.
+
+        Returns "tab" when it was opened in a tab of a window that was already
+        there, and "window" when only a new window of the same browser could be
+        had: no page to ask for a tab, or none that answered. None when nothing
+        was opened: no browser runs for the profile, or it went away meanwhile.
+
+        Opening is all that is done: nothing is filled in or pressed on the
+        page that is opened. The tab is brought up here and its page loads in
+        the background, so a slow proxy does not hold the caller. The address
+        is never logged: it may carry a secret.
+        """
+        session = self.active_sessions.get(profile_id)
+        if session is None or session.context is None or not url.startswith("https://"):
+            return None
+        where: Literal["tab", "window"] = "tab"
+        try:
+            page = await _new_tab(session.context)
+            if page is None:
+                where = "window"
+                page = await session.context.new_page()
+        except Exception as exc:  # noqa: BLE001 - a browser closed meanwhile is not an error
+            logger.info(f"No page opened for profile {profile_id}: {type(exc).__name__}")
+            return None
+        if where == "window":
+            logger.info(f"No tab could be had for profile {profile_id}; a new window was opened")
+
+        async def show() -> None:
+            try:
+                # A tab opened beside another is not always the one in front.
+                await page.bring_to_front()
+            except Exception:  # noqa: BLE001 - the page is there either way
+                pass
+            try:
+                await page.goto(url)
+            except Exception as exc:  # noqa: BLE001 - the browser reports it in its own window
+                logger.info(f"Page not loaded for profile {profile_id}: {type(exc).__name__}")
+
+        task = asyncio.create_task(show())
+        self._page_tasks.add(task)
+        task.add_done_callback(self._page_tasks.discard)
+        return where
 
     def _register_close_handler(self, browser: Any, profile_id: str) -> None:
         """Wire Playwright close/disconnect events to session cleanup."""

@@ -282,12 +282,14 @@ class DatabaseManager:
 
         # Feature-owned table definitions keep metadata modules independent.
         from .app_settings import initialize_tables as initialize_app_settings
+        from .auto_onboarding.store import initialize_tables as initialize_auto_onboarding
         from .extension_library import initialize_tables as initialize_extensions
         from .profile_templates import initialize_tables as initialize_templates
         from .saved_filters import initialize_tables as initialize_saved_filters
         from .template_batches import initialize_tables as initialize_template_batches
 
         initialize_app_settings(self._connection)
+        initialize_auto_onboarding(self._connection)
         initialize_extensions(self._connection)
         initialize_templates(self._connection)
         initialize_saved_filters(self._connection)

@@ -1,0 +1,523 @@
+<div id="onboard-r2" aria-label="上号交互原型 R3">
+<style>
+#onboard-r2{--bg:light-dark(#f6f7f8,#101113);--panel:light-dark(#fff,#17191c);--raised:light-dark(#eef0f3,#22252a);--line:light-dark(#dfe3e8,#30343a);--text:light-dark(#242830,#edf0f4);--muted:light-dark(#626b77,#a1aab7);--orange:light-dark(#b94712,#ff8652);--action:#ff773c;--action-text:#211109;--seg-on:light-dark(#fff,#3a3f47);--green:light-dark(#16714a,#86d7ae);--warn:light-dark(#885b12,#edbd70);--red:light-dark(#b62e37,#ff9297);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;width:100%}
+#onboard-r2 *{box-sizing:border-box}#onboard-r2 [hidden]{display:none!important}#onboard-r2 h2,#onboard-r2 h3,#onboard-r2 p{margin:0}#onboard-r2 h2{font-size:22px;font-weight:500;letter-spacing:-.5px}#onboard-r2 h3{font-size:13px;font-weight:500}#onboard-r2 button,#onboard-r2 input,#onboard-r2 select{font:inherit}#onboard-r2 button,#onboard-r2 summary{cursor:var(--cursor-interaction,pointer)}#onboard-r2 button:disabled{opacity:.45;cursor:default}#onboard-r2 button:focus-visible,#onboard-r2 input:focus-visible,#onboard-r2 select:focus-visible,#onboard-r2 summary:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+#onboard-r2 .window{background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}#onboard-r2 .bar{background:var(--panel);border-bottom:1px solid var(--line);padding:11px 16px;display:flex;gap:7px;align-items:center;padding-right:100px;min-height:45px}#onboard-r2 .dot{width:8px;height:8px;background:var(--muted);opacity:.5;border-radius:50%}#onboard-r2 .appname{margin-left:8px;font-size:11px;color:var(--muted)}#onboard-r2 .body{display:grid;grid-template-columns:156px minmax(0,1fr)}#onboard-r2 aside{padding:18px 9px;background:var(--panel);border-right:1px solid var(--line)}#onboard-r2 .brand{padding:0 9px 22px;font-size:12px;font-weight:500;display:flex;gap:8px;align-items:center}#onboard-r2 .brand i{color:var(--orange)}#onboard-r2 .nav{padding:10px 9px;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);border-radius:6px;margin:2px 0}#onboard-r2 .nav.active{background:var(--raised);color:var(--text);box-shadow:inset 2px 0 var(--orange)}#onboard-r2 .nav.active i{color:var(--orange)}#onboard-r2 main{min-width:0;padding:22px}#onboard-r2 .head{display:flex;gap:12px;align-items:start;justify-content:space-between}#onboard-r2 .muted{color:var(--muted);font-size:12px}#onboard-r2 .small{font-size:11px}#onboard-r2 .sub{margin-top:4px}#onboard-r2 .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:4px 7px;border-radius:4px;white-space:nowrap}#onboard-r2 .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}#onboard-r2 .between{justify-content:space-between}#onboard-r2 .btn{border:1px solid var(--line);border-radius:5px;background:var(--raised);color:var(--text);padding:7px 11px;font-size:12px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;gap:6px;max-width:100%;white-space:normal}#onboard-r2 .btn.primary{background:var(--action);color:var(--action-text);border-color:var(--action);font-weight:500}#onboard-r2 .btn.quiet{background:transparent}#onboard-r2 .btn.danger{color:var(--red)}#onboard-r2 .good{color:var(--green)}#onboard-r2 .warn{color:var(--warn)}#onboard-r2 .bad{color:var(--red)}#onboard-r2 .accent{color:var(--orange)}#onboard-r2 .gate{margin:18px 0 12px;padding:11px 13px;border:1px solid var(--line);border-radius:7px;background:var(--panel);display:flex;align-items:center;justify-content:space-between;gap:10px}#onboard-r2 .gate.off{border-color:color-mix(in srgb,var(--warn) 55%,var(--line))}#onboard-r2 .indicator{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--green);margin-right:7px}#onboard-r2 .gate.off .indicator{background:var(--warn)}#onboard-r2 .gate-title{font-size:12px;font-weight:500}#onboard-r2 .settings-edit{padding:14px;background:var(--raised);border:1px solid var(--line);border-radius:7px;margin-bottom:12px}#onboard-r2 .switch{width:36px;min-width:36px;height:21px;border:1px solid var(--line);border-radius:15px;background:var(--panel);padding:2px}#onboard-r2 .switch span{display:block;width:15px;height:15px;border-radius:50%;background:var(--muted);transition:transform .15s}#onboard-r2 .switch[aria-checked=true]{background:var(--action);border-color:var(--action)}#onboard-r2 .switch[aria-checked=true] span{background:var(--action-text);transform:translateX(14px)}
+#onboard-r2 .params{background:var(--panel);border:1px solid var(--line);border-radius:8px}#onboard-r2 .params>summary{padding:12px 14px;font-size:13px;font-weight:500;list-style:none;display:flex;justify-content:space-between;gap:8px}#onboard-r2 .params>summary:after{content:'＋';color:var(--muted)}#onboard-r2 .params[open]>summary:after{content:'−'}#onboard-r2 .form{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:0 14px 14px}#onboard-r2 label{font-size:12px;color:var(--muted);display:block;min-width:0}#onboard-r2 input:not([type=checkbox]),#onboard-r2 select{width:100%;min-width:0;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 9px;margin-top:5px;font-size:12px}#onboard-r2 input:disabled,#onboard-r2 select:disabled{opacity:.65}#onboard-r2 input[type=checkbox]{width:15px;height:15px;accent-color:var(--action);margin:0;vertical-align:middle}#onboard-r2 .pass{display:flex;align-items:end;gap:5px}#onboard-r2 .pass input{flex:1}#onboard-r2 .pass .btn{flex:none}#onboard-r2 .pcard{margin:0 14px 13px;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:hidden}#onboard-r2 .pcard-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 10px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pcard-foot{padding:11px 14px;border-top:1px solid var(--line)}#onboard-r2 .psum{flex-basis:100%;display:flex;flex-wrap:wrap;gap:3px 16px;font-size:12px}#onboard-r2 .psum>span{min-width:0;overflow-wrap:anywhere}#onboard-r2 .psum .k{color:var(--muted);margin-right:6px}#onboard-r2 .ptoken{padding:13px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pempty{padding:16px 14px;font-size:12px}#onboard-r2 .hint.bad{color:var(--red)}#onboard-r2 .hint.warn{color:var(--warn)}#onboard-r2 tr.none td{padding:22px 8px;text-align:center}#onboard-r2 .foot .flex{flex-wrap:wrap;min-width:0}#onboard-r2 .demo-pick{display:flex;align-items:center;gap:8px;min-width:0;font-size:11px}#onboard-r2 .demo-pick span{white-space:nowrap}#onboard-r2 .demo-pick select{width:auto;min-width:0;max-width:100%;margin:0}#onboard-r2 .ptoken .pass{flex-wrap:wrap}#onboard-r2 .ptoken .pass input{flex:1 1 150px}#onboard-r2 .tokenview{flex:1 1 150px;min-width:0;font-family:ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}#onboard-r2 .pstep{padding:13px 14px;border-bottom:1px solid var(--line)}#onboard-r2 .pstep:last-child{border-bottom:0}#onboard-r2 .pstep-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin-bottom:10px}#onboard-r2 .pstep-title b{display:grid;place-items:center;flex:none;width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:500;background:color-mix(in srgb,var(--orange) 16%,var(--panel));color:var(--orange)}#onboard-r2 .pintro{margin-top:9px}#onboard-r2 .field{margin-top:11px}#onboard-r2 .flabel{font-size:12px;color:var(--muted)}#onboard-r2 .hint{display:block;font-size:11px;color:var(--muted);margin-top:5px}#onboard-r2 .pcard :is(input:not([type=checkbox]),select){background:var(--panel)}#onboard-r2 .seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:7px;background:var(--raised);max-width:100%}#onboard-r2 .flabel+.seg{margin-top:5px}#onboard-r2 .seg button{border:0;border-radius:5px;background:transparent;color:var(--muted);padding:6px 11px;font-size:12px;min-height:30px}#onboard-r2 .seg :is(button[aria-pressed=true],.on){background:var(--seg-on);color:var(--text);font-weight:500;box-shadow:0 0 0 1px var(--line)}#onboard-r2 .seg .on{display:inline-flex;align-items:center;border-radius:5px;padding:6px 11px;font-size:12px;min-height:30px}#onboard-r2 .adv{margin-top:12px;border:1px solid var(--line);border-radius:6px;font-size:12px}#onboard-r2 .adv summary{padding:9px 11px;font-weight:500}#onboard-r2 .adv summary span{font-weight:400;color:var(--muted)}#onboard-r2 .adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px 13px;padding:2px 11px 12px}#onboard-r2 .adv-grid .wide{grid-column:1/-1}#onboard-r2 .fixed{margin-top:5px;padding:8px 9px;border:1px dashed var(--line);border-radius:5px;font-size:12px;color:var(--text)}#onboard-r2 .policy{padding:0 14px 13px;font-size:11px;color:var(--muted)}#onboard-r2 .error{margin-top:10px;font-size:12px;color:var(--red)}#onboard-r2 .controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:17px 0 11px}#onboard-r2 .counts{display:flex;flex-wrap:wrap;gap:13px;color:var(--muted);font-size:12px;margin-top:4px}#onboard-r2 .counts b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}#onboard-r2 .status{font-size:13px;font-weight:500}#onboard-r2 .track{height:4px;border-radius:3px;background:var(--raised);overflow:hidden;margin-bottom:9px}#onboard-r2 .progress{height:100%;width:0;background:var(--orange);transition:width .2s}#onboard-r2 table{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed}#onboard-r2 th{text-align:left;color:var(--muted);font-weight:400;padding:8px;border-bottom:1px solid var(--line)}#onboard-r2 td{padding:11px 8px;border-bottom:1px solid var(--line);overflow-wrap:anywhere}#onboard-r2 th:first-child{width:25%}#onboard-r2 th:nth-child(2){width:19%}#onboard-r2 th:nth-child(3){width:27%}#onboard-r2 th:last-child{width:29%}#onboard-r2 tr.onboarded td{color:var(--muted)}#onboard-r2 tr.current{background:color-mix(in srgb,var(--orange) 7%,var(--bg));box-shadow:inset 2px 0 var(--orange)}#onboard-r2 .email{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,monospace;margin-top:3px}#onboard-r2 .detail{margin-top:17px;padding:15px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}#onboard-r2 .detail-title{font-size:13px;overflow-wrap:anywhere}#onboard-r2 .phases{display:flex;gap:5px;margin:14px 0;flex-wrap:wrap}#onboard-r2 .phase{padding:5px 9px;font-size:11px;border-radius:4px;background:var(--raised);color:var(--muted)}#onboard-r2 .phase.past{color:var(--green)}#onboard-r2 .phase.now{background:color-mix(in srgb,var(--orange) 13%,var(--panel));color:var(--orange)}#onboard-r2 .substeps{display:grid;grid-template-columns:1fr 1fr;gap:8px 15px;margin:10px 0 13px}#onboard-r2 .step{font-size:12px;display:flex;gap:7px;align-items:center;color:var(--muted)}#onboard-r2 .step b{font-size:11px;display:grid;place-items:center;flex:none;width:19px;height:19px;border-radius:50%;border:1px solid var(--line);font-weight:400}#onboard-r2 .step.past{color:var(--green)}#onboard-r2 .step.now{color:var(--orange)}#onboard-r2 .step.now b{border-color:var(--orange)}#onboard-r2 .message{border-top:1px solid var(--line);padding-top:11px;font-size:12px;min-height:42px;overflow-wrap:anywhere}#onboard-r2 .detail-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}#onboard-r2 .browser{margin-top:13px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--bg)}#onboard-r2 .browserbar{padding:9px 11px;background:var(--raised);display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:11px}#onboard-r2 .address{overflow-wrap:anywhere;color:var(--muted)}#onboard-r2 .browsercontent{padding:18px 14px;text-align:center}#onboard-r2 .browsercontent h3{font-size:17px;margin:5px 0}#onboard-r2 .browsercontent .email{margin-bottom:7px}#onboard-r2 .browsercontrol{border-top:1px solid var(--line);padding:11px 14px}#onboard-r2 .browsercontrol label{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;gap:8px}#onboard-r2 .browsercontrol select{margin:0}#onboard-r2 .log{margin-top:14px;font-size:11px;color:var(--muted)}#onboard-r2 .log summary{padding:4px 0}#onboard-r2 .log ol{margin:8px 0 0;padding:0;list-style:none}#onboard-r2 .log li{padding:4px 0;display:flex;gap:9px}#onboard-r2 .log time{font-variant-numeric:tabular-nums;flex:none}#onboard-r2 .foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--muted)}#onboard-r2 .review-note{font-size:11px;margin-top:10px;color:var(--muted)}
+#onboard-r2 .body{grid-template-columns:170px minmax(0,1fr)}#onboard-r2 .nav-label{white-space:nowrap}
+@media(max-width:850px){#onboard-r2 .body{grid-template-columns:135px minmax(0,1fr)}#onboard-r2 main{padding:16px}#onboard-r2 .brand{padding-left:3px;font-size:11px}#onboard-r2 .nav{padding:9px 5px;font-size:11px}#onboard-r2 .nav-suffix{display:none}#onboard-r2 .head{flex-wrap:wrap}#onboard-r2 .tag{font-size:11px}}
+@media(max-width:600px){#onboard-r2 .body{display:block}#onboard-r2 aside{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:8px 12px}#onboard-r2 .brand{padding:5px 0;margin-right:auto}#onboard-r2 .nav{display:none}#onboard-r2 .nav.active{display:flex;margin:0}#onboard-r2 main{padding:13px}#onboard-r2 .form{grid-template-columns:1fr}#onboard-r2 .adv-grid{grid-template-columns:1fr}#onboard-r2 th:nth-child(2),#onboard-r2 td:nth-child(2){display:none}#onboard-r2 th:first-child{width:30%}#onboard-r2 th:nth-child(3){width:34%}#onboard-r2 th:last-child{width:36%}#onboard-r2 .detail{padding:12px}#onboard-r2 .gate{align-items:start}#onboard-r2 .gate .btn{flex:none}#onboard-r2 .substeps{gap:9px}#onboard-r2 .bar{padding-right:100px}#onboard-r2 .appname{font-size:11px}#onboard-r2 .phase{padding:5px 7px}#onboard-r2 .controls .flex{width:100%}#onboard-r2 .controls .btn.primary{flex:1}}
+@media(pointer:coarse){#onboard-r2 .btn,#onboard-r2 .seg button{min-height:44px}#onboard-r2 select,#onboard-r2 input:not([type=checkbox]){min-height:44px;font-size:16px}#onboard-r2 td:first-child{padding-top:14px;padding-bottom:14px}}
+@media(prefers-reduced-motion:reduce){#onboard-r2 .progress,#onboard-r2 .switch span{transition:none}}
+#onboard-r2{position:relative}#onboard-r2 .form.one{grid-template-columns:minmax(0,460px)}#onboard-r2 textarea{display:block;width:100%;min-width:0;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:8px 9px;margin-top:5px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;resize:vertical}#onboard-r2 textarea:focus-visible{outline:2px solid var(--orange);outline-offset:3px}#onboard-r2 td .k{color:var(--muted);margin-right:6px}#onboard-r2 .state{margin-top:3px}#onboard-r2 .ops{display:flex;flex-wrap:wrap;gap:6px}#onboard-r2 .ops .btn{min-height:30px;padding:5px 9px}#onboard-r2 .ops svg{width:10px;height:10px;flex:none}#onboard-r2 .why{font-size:11px;color:var(--muted);margin-top:5px}
+#onboard-r2 .overlay{position:absolute;inset:0;z-index:5;display:flex;justify-content:center;align-items:flex-start;padding:0 12px;border-radius:12px;background:color-mix(in srgb,#000 55%,transparent)}#onboard-r2 .modal{width:min(640px,100%);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.35);outline:0}#onboard-r2 .modal-head{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}#onboard-r2 .modal-head h3{font-size:15px}#onboard-r2 .modal-body{padding:14px 16px}#onboard-r2 .notice{padding:9px 11px;border-radius:6px;font-size:12px;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,var(--panel))}#onboard-r2 .linkbox{display:flex;align-items:stretch;gap:10px;margin-top:11px;padding:11px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}#onboard-r2 .linkbox code{background:transparent;color:var(--text);padding:0;border:0;border-radius:0;flex:1;min-width:0;max-height:112px;overflow:auto;overflow-wrap:anywhere;user-select:all;font:11px/1.6 ui-monospace,SFMono-Regular,monospace}#onboard-r2 .linkbtns{display:flex;flex-direction:column;gap:6px;flex:none}#onboard-r2 .modal-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line)}#onboard-r2 .modal-tip{margin:0;padding:0 16px 13px}#onboard-r2 .demo-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:12px;padding:7px 10px;border:1px dashed var(--line);border-radius:6px;font-size:11px;color:var(--muted)}#onboard-r2 .demo-box .btn{min-height:28px;padding:4px 9px;font-size:11px}#onboard-r2 .result-title{font-size:14px;font-weight:500}#onboard-r2 .hint.bad{color:var(--red)}
+@media(max-width:600px){#onboard-r2 .linkbox{flex-direction:column}#onboard-r2 .linkbtns{flex-direction:row;flex-wrap:wrap}#onboard-r2 .modal-foot .flex{width:100%}}
+</style>
+<div class="window">
+  <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="appname">赵露思 上号系统 · 交互预览 R3</span></div>
+  <div class="body">
+    <aside aria-label="应用导航">
+      <div class="brand"><i data-lucide="list-filter" aria-hidden="true"></i>赵露思 上号系统</div>
+      <div class="nav"><i data-lucide="users" aria-hidden="true"></i>浏览器配置</div>
+      <div class="nav active" aria-current="page"><i data-lucide="workflow" aria-hidden="true"></i>自动上号</div>
+      <div class="nav"><i data-lucide="key-round" aria-hidden="true"></i><span class="nav-label">Claude Team<span class="nav-suffix"> 上号</span></span></div>
+      <div class="nav"><i data-lucide="network" aria-hidden="true"></i>代理库</div>
+      <div class="nav"><i data-lucide="copy" aria-hidden="true"></i>模板</div>
+      <div class="nav"><i data-lucide="puzzle" aria-hidden="true"></i>扩展</div>
+      <div class="nav"><i data-lucide="layers" aria-hidden="true"></i>分组</div>
+      <div class="nav"><i data-lucide="calendar-clock" aria-hidden="true"></i>定时任务</div>
+      <div class="nav"><i data-lucide="settings" aria-hidden="true"></i>设置</div>
+    </aside>
+    <main>
+      <div class="head"><div><h2>自动上号</h2><p class="muted sub">保存上号参数，按行运行浏览器，由人完成登录和授权。</p></div><span class="tag">本地模拟 · 不连接真实账号</span></div>
+      <details class="params" id="r2-params" open>
+        <summary><span>上号参数</span><span class="muted" id="r2-param-summary"></span></summary>
+        <section class="pcard" id="r2-preset-card" aria-label="平台接入预设">
+          <div class="pcard-head"><h3>平台接入预设</h3></div>
+          <div class="ptoken">
+            <div class="flabel" id="r2-token-label">上号员令牌（演示值）</div>
+            <div class="pass" id="r2-token-saved"><div class="fixed tokenview" id="r2-token-preview"></div><button type="button" id="r2-token-refresh" class="btn quiet">刷新</button><button type="button" id="r2-token-edit" class="btn quiet">修改</button></div>
+            <div class="pass" id="r2-token-form" hidden><input id="r2-token" type="password" autocomplete="off" spellcheck="false" placeholder="1dk_onb_…" aria-labelledby="r2-token-label"><button type="button" id="r2-token-reveal" class="btn quiet" aria-label="显示输入的令牌">显示</button><button type="button" id="r2-token-read" class="btn">保存并读取</button><button type="button" id="r2-token-cancel" class="btn quiet">取消</button></div>
+            <p class="hint" id="r2-token-status" role="status"></p>
+            <p class="hint" id="r2-token-note" role="status" hidden></p>
+            <p class="hint" id="r2-token-target">平台 https://1dayapi.com · 令牌保存在本机，只发往这个地址。</p>
+          </div>
+          <p class="pempty muted" id="r2-token-empty" hidden>保存并读取上号员令牌后，这里显示这个令牌可用的节点和组织。</p>
+          <div class="psteps">
+            <div class="pstep">
+              <div class="pstep-title"><b>1</b>凭据</div>
+              <div class="seg"><span class="on">授权链接</span></div>
+              <p class="muted pintro">每行点「生成授权链接」后，平台为它生成一条授权链接，并自动在本行浏览器的新标签页打开。在那里同意后，把页面上显示的授权码粘贴回来。</p>
+            </div>
+            <div class="pstep">
+              <div class="pstep-title"><b>2</b>出口</div>
+              <label>出网节点<select id="r2-node"><option value="direct-1">direct-1 · 在线 · 13/20</option></select></label>
+              <p class="hint">该账号运行期的一切请求都经此节点出网。</p>
+              <div class="field"><div class="flabel" id="r2-proxy-label">代理</div><div class="seg" role="group" aria-labelledby="r2-proxy-label"><button type="button" data-proxy="row" aria-pressed="true">逐行原出口</button><button type="button" data-proxy="auto" aria-pressed="false">自动分配</button><button type="button" data-proxy="pool" aria-pressed="false" id="r2-proxy-pool-tab">从池中选</button></div></div>
+              <div class="field" id="r2-proxy-auto" hidden><label>分组<select id="r2-proxy-group"></select></label></div>
+              <div class="field" id="r2-proxy-pool" hidden><label>代理<select id="r2-pool-proxy"></select></label></div>
+              <p class="hint" id="r2-proxy-hint"></p>
+              <p class="hint">代理默认绑定两个账号；常规容量不足时才启用第三个名额。账号绑定后保持固定。</p>
+            </div>
+            <div class="pstep">
+              <div class="pstep-title"><b>3</b>归属与限额</div>
+              <div id="r2-org-profiles">
+                <label>组织<select id="r2-org-profile"><option value="org-a">Team 示例 A</option><option value="org-b">Team 示例 B</option><option value="org-c">Team 示例 C</option></select></label>
+                <p class="hint">从这个上号员令牌可用的组织档案中选择，必须选一个。</p>
+                <div class="field" id="r2-domain-field"><label>邮箱域名<select id="r2-domain"></select></label><p class="hint">账号邮箱必须在这个域名下，否则平台拒绝接入、不入池。</p></div>
+              </div>
+              <div id="r2-org-legacy" hidden>
+                <label for="r2-org">组织 (可选)</label>
+                <select id="r2-org"><option value="">不指定——在干净出口上自动识别；账号属于不同组织时各自成为一个组织（一号一组织就这样上）</option><option value="manual">手动输入…</option></select>
+                <div class="field" id="r2-org-uuid-field" hidden><label>组织 UUID<input id="r2-org-uuid" type="text" autocomplete="off" spellcheck="false" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></label></div>
+                <p class="hint">这个上号员令牌没有组织档案：可以不指定，或手动输入 UUID。</p>
+                <p class="hint" id="r2-org-virgin">不指定时，平台要求接入用的出口上还没有账号（平台开启组织与出口绑定时）；自动分配只挑这样的出口，指定的出口已有账号则在生成授权链接时被平台拒绝。</p>
+              </div>
+              <div class="field"><div class="flabel">分组</div><div class="fixed" id="r2-account-group-fixed">默认分组</div><p class="hint">上号员令牌接入的账号一律进平台默认分组，不可选。</p></div>
+              <details class="adv"><summary>高级 <span id="r2-adv-summary">· 备注、限额</span></summary>
+                <div class="adv-grid">
+                  <div><div class="flabel">名称</div><div class="fixed" id="r2-adv-name-fixed">每行使用本行邮箱</div></div>
+                  <label>备注 (可选)<input id="r2-adv-note" type="text" maxlength="500" autocomplete="off"></label>
+                  <label>并发上限<input id="r2-adv-concurrency" type="number" min="0" placeholder="平台默认"><span class="hint">账号最大在途请求数。留空 = 平台默认值（设置 → 上号默认）。</span></label>
+                  <label>RPM 上限<input id="r2-adv-rpm" type="number" min="0" placeholder="平台默认"><span class="hint">每分钟最大请求数。留空 = 平台默认值。</span></label>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div class="pcard-foot" id="r2-preset-foot"><p class="psum" id="r2-preset-summary"></p></div>
+        </section>
+        <div class="form one">
+          <label>配置范围<select id="r2-group"><option value="uk-http">英国 HTTP 分组 · 待上号 3 · 已上号 1</option></select><span class="hint">按分组选择。只算有邮箱且尚未上号的配置；未分组的配置不能上号。</span></label>
+        </div>
+      </details>
+      <p class="error" id="r2-error" role="alert" hidden></p>
+      <div class="controls"><div><div class="status" id="r2-status" aria-live="polite"></div><div class="counts"><span>待上号 <b id="r2-pending">3</b></span><span>已上号 <b id="r2-onboarded">1</b></span><span>浏览器运行中 <b id="r2-running">0</b></span><span>授权进行中 <b id="r2-open-jobs">0</b></span></div></div><div class="flex"><button type="button" class="btn quiet" id="r2-check">检查配置</button></div></div>
+      <table aria-label="所选分组里的配置"><thead><tr><th>配置 / 邮箱</th><th>原出口</th><th>状态</th><th>操作</th></tr></thead><tbody id="r2-rows"></tbody></table>
+      <p class="review-note" id="r2-run-note">「运行」「停止」与浏览器配置页相同：运行会打开启动页；自动化总开关开启时还会填入本行邮箱并点一次 SSO。之后的登录和授权由人完成，程序不替人点击。</p>
+      <details class="log"><summary>操作记录 <span id="r2-log-count">0</span></summary><ol id="r2-log"></ol></details>
+      <div class="foot"><span id="r2-foot-note"></span><div class="flex"><label class="demo-pick"><span>演示情形</span><select id="r2-demo"><option value="">正常</option><option value="refresh-changed">刷新后所选节点和组织不可用</option><option value="refresh-revoked">刷新时令牌已被吊销</option><option value="no-pending">没有待上号的配置</option></select></label><label class="demo-pick"><span>演示：下一次授权的结果</span><select id="r2-outcome"><option value="">接入成功</option><option value="cooldown">接入成功 · 新号冷静期</option><option value="reused">已有账号被原地重新授权</option><option value="exists">平台上已有这个账号</option><option value="mismatch">接入的账号不是本行邮箱</option><option value="domain">账号邮箱不在所选域名下</option><option value="grant">授权码已失效</option><option value="proxy_full">生成时被拒绝 · 出口已满</option><option value="node_full">生成时被拒绝 · 节点已满</option></select></label><button type="button" id="r2-reset" class="btn quiet">重新演示</button></div></div>
+    </main>
+  </div>
+</div>
+<div class="overlay" id="r2-dialog" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="r2-dialog-title" tabindex="-1">
+    <div class="modal-head"><div><h3 id="r2-dialog-title">完成授权</h3><p class="muted sub" id="r2-dialog-row"></p></div><button type="button" class="btn quiet" id="r2-dialog-x" aria-label="关闭弹窗，不取消授权">×</button></div>
+    <div class="modal-body">
+      <div id="r2-d-pending">
+        <p class="notice">请在该账号日常使用的网络环境（如配置了同一代理的指纹浏览器）中打开此链接完成授权。用其他 IP 授权可能导致账号被风控。</p>
+        <p class="hint" id="r2-d-browser" role="status"></p>
+        <div class="linkbox"><code id="r2-d-url" aria-label="授权链接（演示值）"></code><div class="linkbtns"><button type="button" class="btn primary" id="r2-d-copy">复制</button></div></div>
+        <p class="hint" id="r2-d-note" role="status" hidden></p>
+        <label class="field">授权码<textarea id="r2-d-callback" rows="2" autocomplete="off" spellcheck="false" placeholder="粘贴授权页上显示的授权码，形如 xxxxxxxx…#xxxxxxxx…"></textarea></label>
+        <p class="hint">同意授权后，页面上会显示一串授权码。点页面上的复制按钮，把授权码完整粘贴到这里（包括 # 和它后面的部分）。这条链接还有 <span id="r2-d-left"></span> 有效。</p>
+        <p class="error" id="r2-d-error" role="alert" hidden></p>
+        <div class="demo-box"><span>演示</span><button type="button" class="btn quiet" id="r2-d-fill">填入本行的授权码</button><button type="button" class="btn quiet" id="r2-d-fill-other">填入另一行的授权码</button><button type="button" class="btn quiet" id="r2-d-expire">让这次授权过期</button></div>
+      </div>
+      <div id="r2-d-working" hidden><p class="result-title accent">平台正在完成接入…</p><p class="hint">授权码已提交，平台最长处理 3 分钟。可以关掉弹窗，结果会记在这一行。</p></div>
+      <div id="r2-d-result" hidden><p class="result-title" id="r2-d-result-title"></p><p class="hint" id="r2-d-result-note"></p></div>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn quiet" id="r2-d-close-browser">关闭浏览器</button><div class="flex"><button type="button" class="btn" id="r2-d-cancel">取消</button><button type="button" class="btn primary" id="r2-d-submit">提交授权码</button><button type="button" class="btn" id="r2-d-regen" hidden>重新生成</button><button type="button" class="btn" id="r2-d-done" hidden>关闭</button></div></div>
+    <p class="hint modal-tip" id="r2-d-tip">关掉弹窗（×）不会取消授权，可以从这一行的「继续授权」回来。「取消」会让平台取消这次授权并释放预留的名额。「关闭浏览器」只关本行的浏览器。</p>
+  </div>
+</div>
+<script>
+(()=>{
+  const root=document.getElementById('onboard-r2');
+  const el=id=>root.querySelector('#r2-'+id);
+  // The chosen group's profiles that have an email address, newest first. 019 was
+  // onboarded earlier: it is listed, its browser can be run, and it gets no authorize link.
+  const seeds=[{id:'019',email:'user019@example.com',ip:'203.0.113.19',prior:true},{id:'018',email:'user018@example.com',ip:'203.0.113.18'},{id:'017',email:'user017@example.com',ip:'203.0.113.17'},{id:'016',email:'user016@example.com',ip:'203.0.113.16'}];
+  const seedOf=id=>seeds.find(x=>x.id===id);
+  // A row keeps two things apart: whether its browser runs, and its authorization
+  // (auth: none yet, or the latest one with status pending / working / done / failed).
+  const freshRows=()=>seeds.map(x=>({id:x.id,running:false,busy:'',onboarded:!!x.prior,attempt:0,auth:null}));
+  function initial(){return {group:'uk-http',node:'direct-1',tokenRead:true,tokenPreview:'1dk_onb_demo…only',tokenLabel:'演示令牌',tokenAt:'',tokenNote:'',tokenEditing:false,tokenInvalid:false,tokenView:'full',demo:'',outcome:'',proxyMode:'row',proxyGroup:'',poolProxy:'',tokenOrgs:true,orgProfile:'org-a',domain:'example.com',org:'',rows:freshRows(),dialog:'',dialogError:'',dialogNote:'',error:'',checked:null,checking:false,paramsOpen:true,logs:[]};}
+  let s=initial(),revision='',counter=0,tokenBusy='',tokenSeq=0,anchorY=0,epoch=0;
+  const instance=String(Date.now());
+  // Something that happens a little later, unless the demo was reset in between.
+  const later=(fn,ms)=>{const at=epoch;setTimeout(()=>{if(at===epoch)fn();},ms);};
+  const rowOf=id=>s.rows.find(x=>x.id===id);
+  const rows=()=>s.demo==='no-pending'?[]:s.rows;
+  const openAuth=r=>!!r.auth&&(r.auth.status==='pending'||r.auth.status==='working');
+  const escape=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const stamp=()=>new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  function log(message){s.logs.push({time:stamp(),message});s.logs=s.logs.slice(-14);}
+  function persist(){
+    revision=instance+'-'+(++counter);
+    const snapshot={...s,error:'',dialogError:'',dialogNote:'',checking:false,logs:s.logs.slice(-8)};
+    if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{prototype:'上号 R3',browsersRunning:s.rows.filter(r=>r.running).length,authorizationsOpen:s.rows.filter(openAuth).length,onboarded:s.rows.filter(r=>r.onboarded).length,dialog:s.dialog||null},privateContent:{version:3,revision,state:snapshot}}).catch(()=>{});
+  }
+  function saveRender(){render();persist();}
+  function restore(raw){
+    const p=raw?.privateContent;
+    if(!p||p.version!==3||!p.state||p.revision===revision)return;
+    const v=p.state;if(!Array.isArray(v.rows))return;
+    epoch++;s={...initial(),...v};
+    s.rows=freshRows().map(base=>({...base,...(v.rows.find(x=>x.id===base.id)||{}),id:base.id,busy:''}));
+    s.group=initial().group;s.tokenEditing=false;s.checking=false;tokenBusy='';tokenSeq++;
+    if(!['refresh-changed','refresh-revoked','no-pending'].includes(s.demo))s.demo='';
+    s.tokenView=s.tokenView==='reduced'?'reduced':'full';s.tokenInvalid=!!s.tokenInvalid&&s.tokenRead;
+    if(!rowOf(s.dialog)||!rowOf(s.dialog).auth)s.dialog='';
+    // The platform goes on with a submitted callback whether the page is open or not.
+    s.rows.forEach(r=>{if(r.auth?.status==='working'){const job=r.auth.job;later(()=>resolve(r.id,job),1200);}});
+    revision=p.revision;el('d-callback').value='';render();
+  }
+  // The organization profiles this onboarder token may use (GET /api/onboard/me → orgs), with
+  // each profile's email domains. A token with none (tokenOrgs false) may leave the
+  // organization unspecified or name a UUID instead.
+  const orgs=[{id:'org-a',name:'Team 示例 A',domains:['example.com']},{id:'org-b',name:'Team 示例 B',domains:['example.com','example.net']},{id:'org-c',name:'Team 示例 C',domains:[]}];
+  // What a refresh may bring back: another node, and no longer the first organization profile.
+  const nodeSets={full:[{id:'direct-1',label:'direct-1 · 在线 · 13/20'}],reduced:[{id:'direct-2',label:'direct-2 · 在线 · 4/20'}]};
+  const nodesOf=view=>nodeSets[view]||nodeSets.full;
+  const orgsOf=view=>view==='reduced'?orgs.filter(o=>o.id!=='org-a'):orgs;
+  const orgNow=()=>{const list=orgsOf(s.tokenView);return list.find(o=>o.id===s.orgProfile)||list[0];};
+  // A saved token the platform still accepts.
+  const usable=()=>s.tokenRead&&!s.tokenInvalid;
+  // The proxy pool of each node this token may use: its proxy groups (GET /api/onboard/node-groups)
+  // and the proxies that can still take an account (GET /api/onboard/proxies).
+  const pools={
+    'direct-1':{groups:[{name:'英国住宅',assignable:12},{name:'美国住宅',assignable:8}],proxies:[{id:'p1-18',ip:'203.0.113.18',group:'英国住宅',left:3},{id:'p1-17',ip:'203.0.113.17',group:'英国住宅',left:3},{id:'p1-16',ip:'203.0.113.16',group:'英国住宅',left:2},{id:'p1-41',ip:'198.51.100.41',group:'美国住宅',left:3},{id:'p1-42',ip:'198.51.100.42',group:'美国住宅',left:1}]},
+    'direct-2':{groups:[{name:'英国住宅 B',assignable:4}],proxies:[{id:'p2-18',ip:'203.0.113.18',group:'英国住宅 B',left:3},{id:'p2-17',ip:'203.0.113.17',group:'英国住宅 B',left:3},{id:'p2-16',ip:'203.0.113.16',group:'英国住宅 B',left:3},{id:'p2-61',ip:'198.51.100.61',group:'英国住宅 B',left:2}]}
+  };
+  const poolNow=()=>pools[s.node]||pools['direct-1'];
+  const proxyHints={
+    row:'每行按本行浏览器代理的出口 IP，在所选节点的代理池里找到同一出口的那一条来接入。找不到、对应多条或该出口已满时，这一行不能生成授权链接。出口是否已被别的组织占用，事先查不出来：平台在生成授权链接时判断，被拒绝则这一行生成失败。',
+    auto:'平台为每一行各挑一条可用代理，优先挑账号最少的；选了分组就只在这个分组里挑。账号以后固定走平台挑的这条代理，可能和本行浏览器登录时的出口不同。',
+    pool:'所有行都接到选中的这一条代理上。每条代理默认最多 3 个账号，名额用完后，后面的行在生成授权链接时被平台拒绝。账号以后固定走这条代理，可能和本行浏览器登录时的出口不同。'
+  };
+  // What a row's exit column says about the proxy it will be onboarded through.
+  const exitNote=()=>{
+    if(!usable())return s.tokenInvalid?'令牌无效，无法匹配':'读取令牌后匹配';
+    if(s.proxyMode==='auto')return '接入代理由平台分配';
+    if(s.proxyMode==='pool'){const p=poolNow().proxies.find(x=>x.id===s.poolProxy);return p?'接入代理 '+p.ip:'尚未选择代理';}
+    return '已匹配节点代理';
+  };
+  // The node and proxy an authorization is created with; it keeps them however the card changes later.
+  const proxyUsed=r=>{
+    if(s.proxyMode==='auto')return s.proxyGroup?'平台在分组 '+s.proxyGroup+' 内分配':'平台分配';
+    if(s.proxyMode==='pool')return poolNow().proxies.find(x=>x.id===s.poolProxy)?.ip||'';
+    return seedOf(r.id).ip;
+  };
+  // The access preset card: what is chosen, and the one line under its third step that says so.
+  function renderPreset(){
+    const choose=(id,value)=>{const n=el(id);n.value=value;if(n.selectedIndex<0)n.selectedIndex=0;};
+    const o=orgNow(),nodeList=nodesOf(s.tokenView),orgList=orgsOf(s.tokenView);
+    if(!nodeList.some(n=>n.id===s.node))s.node=nodeList[0].id;
+    el('node').innerHTML=nodeList.map(n=>'<option value="'+n.id+'">'+n.label+'</option>').join('');
+    el('org-profile').innerHTML=orgList.map(x=>'<option value="'+x.id+'">'+x.name+'</option>').join('');
+    const pool=poolNow();
+    if(!['row','auto','pool'].includes(s.proxyMode))s.proxyMode='row';
+    if(!pool.groups.some(g=>g.name===s.proxyGroup))s.proxyGroup='';
+    if(!pool.proxies.some(p=>p.id===s.poolProxy))s.poolProxy='';
+    root.querySelectorAll('[data-proxy]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.proxy===s.proxyMode)));
+    el('proxy-pool-tab').textContent='从池中选（'+pool.proxies.length+'）';
+    el('proxy-auto').hidden=s.proxyMode!=='auto';el('proxy-pool').hidden=s.proxyMode!=='pool';
+    el('proxy-group').innerHTML='<option value="">不限分组</option>'+pool.groups.map(g=>'<option value="'+g.name+'">'+g.name+' · 可分配 '+g.assignable+'</option>').join('');
+    el('pool-proxy').innerHTML='<option value="">选择代理…</option>'+pool.proxies.map(p=>'<option value="'+p.id+'">'+p.ip+' · '+p.group+' · 还可接 '+p.left+' 个</option>').join('');
+    el('proxy-hint').textContent=proxyHints[s.proxyMode];
+    const pickedProxy=pool.proxies.find(p=>p.id===s.poolProxy);
+    const proxyText=s.proxyMode==='auto'?(s.proxyGroup?'在分组 '+s.proxyGroup+' 内自动分配':'自动分配'):s.proxyMode==='pool'?(pickedProxy?pickedProxy.ip:'从池中选，未选'):'逐行原出口';
+    if(!o.domains.includes(s.domain))s.domain=o.domains.length===1?o.domains[0]:'';
+    el('org-profiles').hidden=!s.tokenOrgs;el('org-legacy').hidden=s.tokenOrgs;
+    el('domain-field').hidden=!o.domains.length;
+    el('domain').innerHTML=(o.domains.length>1?'<option value="">选择域名…</option>':'')+o.domains.map(d=>'<option value="'+d+'">@'+d+'</option>').join('');
+    choose('node',s.node);choose('org-profile',o.id);choose('domain',s.domain);choose('org',s.org);choose('proxy-group',s.proxyGroup);choose('pool-proxy',s.poolProxy);
+    el('org-uuid-field').hidden=s.org!=='manual';el('org-virgin').hidden=s.org!=='';
+    const set=[['adv-concurrency','并发'],['adv-rpm','RPM']].filter(([id])=>el(id).value.trim()!=='').map(([id,k])=>k+' '+el(id).value.trim());
+    if(el('adv-note').value.trim())set.push('有备注');
+    el('adv-summary').textContent=set.length?'· 已设：'+set.join(' · '):'· 备注、限额';
+    const uuid=el('org-uuid').value.trim();
+    const org=s.tokenOrgs?o.name+(o.domains.length?(s.domain?' · @'+s.domain:' · 未选域名'):''):(s.org==='manual'?(uuid?uuid.slice(0,8)+'…':'未填 UUID'):'不指定');
+    const editing=s.tokenEditing||!s.tokenRead;
+    el('token-saved').hidden=editing;el('token-form').hidden=!editing;el('token-cancel').hidden=!s.tokenRead;
+    el('token-preview').textContent=s.tokenPreview;
+    el('token-status').textContent=tokenBusy==='refresh'?'正在刷新…':tokenBusy==='read'?'正在读取…':s.tokenInvalid?'令牌无效或已被吊销 · '+s.tokenAt+'。修改为有效令牌后才能检查配置和生成授权链接。':s.tokenRead?'已读取 · 令牌「'+s.tokenLabel+'」· 可用节点 '+nodeList.length+' · 组织档案 '+(s.tokenOrgs?orgList.length:0)+(s.tokenAt?' · '+s.tokenAt:''):'尚未保存令牌。保存并读取后才能检查配置和生成授权链接。';
+    const tokenNote=editing?(s.tokenRead?'正在修改令牌。新令牌读取成功后才替换现有令牌；取消则保留现有令牌。':'令牌只保存在本机，保存后不再显示全文。')+'演示：以 -revoked 结尾的令牌会被平台拒绝。':s.tokenNote;
+    el('token-note').hidden=!tokenNote;el('token-note').textContent=tokenNote;
+    el('token-status').classList.toggle('bad',s.tokenInvalid&&!tokenBusy);el('token-note').classList.toggle('warn',!editing&&tokenNote.startsWith('刷新后有变化'));
+    root.querySelector('#r2-preset-card .psteps').hidden=!usable();el('token-empty').hidden=usable();
+    el('token-empty').textContent=s.tokenInvalid?'已保存的令牌不能再使用。修改为有效令牌后，这里重新显示它可用的节点和组织。':'保存并读取上号员令牌后，这里显示这个令牌可用的节点和组织。';
+    el('preset-foot').hidden=!usable();el('preset-summary').innerHTML=!usable()?'':[['方式','授权链接'],['节点',el('node').value],['代理',proxyText],['组织',org],['分组','默认分组']].map(([k,v])=>'<span><span class="k">'+k+'</span>'+escape(v)+'</span>').join('');
+    ['token','token-read','token-cancel','token-refresh','token-edit'].forEach(id=>el(id).disabled=!!tokenBusy);
+    el('token-refresh').textContent=tokenBusy==='refresh'?'刷新中…':'刷新';
+  }
+  // What stops the parameters from being used: a message, and where on the page it points.
+  function paramProblem(){
+    if(tokenBusy)return ['正在读取上号员令牌，请稍候。','card'];
+    if(!s.tokenRead)return ['请先保存并读取上号员令牌。','card'];
+    if(s.tokenEditing)return ['请先完成或取消令牌修改。','card'];
+    if(s.tokenInvalid)return ['已保存的上号员令牌无效或已被吊销，请先修改为有效令牌。','card'];
+    if(s.proxyMode==='pool'&&!s.poolProxy)return ['请先从代理池中选择一条代理。','card'];
+    if(s.tokenOrgs&&orgNow().domains.length&&!s.domain)return ['请先为所选组织选择邮箱域名。','card'];
+    if(!s.tokenOrgs&&s.org==='manual'){
+      const uuid=el('org-uuid').value.trim();
+      if(!uuid)return ['请输入组织 UUID，或把组织改为「不指定」。','card'];
+      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid))return ['组织 UUID 的格式应为 xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx。','card'];
+    }
+    for(const [id,name] of [['adv-concurrency','并发上限'],['adv-rpm','RPM 上限']]){
+      const n=el(id),v=n.value.trim();
+      if(n.validity.badInput||(v!==''&&!/^\d+$/.test(v))||Number(v)>100000)return [name+'应为 0 到 100000 的整数；留空使用平台默认值。','adv'];
+    }
+    return null;
+  }
+  // The platform compares domains without regard to case.
+  const offDomain=r=>s.tokenOrgs&&!!s.domain&&!seedOf(r.id).email.toLowerCase().endsWith('@'+s.domain.toLowerCase());
+  function refuse([message,where]){s.error=message;if(where)s.paramsOpen=true;if(where==='adv')root.querySelector('#r2-preset-card details.adv').open=true;saveRender();}
+  // A change of what is chosen makes the last check stale.
+  const changed=()=>{s.checked=null;s.error='';};
+  function check(){
+    if(s.checking)return;
+    const p=paramProblem();if(p)return refuse(p);
+    s.error='';s.checking=true;s.checked=null;render();
+    later(()=>{
+      const pending=rows().filter(r=>!r.onboarded),off=pending.filter(offDomain).length;
+      s.checking=false;s.checked={ready:pending.length-off,off,onboarded:rows().length-pending.length};
+      log(off?'检查配置：'+off+' 行的邮箱不在所选域名下（模拟）':'检查通过：参数齐全，'+s.checked.ready+' 行可以上号（模拟）');saveRender();
+    },600);
+  }
+  function statusText(){
+    if(s.demo==='no-pending')return '没有待上号的配置';
+    if(s.checking)return '正在检查配置';
+    const c=s.checked;if(!c)return '尚未检查';
+    if(c.off)return '参数还不行：'+c.off+' 行的邮箱不在 @'+s.domain+' 下，平台会拒绝接入';
+    return '检查通过（模拟）：'+c.ready+' 行可以上号'+(c.onboarded?'，'+c.onboarded+' 行已上号':'');
+  }
+  // Why a row cannot get an authorize link right now, said beside its button.
+  const genBlock=r=>r.onboarded?'已上号':tokenBusy?'正在读取令牌':!s.tokenRead?'尚未保存令牌':s.tokenInvalid?'令牌无效':s.tokenEditing?'正在修改令牌':r.busy||r.running?'':'先运行浏览器';
+  const urlOf=a=>'https://claude.ai/oauth/authorize?code=true&client_id=demo-only&response_type=code&redirect_uri=https%3A%2F%2Fplatform.claude.com%2Foauth%2Fcode%2Fcallback&scope=demo-only&code_challenge=demo-only&code_challenge_method=S256&state='+a.state;
+  const leftText=a=>{const ms=Math.max(0,a.expires-Date.now());return String(Math.floor(ms/60000)).padStart(2,'0')+':'+String(Math.floor(ms%60000/1000)).padStart(2,'0');};
+  const PLAY='<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1l7 4-7 4z" fill="currentColor"/></svg>';
+  const STOP='<svg viewBox="0 0 10 10" aria-hidden="true"><rect x="1.5" y="1.5" width="7" height="7" rx="1" fill="currentColor"/></svg>';
+  function render(){
+    const list=rows(),none=!list.length,pending=s.rows.filter(r=>!r.onboarded).length;
+    root.dataset.dialog=s.dialog;
+    el('params').open=s.paramsOpen;el('param-summary').textContent=none?'没有待上号的配置':'保存在本机 · 生成授权链接时取当前的选择';
+    el('group').value=s.group;el('group').disabled=none;
+    el('group').options[0].textContent=none?'没有待上号的配置':'英国 HTTP 分组 · 待上号 '+pending+' · 已上号 '+(s.rows.length-pending);
+    el('demo').value=s.demo;el('demo').disabled=!!tokenBusy||s.rows.some(r=>r.running||r.busy||openAuth(r));el('outcome').value=s.outcome;
+    renderPreset();
+    el('error').hidden=!s.error;el('error').textContent=s.error;
+    el('status').textContent=statusText();el('status').classList.toggle('good',!!s.checked&&!s.checked.off);el('status').classList.toggle('warn',!!s.checked?.off);
+    el('pending').textContent=none?0:pending;el('onboarded').textContent=none?0:s.rows.length-pending;
+    el('running').textContent=list.filter(r=>r.running).length;el('open-jobs').textContent=list.filter(openAuth).length;
+    el('check').disabled=s.checking||none;el('check').textContent=s.checking?'检查中…':'检查配置';
+    const focused=root.ownerDocument.activeElement,keep=focused&&el('rows').contains(focused)?[focused.closest('tr')?.dataset.row,focused.dataset.kind]:null;
+    el('rows').innerHTML=none?'<tr class="none"><td colspan="4" class="muted">没有待上号的配置。有邮箱且尚未上号的配置才会列在这里；现在所有分组的待上号数量都是 0。</td></tr>':list.map(r=>{
+      const b=seedOf(r.id),a=r.auth,open=openAuth(r),lost=open&&s.tokenInvalid;
+      const browser=r.busy==='run'?'<span class="accent">正在启动…</span>':r.busy==='stop'?'<span class="accent">正在关闭…</span>':r.running?'<span class="good">运行中</span>':'已停止';
+      let auth='未生成',detail='';
+      if(r.busy==='gen')auth='<span class="accent">正在生成授权链接…</span>';
+      else if(lost){auth='<span class="bad">无法查询 · 令牌无效</span>';detail='本次授权：'+escape(a.used);}
+      else if(a?.status==='pending'){auth='<span class="warn">待提交授权码</span> · 剩余 <span data-left="'+r.id+'">'+leftText(a)+'</span>';detail='本次授权：'+escape(a.used);}
+      else if(a?.status==='working'){auth='<span class="accent">平台处理中</span>';detail='本次授权：'+escape(a.used);}
+      else if(a){auth='<span class="'+a.tone+'">'+escape(a.title)+'</span>';detail=escape(a.note);}
+      else if(r.onboarded){auth='已上号';detail='以前接入的，不能再次上号';}
+      const why=lost?'令牌无效':open?'':genBlock(r);
+      const browserBtn=r.running||r.busy==='stop'
+        ?'<button type="button" class="btn" data-kind="browser" data-stop="'+r.id+'"'+(r.busy?' disabled':'')+'>'+STOP+'停止</button>'
+        :'<button type="button" class="btn" data-kind="browser" data-run="'+r.id+'"'+(r.busy?' disabled':'')+'>'+PLAY+'运行</button>';
+      const authBtn=open
+        ?'<button type="button" class="btn primary" data-kind="auth" data-continue="'+r.id+'"'+(lost?' disabled':'')+'>继续授权</button>'
+        :'<button type="button" class="btn" data-kind="auth" data-gen="'+r.id+'"'+(why||r.busy?' disabled':'')+(why?' title="'+why+'"':'')+'>生成授权链接</button>';
+      return '<tr data-row="'+r.id+'"'+(r.onboarded?' class="onboarded"':'')+'><td>英国 HTTP · '+r.id+'<div class="email">'+b.email+'</div></td><td>'+b.ip+'<div class="muted small">'+exitNote()+'</div></td><td><div><span class="k">浏览器</span>'+browser+'</div><div class="state"><span class="k">授权</span>'+auth+'</div>'+(detail?'<div class="muted small">'+detail+'</div>':'')+'</td><td><div class="ops">'+browserBtn+authBtn+'</div>'+(why?'<div class="why">'+why+'</div>':'')+'</td></tr>';
+    }).join('');
+    if(keep){const n=el('rows').querySelector('tr[data-row="'+keep[0]+'"] [data-kind="'+keep[1]+'"]');if(n&&!n.disabled)n.focus();}
+    el('log-count').textContent=s.logs.length;el('log').innerHTML=s.logs.map(x=>'<li><time>'+escape(x.time)+'</time><span>'+escape(x.message)+'</span></li>').join('');
+    el('foot-note').textContent={'refresh-changed':'演示情形：点令牌一行的「刷新」，原来选的节点和组织会不在结果里。','refresh-revoked':'演示情形：点令牌一行的「刷新」，平台会拒绝已保存的令牌。','no-pending':'演示情形：所有分组的待上号数量都是 0。'}[s.demo]||'试一遍：运行一行 → 生成授权链接 → 弹窗里点「演示：填入本行的授权码」→ 提交授权码 → 关闭浏览器。所有状态均为模拟。';
+    renderDialog();
+  }
+  function renderDialog(){
+    const r=s.dialog?rowOf(s.dialog):null,box=el('dialog');
+    box.hidden=!r;if(!r){root.style.minHeight='';return;}
+    const a=r.auth,st=a.status,finished=st==='done'||st==='failed';
+    el('dialog-row').textContent='英国 HTTP · '+r.id+' · '+seedOf(r.id).email;
+    el('d-pending').hidden=st!=='pending';el('d-working').hidden=st!=='working';el('d-result').hidden=!finished;
+    if(st==='pending'){
+      el('d-url').textContent=urlOf(a);
+      el('d-browser').textContent=r.busy==='stop'?'本行浏览器正在关闭…':r.running?(a.opened?'已在本行浏览器的新标签页打开这条链接（模拟）。请在那里核对登录的是 '+seedOf(r.id).email+'，再点同意；程序不会替你点。':'本行浏览器已重新运行，原来打开授权链接的标签页不在了：点「复制」，把链接粘贴到本行浏览器的地址栏打开。'):'本行浏览器已停止，授权页也随之关闭。关掉弹窗，在这一行点「运行」，再回来「继续授权」并把链接复制到本行浏览器打开；或者取消这次授权。';
+      el('d-browser').classList.toggle('bad',!r.running&&r.busy!=='stop');
+      el('d-note').hidden=!s.dialogNote;el('d-note').textContent=s.dialogNote;
+      el('d-left').dataset.left=r.id;el('d-left').textContent=leftText(a);
+      el('d-submit').disabled=!el('d-callback').value.trim();
+    }
+    el('d-error').hidden=!s.dialogError;el('d-error').textContent=s.dialogError;
+    if(finished){el('d-result-title').textContent=a.title+(a.code?'（'+a.code+'）':'');el('d-result-title').className='result-title '+a.tone;el('d-result-note').textContent=a.note;}
+    el('d-cancel').hidden=!openAuth(r);el('d-submit').hidden=st!=='pending';
+    el('d-regen').hidden=!finished||r.onboarded;
+    el('d-done').hidden=!finished;el('d-done').textContent=r.onboarded?'完成':'关闭';el('d-done').classList.toggle('primary',r.onboarded);
+    el('d-close-browser').disabled=!r.running||!!r.busy;el('d-close-browser').textContent=r.busy==='stop'?'正在关闭…':'关闭浏览器';
+    el('d-tip').hidden=!openAuth(r);
+    place();
+  }
+  // The demo's frame is as tall as its page, so the dialog is put beside the row it was
+  // opened from, where the reader is looking. The real page centres it in the window.
+  function place(){
+    const m=el('dialog').querySelector('.modal');
+    root.style.minHeight=(m.offsetHeight+24)+'px';
+    const tr=el('rows').querySelector('tr[data-row="'+s.dialog+'"]'),y=tr?tr.getBoundingClientRect().top-root.getBoundingClientRect().top:anchorY;
+    m.style.marginTop=Math.max(12,Math.min(y-190,root.offsetHeight-m.offsetHeight-12))+'px';
+  }
+  function openDialog(id){s.dialog=id;s.dialogError='';s.dialogNote='';el('d-callback').value='';saveRender();el('dialog').querySelector('.modal').focus();}
+  function closeDialog(){
+    const id=s.dialog;s.dialog='';s.dialogError='';s.dialogNote='';saveRender();
+    const back=[...el('rows').querySelectorAll('tr[data-row="'+id+'"] button')].reverse().find(n=>!n.disabled);if(back)back.focus();
+  }
+  function run(id){
+    const r=rowOf(id);if(!r||r.busy||r.running)return;
+    s.error='';r.busy='run';render();
+    later(()=>{r.busy='';r.running=true;log('配置 '+id+' · 已复制本行邮箱，浏览器已启动并打开启动页（模拟）');saveRender();},700);
+  }
+  function stop(id){
+    const r=rowOf(id);if(!r||r.busy||!r.running)return;
+    r.busy='stop';render();
+    later(()=>{r.busy='';r.running=false;if(r.auth?.status==='pending')r.auth.opened=false;log('配置 '+id+' · 浏览器已关闭（模拟）');if(s.dialog===id&&r.onboarded){closeDialog();return;}saveRender();},550);
+  }
+  function generate(id){
+    const r=rowOf(id);if(!r||r.busy)return;
+    if(openAuth(r)){openDialog(id);return;}
+    const block=genBlock(r);if(block){s.error='配置 '+id+' 现在不能生成授权链接：'+block+'。';saveRender();return;}
+    const p=paramProblem();if(p)return refuse(p);
+    if(offDomain(r))return refuse(['配置 '+id+' 的邮箱不在 @'+s.domain+' 下，平台会拒绝接入。请更换邮箱域名。','card']);
+    s.error='';r.busy='gen';render();
+    later(()=>{
+      r.busy='';
+      const refusal={proxy_full:['proxy_pool_empty','出口已满','这个出口的账号名额已用完（proxy_full）。换一种代理方式，或等名额空出后再生成。'],node_full:['node_at_capacity','节点已满','节点的账号名额已用完，这个节点上的每一行现在都生成不了。']}[s.outcome];
+      if(refusal){s.outcome='';r.auth={status:'failed',code:refusal[0],tone:'bad',title:'生成被平台拒绝 · '+refusal[1],note:refusal[2]};log('配置 '+id+' · 生成授权链接被平台拒绝（'+refusal[0]+'，模拟）');saveRender();return;}
+      r.attempt++;
+      r.auth={status:'pending',job:'job-'+id+'-'+r.attempt,state:'demo-state-'+id+'-'+r.attempt,expires:Date.now()+30*60000,used:s.node+' · '+proxyUsed(r),opened:true};
+      log('配置 '+id+' · 已生成授权链接，并在本行浏览器的新标签页打开；30 分钟内有效（模拟）');openDialog(id);
+    },650);
+  }
+  // As the platform reads what is pasted: code#state, as the authorize page shows it, or a whole callback URL, must carry this job's
+  // state; a bare code is taken as it is.
+  function callbackFits(v,state){
+    if(/^https?:\/\//i.test(v)){let u;try{u=new URL(v);}catch{return false;}return !!u.searchParams.get('code')&&u.searchParams.get('state')===state;}
+    const hash=v.indexOf('#');if(hash>0)return v.slice(hash+1)===state;
+    return true;
+  }
+  function submit(){
+    const r=rowOf(s.dialog),a=r?.auth;if(!a||a.status!=='pending')return;
+    const v=el('d-callback').value.trim();
+    if(!v){s.dialogError='请粘贴授权码。';renderDialog();return;}
+    if(v.length>4000){s.dialogError='授权码不应超过 4000 个字符。';renderDialog();return;}
+    if(!callbackFits(v,a.state)){s.dialogError='平台拒绝了这个授权码（callback_invalid）：它不完整，或者不属于这一行的授权。这次授权仍在等待，可以重新粘贴。';s.dialogNote='';log('配置 '+r.id+' · 授权码被平台拒绝，授权仍在等待（模拟）');saveRender();return;}
+    a.status='working';s.dialogError='';s.dialogNote='';el('d-callback').value='';log('配置 '+r.id+' · 授权码已提交，平台处理中（模拟）');saveRender();
+    const job=a.job;later(()=>resolve(r.id,job),1600);
+  }
+  // What the platform says in the end. Only a done job whose account is this row's counts as onboarded.
+  function resolve(id,job){
+    const r=rowOf(id),a=r?.auth;if(!a||a.job!==job||a.status!=='working')return;
+    const email=seedOf(id).email,o=s.outcome;s.outcome='';
+    const set=(status,code,tone,title,note,onboarded)=>{Object.assign(a,{status,code,tone,title,note});if(onboarded){r.onboarded=true;s.checked=null;}};
+    if(o==='exists')set('failed','account_exists','warn','平台上已有这个账号，待核对','没有新增账号，已有的账号没有被改动。这一行没有记为已上号。');
+    else if(o==='domain')set('failed','domain_mismatch','bad','账号邮箱不在所选域名下','浏览器里登录的账号邮箱不在所选域名下，账号没有写入。');
+    else if(o==='grant')set('failed','invalid_grant','bad','授权码已用过或已失效','请重新生成授权链接，再同意一次。');
+    else if(o==='mismatch')set('done','','bad','接入的账号不是本行邮箱','接入的是 another-user@example.com，不是本行的 '+email+'。账号已经在平台上，本页不能撤回，请联系管理员处理。这一行没有记为已上号。');
+    else if(o==='reused')set('done','','good','平台上已有这个账号，已重新授权','没有新增账号。这一行记为已上号。',true);
+    else if(o==='cooldown')set('done','','good','已接入','账号 '+email+' 已进入平台默认分组。新号冷静期至 '+new Date(Date.now()+4*3600000).toLocaleTimeString('zh-CN',{hour12:false,hour:'2-digit',minute:'2-digit'})+'，期间平台不调度它。',true);
+    else set('done','','good','已接入','账号 '+email+' 已进入平台默认分组。',true);
+    log('配置 '+id+' · '+a.title+(a.code?'（'+a.code+'）':'')+'（模拟）');saveRender();
+  }
+  function cancel(){
+    const r=rowOf(s.dialog);if(!r||!openAuth(r))return;
+    Object.assign(r.auth,{status:'failed',code:'job_cancelled',tone:'muted',title:'已取消',note:'平台已取消这次授权并释放预留的名额，可以重新生成。'});
+    log('配置 '+r.id+' · 已取消授权（模拟）');closeDialog();
+  }
+  function expire(id){
+    const r=rowOf(id),a=r?.auth;if(!a||a.status!=='pending')return;
+    Object.assign(a,{status:'failed',code:'callback_expired',tone:'warn',title:'授权已过期',note:'等待授权码超过 30 分钟，平台已释放预留的名额。请重新生成授权链接。'});
+    s.dialogError='';s.dialogNote='';log('配置 '+id+' · 授权已过期（模拟）');saveRender();
+  }
+  // The time an authorization has left comes from the platform's own expiry.
+  setInterval(()=>{s.rows.forEach(r=>{const a=r.auth;if(a?.status!=='pending')return;if(a.expires<=Date.now()){expire(r.id);return;}root.querySelectorAll('[data-left="'+r.id+'"]').forEach(n=>n.textContent=leftText(a));});},1000);
+  function reset(){epoch++;s=initial();tokenBusy='';tokenSeq++;el('token').type='password';el('token-reveal').textContent='显示';['token','adv-note','adv-concurrency','adv-rpm','org-uuid','d-callback'].forEach(id=>el(id).value='');saveRender();}
+  el('params').ontoggle=()=>{s.paramsOpen=el('params').open;};
+  el('check').onclick=check;el('reset').onclick=reset;
+  el('rows').onclick=e=>{
+    const b=e.target.closest('button');if(!b||b.disabled)return;
+    anchorY=b.getBoundingClientRect().top-root.getBoundingClientRect().top;
+    const d=b.dataset;if(d.run)run(d.run);else if(d.stop)stop(d.stop);else if(d.gen)generate(d.gen);else if(d.continue)openDialog(d.continue);
+  };
+  el('demo').onchange=e=>{s.demo=e.target.value;changed();saveRender();};
+  el('outcome').onchange=e=>{s.outcome=e.target.value;saveRender();};
+  el('group').onchange=e=>{s.group=e.target.value;changed();saveRender();};
+  [['node','node'],['org','org'],['domain','domain'],['proxy-group','proxyGroup'],['pool-proxy','poolProxy']].forEach(([id,key])=>el(id).onchange=e=>{s[key]=e.target.value;changed();saveRender();});
+  el('preset-card').addEventListener('click',e=>{const b=e.target.closest('[data-proxy]');if(!b)return;s.proxyMode=b.dataset.proxy;changed();saveRender();});
+  el('org-profile').onchange=e=>{s.orgProfile=e.target.value;s.domain='';changed();saveRender();};
+  ['org-uuid','adv-note','adv-concurrency','adv-rpm'].forEach(id=>el(id).oninput=()=>{changed();render();});
+  // The dialog.
+  el('dialog-x').onclick=closeDialog;el('d-done').onclick=closeDialog;el('d-cancel').onclick=cancel;el('d-submit').onclick=submit;
+  el('dialog').onclick=e=>{if(e.target===el('dialog'))closeDialog();};
+  el('d-callback').oninput=()=>{s.dialogError='';renderDialog();};
+  // The demo runs in a frame that may not use the clipboard API, so the link is selected and copied the old way.
+  el('d-copy').onclick=()=>{const a=rowOf(s.dialog)?.auth;if(!a)return;let ok=false;try{const range=root.ownerDocument.createRange();range.selectNodeContents(el('d-url'));const sel=root.ownerDocument.getSelection();sel.removeAllRanges();sel.addRange(range);ok=root.ownerDocument.execCommand('copy');}catch{}s.dialogNote=(ok?'已复制授权链接。':'链接已选中，可以手动复制。')+'请只在本行的浏览器里打开它。';renderDialog();};
+  el('d-close-browser').onclick=()=>stop(s.dialog);
+  el('d-regen').onclick=()=>{const id=s.dialog;s.dialog='';s.dialogError='';s.dialogNote='';generate(id);};
+  el('d-fill').onclick=()=>{const r=rowOf(s.dialog);if(!r)return;el('d-callback').value='demo-code-'+r.id+'#'+r.auth.state;s.dialogError='';renderDialog();};
+  el('d-fill-other').onclick=()=>{const r=rowOf(s.dialog);if(!r)return;const other=seeds.find(x=>x.id!==r.id&&!x.prior).id;el('d-callback').value='demo-code-'+other+'#demo-state-'+other+'-1';s.dialogError='';renderDialog();};
+  el('d-expire').onclick=()=>expire(s.dialog);
+  root.addEventListener('keydown',e=>{
+    if(!s.dialog)return;
+    if(e.key==='Escape'){e.preventDefault();closeDialog();return;}
+    if(e.key!=='Tab')return;
+    const m=el('dialog').querySelector('.modal'),stops=[...m.querySelectorAll('button,textarea')].filter(n=>!n.disabled&&n.offsetParent!==null);
+    if(!stops.length)return;
+    const at=stops.indexOf(root.ownerDocument.activeElement);
+    if(e.shiftKey&&at<=0){e.preventDefault();stops[stops.length-1].focus();}else if(!e.shiftKey&&(at<0||at===stops.length-1)){e.preventDefault();stops[0].focus();}
+  });
+  // The onboarder token: masked once saved, replaced only by one the platform accepts.
+  // As the platform previews a token: its first twelve characters and its last four.
+  const mask=v=>v.length>16?v.slice(0,12)+'…'+v.slice(-4):v.slice(0,8)+'…';
+  const closeTokenForm=()=>{s.tokenEditing=false;el('token').value='';el('token').type='password';el('token-reveal').textContent='显示';};
+  // An authorization belongs to the token that made it: another token can neither ask
+  // about it nor cancel it. A token the platform already refuses can do neither anyway.
+  const heldBy=()=>s.tokenRead&&!s.tokenInvalid?s.rows.filter(openAuth).map(r=>r.id):[];
+  const heldMessage=ids=>'有 '+ids.length+' 行的授权尚未结束（'+ids.join('、')+'）。授权属于创建它的令牌：先提交授权码或取消，再更换令牌。';
+  el('token').oninput=()=>{if(s.error){s.error='';render();}};
+  el('token').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();el('token-read').click();}else if(e.key==='Escape'&&s.tokenRead){e.preventDefault();el('token-cancel').click();}};
+  el('token-reveal').onclick=()=>{const p=el('token');p.type=p.type==='password'?'text':'password';el('token-reveal').textContent=p.type==='password'?'显示':'隐藏';};
+  el('token-edit').onclick=()=>{
+    if(tokenBusy)return;
+    const held=heldBy();if(held.length){s.error=heldMessage(held);saveRender();return;}
+    s.tokenEditing=true;s.tokenNote='';s.error='';render();el('token').focus();
+  };
+  el('token-cancel').onclick=()=>{if(tokenBusy)return;closeTokenForm();s.error='';render();};
+  el('token-refresh').onclick=()=>{
+    if(tokenBusy||!s.tokenRead)return;
+    s.error='';s.tokenNote='';tokenBusy='refresh';const seq=++tokenSeq;render();
+    setTimeout(()=>{
+      if(tokenBusy!=='refresh'||seq!==tokenSeq)return;tokenBusy='';s.checked=null;
+      if(s.demo==='refresh-revoked'){s.tokenInvalid=true;s.tokenAt='拒绝于 '+stamp();s.tokenNote='';log('刷新被平台拒绝：上号员令牌无效或已被吊销（模拟）');saveRender();return;}
+      const view=s.demo==='refresh-changed'?'reduced':'full',moved=[],nodeList=nodesOf(view),orgList=orgsOf(view),was=orgNow();
+      if(!nodeList.some(n=>n.id===s.node)){moved.push('原来选的节点 '+s.node+' 已不在可用节点里，已改为 '+nodeList[0].id);if(s.proxyMode==='auto'&&s.proxyGroup)moved.push('代理分组 '+s.proxyGroup+' 属于原节点，已改为不限分组');if(s.proxyMode==='pool'&&s.poolProxy)moved.push('原来选的代理属于原节点，请重新选择代理');s.node=nodeList[0].id;s.proxyGroup='';s.poolProxy='';}
+      if(s.tokenOrgs&&!orgList.some(o=>o.id===was.id)){const next=orgList[0];moved.push('原来选的组织 '+was.name+' 已不在组织档案里，已改为 '+next.name+(next.domains.length>1?'，请重新选择邮箱域名':''));s.orgProfile=next.id;s.domain='';}
+      s.tokenInvalid=false;s.tokenView=view;s.tokenAt='刷新于 '+stamp();
+      s.tokenNote=moved.length?'刷新后有变化：'+moved.join('；')+'。请重新确认后再检查配置。':'已重新读取这个令牌可用的节点和组织，当前选择仍然可用。检查配置需要重新进行。';
+      log(moved.length?'已刷新上号员令牌：所选节点或组织已变（模拟）':'已刷新上号员令牌可用的节点和组织（模拟）');saveRender();
+    },500);
+  };
+  el('token-read').onclick=()=>{
+    if(tokenBusy)return;
+    const value=el('token').value.trim();
+    if(!value){s.error='请输入上号员令牌。';saveRender();return;}
+    if(!value.startsWith('1dk_onb_')){s.error='这不像上号员令牌：应以 1dk_onb_ 开头。';saveRender();return;}
+    const held=heldBy();if(held.length){s.error=heldMessage(held);saveRender();return;}
+    s.error='';tokenBusy='read';const seq=++tokenSeq;render();
+    setTimeout(()=>{
+      if(tokenBusy!=='read'||seq!==tokenSeq)return;tokenBusy='';
+      if(value.endsWith('-revoked')){s.error='平台拒绝了这个令牌：无效或已被吊销。'+(s.tokenRead?'现有令牌未变。':'');saveRender();return;}
+      const replaced=s.tokenRead,fresh=initial();
+      // Authorizations made with a token the platform refused cannot be reached any more.
+      s.rows.forEach(r=>{if(replaced&&openAuth(r))Object.assign(r.auth,{status:'failed',code:'',tone:'warn',title:'无法查询这次授权',note:'它是用已失效的令牌创建的，平台会在到期后自行释放。可以用新令牌重新生成。'});});
+      if(s.dialog&&!openAuth(rowOf(s.dialog)))s.dialog='';
+      Object.assign(s,{tokenRead:true,tokenInvalid:false,tokenView:'full',proxyGroup:'',poolProxy:'',tokenPreview:mask(value),tokenLabel:value==='1dk_onb_demo-only'?'演示令牌':'演示令牌 2',tokenAt:'读取于 '+stamp(),node:fresh.node,orgProfile:fresh.orgProfile,domain:fresh.domain,org:'',checked:null});
+      el('org-uuid').value='';closeTokenForm();
+      s.tokenNote=replaced?'令牌已更换。节点和组织已按新令牌重新读取，请重新确认。':'';
+      log(replaced?'已更换上号员令牌并重新读取（模拟）':'已读取上号员令牌可用的节点和组织（模拟）');saveRender();
+    },500);
+  };
+  render();restore(window.openai?.widgetState);
+  window.addEventListener('openai:set_globals',e=>{if(e.detail?.globals?.widgetState)restore(e.detail.globals.widgetState);});
+})();
+</script>
+</div>
