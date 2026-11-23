@@ -223,8 +223,13 @@ class TemplateBatchesUI(StageTwoUI):
         dialog.get_by_label("Count", exact=True).fill("2")
         return dialog
 
+    def choose_proxy_group(self, dialog, group="Team proxies"):
+        """Nothing in the proxy list can be ticked until its group is chosen."""
+        dialog.get_by_label("Proxy group", exact=True).select_option(group)
+
     def test_preview_names_and_proxy_mapping_before_any_creation(self):
         dialog = self.open_batch()
+        self.choose_proxy_group(dialog)
         dialog.get_by_role("checkbox", name=re.compile("Second")).check()
         dialog.get_by_role("checkbox", name=re.compile("Office")).check()
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
@@ -241,7 +246,7 @@ class TemplateBatchesUI(StageTwoUI):
 
     def test_proxy_group_selects_the_filtered_batch_in_order(self):
         dialog = self.open_batch()
-        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Team proxies")
+        self.choose_proxy_group(dialog)
         dialog.get_by_role("checkbox", name="Select all", exact=True).check()
         expect(dialog).to_contain_text("2 proxies selected")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
@@ -289,6 +294,7 @@ class TemplateBatchesUI(StageTwoUI):
         dialog, count, select_all = self.new_batch()
         expect(count).to_have_value("5")
         expect(count).to_have_attribute("max", "100")
+        self.choose_proxy_group(dialog)
         dialog.get_by_role("checkbox", name=re.compile("Second")).check()
         expect(count).to_have_value("1")
         # With part of the list selected the box is neither on nor off; a click selects the rest.
@@ -304,30 +310,29 @@ class TemplateBatchesUI(StageTwoUI):
         self.assertEqual(self.previews[0]["names"], ["Work 001"])
         self.assertEqual([ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one"])
 
-    def test_a_batch_takes_its_proxies_from_one_proxy_group_only(self):
+    def test_proxies_cannot_be_ticked_before_a_proxy_group_is_chosen(self):
         """Select all over two groups once put half a batch on the other group's proxies."""
         self.third_proxy("Other")
         dialog, count, select_all = self.new_batch()
         office = dialog.get_by_role("checkbox", name=re.compile("Office"))
         third = dialog.get_by_role("checkbox", name=re.compile("Third"))
-        # Two groups are shown and nothing says which is meant: Select all cannot guess.
-        expect(select_all).to_be_disabled()
-        expect(dialog).to_contain_text("A batch uses proxies from one proxy group.")
-        expect(third).to_be_enabled()
+        number = dialog.get_by_label("Number of proxies to select", exact=True)
+        # The whole library is listed, but nothing says which group is meant yet.
+        expect(dialog).to_contain_text("Choose a proxy group first, then tick proxies below.")
+        expect(dialog).to_contain_text("0 / 3")
+        for control in (select_all, number, office, third):
+            expect(control).to_be_disabled()
 
-        office.check()
-        expect(third).to_be_disabled()
-        expect(dialog).to_contain_text(
-            'This batch uses proxies from the proxy group "Team proxies".'
-        )
+        self.choose_proxy_group(dialog)
+        expect(dialog).not_to_contain_text("Choose a proxy group first")
+        # Only the chosen group is listed, so a proxy of another group cannot join.
+        expect(third).to_have_count(0)
+        expect(office).to_be_enabled()
+        expect(number).to_be_enabled()
         select_all.check()
         expect(dialog).to_contain_text("2 proxies selected")
+        expect(dialog).to_contain_text("2 / 2")
         expect(count).to_have_value("2")
-        expect(third).not_to_be_checked()
-        # Showing only the other group offers nothing to add.
-        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
-        expect(third).to_be_disabled()
-        expect(select_all).to_be_disabled()
 
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog.get_by_text("Work 002", exact=True)).to_be_visible()
@@ -335,18 +340,78 @@ class TemplateBatchesUI(StageTwoUI):
             [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one", "library-two"]
         )
 
-    def test_clearing_the_selection_lets_another_proxy_group_be_chosen(self):
+    def test_changing_the_proxy_group_clears_the_selection(self):
         self.third_proxy("Other")
         dialog, count, select_all = self.new_batch()
-        dialog.get_by_role("checkbox", name=re.compile("Office")).check()
-        dialog.get_by_role("checkbox", name=re.compile("Office")).uncheck()
-        dialog.get_by_label("Filter by proxy group", exact=True).select_option("Other")
+        self.choose_proxy_group(dialog)
+        select_all.check()
+        expect(dialog).to_contain_text("2 proxies selected")
+        self.choose_proxy_group(dialog, "Other")
+        expect(dialog).to_contain_text("0 proxies selected")
+        expect(dialog.get_by_label("Number of proxies to select", exact=True)).to_have_value("")
+        # The count is left as it was, like when Select all clears the list.
+        expect(count).to_have_value("2")
+        expect(dialog.get_by_role("checkbox", name=re.compile("Third"))).not_to_be_checked()
         select_all.check()
         expect(count).to_have_value("1")
-        expect(dialog).to_contain_text('This batch uses proxies from the proxy group "Other".')
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog.get_by_text("Work 001", exact=True)).to_be_visible()
         self.assertEqual([ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-three"])
+
+    def test_a_typed_number_ticks_that_many_proxies_from_the_top_of_the_list(self):
+        self.third_proxy("Team proxies")
+        dialog, count, select_all = self.new_batch()
+        office = dialog.get_by_role("checkbox", name=re.compile("Office"))
+        second = dialog.get_by_role("checkbox", name=re.compile("Second"))
+        third = dialog.get_by_role("checkbox", name=re.compile("Third"))
+        number = dialog.get_by_label("Number of proxies to select", exact=True)
+        self.choose_proxy_group(dialog)
+        expect(number).to_have_value("")
+        expect(number).to_have_attribute("max", "3")
+        number.fill("2")
+        expect(office).to_be_checked()
+        expect(second).to_be_checked()
+        expect(third).not_to_be_checked()
+        expect(count).to_have_value("2")
+        expect(dialog).to_contain_text("2 proxies selected")
+        # Ticking by hand afterwards still works, and the field follows the selection.
+        third.check()
+        expect(number).to_have_value("3")
+        expect(count).to_have_value("3")
+        # A typed number replaces the selection rather than adding to it.
+        second.uncheck()
+        number.fill("1")
+        expect(office).to_be_checked()
+        expect(third).not_to_be_checked()
+        expect(count).to_have_value("1")
+        # Zero clears the list; the count is left as it was.
+        number.fill("0")
+        expect(dialog).to_contain_text("0 proxies selected")
+        expect(count).to_have_value("1")
+        # An emptied field changes nothing.
+        number.fill("2")
+        number.fill("")
+        expect(dialog).to_contain_text("2 proxies selected")
+        dialog.get_by_role("button", name="Preview batch", exact=True).click()
+        expect(dialog.get_by_text("Work 002", exact=True)).to_be_visible()
+        self.assertEqual(
+            [ref["id"] for ref in self.previews[0]["proxy_refs"]], ["library-one", "library-two"]
+        )
+
+    def test_a_number_above_the_group_ticks_every_proxy_and_says_so(self):
+        dialog, count, select_all = self.new_batch()
+        number = dialog.get_by_label("Number of proxies to select", exact=True)
+        self.choose_proxy_group(dialog)
+        number.fill("5")
+        expect(dialog).to_contain_text("2 proxies selected")
+        expect(dialog).to_contain_text("Proxies in this group: 2. All of them are selected.")
+        expect(count).to_have_value("2")
+        # Leaving the field shows what was really selected.
+        number.blur()
+        expect(number).to_have_value("2")
+        # The remark is about the typed number, so it goes once the selection is changed by hand.
+        dialog.get_by_role("checkbox", name=re.compile("Second")).uncheck()
+        expect(dialog).not_to_contain_text("Proxies in this group:")
 
     def test_profiles_follow_the_proxy_group_unless_another_group_is_chosen(self):
         dialog, count, select_all = self.new_batch()
@@ -355,6 +420,7 @@ class TemplateBatchesUI(StageTwoUI):
         expect(dialog).to_contain_text(
             "Select proxies below and the profiles join the profile group"
         )
+        self.choose_proxy_group(dialog)
         select_all.check()
         # No profile group is called "Team proxies" yet, so creating the batch creates it.
         expect(dialog).to_contain_text(
@@ -382,6 +448,7 @@ class TemplateBatchesUI(StageTwoUI):
         expect(dialog).not_to_contain_text("Profile group:")
 
         dialog.get_by_role("button", name="Edit draft", exact=True).click()
+        self.choose_proxy_group(dialog)
         select_all.check()
         group.select_option("team")
         expect(dialog).not_to_contain_text("These profiles join")
@@ -401,13 +468,12 @@ class TemplateBatchesUI(StageTwoUI):
         self.library = [{**item, "group_name": None} for item in self.library]
         self.third_proxy("Other")
         dialog, count, select_all = self.new_batch()
-        dialog.get_by_label("Filter by proxy group", exact=True).select_option("__ungrouped__")
+        self.choose_proxy_group(dialog, "__ungrouped__")
         select_all.check()
         expect(count).to_have_value("2")
         expect(dialog).to_contain_text(
             "The selected proxies have no group, so these profiles stay ungrouped."
         )
-        expect(dialog).to_contain_text('This batch uses proxies from the proxy group "Ungrouped".')
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog).to_contain_text("Profile group: none, because the proxies are ungrouped")
 
@@ -418,6 +484,8 @@ class TemplateBatchesUI(StageTwoUI):
         self.page.get_by_role("button", name="批量创建", exact=True).click()
         dialog = self.page.get_by_role("dialog", name="从模板批量创建配置")
         expect(dialog.get_by_label("分组", exact=True)).to_have_value("__proxy__")
+        expect(dialog).to_contain_text("请先选择一个代理分组，再勾选下面的代理。")
+        dialog.get_by_label("代理分组", exact=True).select_option("Team proxies")
         dialog.get_by_role("checkbox", name="全选", exact=True).check()
         expect(dialog).to_contain_text("这批配置会放入新的配置分组「Team proxies」")
         self.library[1]["group_name"] = "Moved meanwhile"
@@ -438,6 +506,7 @@ class TemplateBatchesUI(StageTwoUI):
             for number in range(1, 102)
         ]
         dialog, count, select_all = self.new_batch()
+        self.choose_proxy_group(dialog)
         select_all.click()
         expect(count).to_have_value("100")
         expect(dialog).to_contain_text("100 proxies selected")
@@ -447,7 +516,11 @@ class TemplateBatchesUI(StageTwoUI):
         select_all.click()
         expect(dialog).to_contain_text("0 proxies selected")
         expect(count).to_have_value("100")
-        select_all.click()
+        # A typed number stops at the same limit.
+        dialog.get_by_label("Number of proxies to select", exact=True).fill("150")
+        expect(dialog).to_contain_text("100 proxies selected")
+        expect(dialog).to_contain_text("A batch holds up to 100 profiles")
+        expect(dialog).not_to_contain_text("Proxies in this group:")
         dialog.get_by_role("button", name="Preview batch", exact=True).click()
         expect(dialog.get_by_text("Work 100", exact=True)).to_be_visible()
         self.assertEqual(len(self.previews[0]["names"]), 100)
@@ -458,6 +531,7 @@ class TemplateBatchesUI(StageTwoUI):
 
     def test_incomplete_proxy_selection_and_duplicate_names_require_correction(self):
         dialog = self.open_batch()
+        self.choose_proxy_group(dialog)
         dialog.get_by_role("checkbox", name=re.compile("Office")).check()
         # Selecting set the count to 1; a count typed afterwards must still match the selection.
         dialog.get_by_label("Count", exact=True).fill("2")

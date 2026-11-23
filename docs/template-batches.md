@@ -18,17 +18,25 @@ proxy-library groups are separate lists; only this choice connects them.
 Optionally select one distinct saved proxy for each profile. Selection order
 defines the mapping; selecting fewer proxies than profiles is rejected rather
 than silently sharing one endpoint. Select no proxies for a direct connection.
+
+A batch takes its proxies from one proxy-library group, so choose the **proxy
+group** above the list first. Until then the whole library is listed greyed out
+and nothing in it can be ticked. Choosing a group lists only that group's
+proxies; **Ungrouped** stands for the proxies filed under no group. Choosing
+another group clears the proxies selected so far.
+
 Selecting proxies sets **Count** to the number selected, so it does not need to
 be typed; a count edited afterwards must still match the selection. **Select
-all** at the top of the list selects or clears every proxy shown under the
-current group filter, up to the limit of 100 per batch.
+all** at the top of the list selects or clears every proxy of the group, up to
+the limit of 100 per batch. To take only some of them, type a number in the
+field beside **Select all**: it replaces the selection with that many proxies
+from the top of the list, where the most recently added proxies come first. A
+number larger than the group selects every proxy of the group and says so, and
+`0` clears the selection. Individual proxies can still be ticked or cleared by
+hand afterwards.
 
-A batch takes its proxies from one proxy-library group. The first proxy selected
-decides the group; proxies of other groups are then disabled, and **Select all**
-adds only that group's proxies. While nothing is selected and the list shows
-more than one group, **Select all** is unavailable: choose a group in the filter
-or tick one proxy first. Ungrouped proxies count as a group of their own. The
-server refuses a preview or a creation whose proxies come from more than one
+The proxy library can change while the dialog is open, so the server checks
+again: it refuses a preview or a creation whose proxies come from more than one
 group, and writes nothing.
 Passwords stay hidden. A preview checks saved proxy versions and access to the
 encryption key, not network connectivity: use **Check** in the proxy library for

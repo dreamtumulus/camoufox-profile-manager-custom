@@ -1707,5 +1707,10 @@
   "The platform refused the request: {message}": "Платформа отклонила запрос: {message}",
   "The platform refused ({code}): {message}": "Платформа отказала ({code}): {message}",
   "proxy unknown": "прокси неизвестен",
+  "Choose a proxy group": "Выберите группу прокси",
+  "Choose a proxy group first, then tick proxies below. A batch uses proxies from one proxy group.": "Сначала выберите группу прокси, затем отметьте прокси ниже. В пакете используются прокси одной группы.",
+  "Number of proxies to select": "Сколько прокси выбрать",
+  "Type a number to tick that many proxies from the top of the list.": "Введите число, чтобы отметить столько прокси с начала списка.",
+  "Proxies in this group: {count}. All of them are selected.": "Прокси в этой группе: {count}. Выбраны все.",
   "The link was opened in a new window of this row’s browser, because no tab could be opened in the window that was there. Check there that {email} is signed in, then consent; nothing is pressed for you.": "Не удалось открыть вкладку в уже открытом окне, поэтому ссылка открыта в новом окне браузера этой строки. Убедитесь там, что вход выполнен как {email}, и дайте согласие; за вас ничего не нажимается."
 }

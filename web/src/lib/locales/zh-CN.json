@@ -1572,5 +1572,10 @@
   "The platform refused the request: {message}": "平台拒绝了请求：{message}",
   "The platform refused ({code}): {message}": "平台拒绝（{code}）：{message}",
   "proxy unknown": "代理未知",
+  "Choose a proxy group": "请选择代理分组",
+  "Choose a proxy group first, then tick proxies below. A batch uses proxies from one proxy group.": "请先选择一个代理分组，再勾选下面的代理。一批只能使用同一个代理分组的代理。",
+  "Number of proxies to select": "自动勾选的代理数量",
+  "Type a number to tick that many proxies from the top of the list.": "输入数量，自动从上往下勾选这么多个代理。",
+  "Proxies in this group: {count}. All of them are selected.": "该分组只有 {count} 个代理，已全部勾选。",
   "The link was opened in a new window of this row’s browser, because no tab could be opened in the window that was there. Check there that {email} is signed in, then consent; nothing is pressed for you.": "没能在原有窗口里开标签页，已在本行浏览器的新窗口打开这条链接。请在那里核对登录的是 {email}，再点同意；程序不会替你点。"
 }
