@@ -6,6 +6,109 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+This section covers what the custom builds published as `v0.7.0-zhaolusi1` to
+`v0.7.0-zhaolusi13` added to 0.7.0. Every one of those builds reports version
+0.7.0 from the inside; the next release carries these changes as 0.7.1.
+Installers remain unsigned.
+
+Before upgrading, close the manager and its browsers and back up the data
+directory. Profiles that exist when a build with email addresses first starts
+are marked once and never receive an address; profiles created afterwards can.
+Automation stays off until its switch in **Settings** is turned on.
+
+### Added
+- Add an **Auto onboarding** page that onboards the accounts of a profile group
+  to 1DayAPI one at a time, by hand. It keeps an onboarder token, which is
+  shown to the platform before it is saved, stored encrypted when the
+  installation has a key and never returned, and what is chosen among what
+  that token may use: the node, the proxy (the pool entry with the profile's
+  own exit, one the platform picks, or one pool entry for every row), the
+  organization and its email domain, a note and two limits. Each row runs or
+  stops its browser and asks for an authorize link, which opens in a new tab
+  of that browser; the code the page then shows is pasted back and handed to
+  the platform. Nothing signs in or consents for the person. Only a job the
+  platform reports as done for the row's own account marks the row onboarded,
+  and no link, code or state is stored, logged or audited.
+- Open a start page in a browser launched with **Run** (`CPM_START_URL`,
+  `https://claude.ai` by default; empty opens none). With the new **Settings →
+  Automation** master switch on, the profile's email address is entered in the
+  page's sign-in form and its SSO button is pressed once; "Continue with
+  email" is never pressed. The switch is off by default, and
+  `CPM_AUTOMATION_ENABLED` decides instead when it is set.
+- Add profile email addresses: an **Email** column that search matches, and
+  **Import emails**, which takes one address per line for one chosen profile
+  group, checks the target profiles' proxies, shows which profile receives
+  which address and writes only on confirmation. An address belongs to one
+  profile, lands only on a profile whose proxy passed a check within the last
+  30 minutes, and is never set by edits, clones, spreadsheets or archives.
+  **Run** copies the row's address to the clipboard, and so does a double
+  click on its cell.
+- Add a **Claude Team onboarding** page backed by a shared onboarding server
+  (`python -m camoufox_pm.onboarding_server`). Accounts are added one by one
+  or in batches, a window opens with the email prefilled, and after sign-in
+  the session key is submitted to 1dayApi.com or api-key.xyz. Completed
+  accounts are hidden from new onboarding.
+- Add personal operator accounts to the onboarding server, with an exit-IP pool
+  matched to the platform's proxies and batch email assignment. Operators sign
+  in from the onboarding page and receive only their own assignment; the
+  server chooses the proxy, checks ownership on every call and submits session
+  keys itself, so the platform credential stays on the server. A computer that
+  holds the administrator token can sign in as an operator or drop the token.
+- Add proxy-library groups and group edits: filter the library by group,
+  change the group of selected proxies, and change the group of up to 1000
+  selected profiles without touching their data. A proxy import can file what
+  it creates under one group, and a proxy that another group already holds is
+  saved again under the import's group instead of being skipped.
+- Reach a profile's proxy through this computer's own proxy when it cannot be
+  reached directly: browser, loopback relay, system proxy, profile proxy.
+  `CPM_FRONT_PROXY_MODE` selects `system` (default), `direct` or an explicit
+  URL. A configured front proxy that fails is an error, never a fallback to a
+  direct connection.
+- Declare the administrator in the deployment with `CPM_ADMIN_USERNAME` and
+  `CPM_ADMIN_PASSWORD`. Startup creates the account, resets a changed password
+  or restores its role, which is also how a forgotten password is recovered.
+- Ship the paired Camoufox browser inside the desktop installers and provision
+  it on first launch, so the app needs no separate browser download.
+
+### Changed
+- Template batches create up to 100 profiles instead of 25 and take their
+  proxies from one proxy-library group, which has to be chosen before any
+  proxy can be ticked; the server refuses a mixed selection. **Select all** and
+  a number field tick the group's proxies, the count follows the selection,
+  the profile number is a fixed suffix of the name, and by default the new
+  profiles join the profile group named after their proxy group.
+- Start a new template on the operating system of the computer the interface
+  is open on, with a suggested name that follows the selected system until it
+  is edited.
+- Open the profile list with the most recently created profiles first.
+- `camoufox-pm user passwd` ends the sessions of the account whose password it
+  changes.
+- Name the desktop application and its installers 赵露思 上号系统, and publish
+  them for macOS Apple Silicon, macOS Intel and Windows x64.
+- Set the version to 0.7.1.
+
+### Fixed
+- Start the desktop app without decompressing the bundled browser archive on
+  every launch, which kept the first window back by about 47 seconds.
+- Install location data under the source that describes it. A mirrored build
+  read every address as the country "NONE", and a launch through a proxy
+  failed with "Unknown territory: NONE". An installed app now replaces
+  location data that fails a lookup check with the installer's copy.
+- Keep the proxy chain working behind local proxy clients that sniff a
+  connection's first packet, consult the operating system's proxy settings
+  whenever the environment names no proxy, and give the exit-address lookup
+  at launch 10 seconds instead of 5.
+- Say that a shared onboarding server has to be updated when it predates
+  operator accounts, instead of answering a bare 404.
+- Build desktop releases from a mirror of the pinned browser when the upstream
+  release assets cannot be reached, and build the web UI on Next.js 16.4.6.
+
+### Documentation
+- Document profile emails, operators and assignments, the auto-onboarding API
+  and its design with an interactive prototype, proxy-library groups, the
+  front proxy, the server-managed administrator and the changed template
+  batches.
+
 ## [0.7.0] - 2026-11-06
 
 This release combines batch profile and proxy tools, declarative workflows, and
@@ -1017,7 +1120,7 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...HEAD
 [0.7.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.5.0...v0.6.0
 [0.6.0-rc.8]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0-rc.7...v0.6.0-rc.8
