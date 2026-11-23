@@ -13,6 +13,7 @@ reliable window-close signal on its own.
 import asyncio
 import json
 import os
+import re
 import sys
 import tempfile
 from collections.abc import Awaitable, Callable, Iterator
@@ -260,13 +261,144 @@ def _site(url: str) -> str:
     return host[4:] if host.startswith("www.") else host
 
 
-async def _show_start_page(context: Any, url: str) -> None:
-    """Bring the start page up in a tab nobody is using.
+# The sign-in form of the start page. The site offers single sign-on only once
+# it has recognised the domain of the address in the field, and through a slow
+# proxy that answer can take a while.
+EMAIL_FIELD = 'input[type="email"], input[name="email"]'
+# A control with nothing pressable inside it. An element that merely wraps the
+# form's buttons contains the same letters, and pressing its middle would press
+# whichever button happens to sit there.
+SSO_BUTTON = (
+    ':is(button, [role="button"], a[href]):not(:has(button, [role="button"], a[href], input))'
+)
+# The acronym, whatever language the rest of the label is in.
+_SSO_LABEL = re.compile(r"\bSSO\b")
+# Never the button that sends a message to the mailbox.
+_MAIL_LABEL = re.compile(r"e-?mail", re.IGNORECASE)
+EMAIL_FIELD_WAIT = 60.0
+SSO_WAIT_AFTER_FILL = 20.0
+SSO_WAIT_AFTER_TYPING = 25.0
+# How long the button must stay shown and enabled before it is pressed.
+SSO_SETTLE = 0.5
+_POLL = 0.25
+
+
+async def _visible_within(locator: Any, seconds: float) -> bool:
+    """Whether the element shows up in time. Polled, so a wait ends without an error."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + seconds
+    while True:
+        if await locator.is_visible():
+            return True
+        if loop.time() >= deadline:
+            return False
+        await asyncio.sleep(_POLL)
+
+
+async def _pressable(locator: Any) -> bool:
+    if not await locator.is_visible():
+        return False
+    try:
+        return bool(await locator.is_enabled(timeout=1000))
+    except Exception:  # noqa: BLE001 - it went away between the two questions
+        return False
+
+
+async def _pressable_within(locator: Any, seconds: float) -> bool:
+    """Whether the control is shown and enabled in time, and still is a moment later.
+
+    A button that flashes up while the page is still making up its mind, or one
+    that is shown greyed out, is not one to press yet.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + seconds
+    seen = False
+    while True:
+        ready = await _pressable(locator)
+        if ready and seen:
+            return True
+        if not ready and loop.time() >= deadline:
+            return False
+        seen = ready
+        await asyncio.sleep(SSO_SETTLE if ready else _POLL)
+
+
+def _same_address(value: str, email: str) -> bool:
+    return value.strip().lower() == email.strip().lower()
+
+
+async def _sign_in_with_sso(page: Any, url: str, email: str) -> str:
+    """Enter the profile's address on the start page and press its SSO button, once.
+
+    Only what the person would otherwise do by hand on the page that was just
+    opened for them. A field that already holds something is theirs and is left
+    alone, as is a page that has gone to another site. The button is pressed
+    only once it is shown and enabled, while the field still holds this address,
+    and nothing follows the press: the identity provider's page is for the
+    person. Returns what was done, in words fit for the log (no address).
+    """
+    site = _site(url)
+    field = page.locator(EMAIL_FIELD).first
+    if not await _visible_within(field, EMAIL_FIELD_WAIT):
+        return "no sign-in form appeared"  # signed in already, or it never loaded
+    if _site(page.url) != site:
+        return "the page went to another site; nothing entered"
+    if await field.input_value():
+        return "the email field already held something; left alone"
+    await field.fill(email)
+    button = (
+        page.locator(SSO_BUTTON)
+        .filter(has_text=_SSO_LABEL, has_not_text=_MAIL_LABEL, visible=True)
+        .first
+    )
+    how = "address entered"
+    if not await _pressable_within(button, SSO_WAIT_AFTER_FILL):
+        # Filling sets the value in one step. A form that listens for keys has
+        # seen none, so give it the keys before concluding there is no SSO.
+        if _site(page.url) != site or not _same_address(await field.input_value(), email):
+            return f"{how}; the page or the field changed, nothing pressed"
+        await field.fill("")
+        await field.press_sequentially(email)
+        how = "address entered, then typed again as keys"
+        if not await _pressable_within(button, SSO_WAIT_AFTER_TYPING):
+            return f"{how}; no SSO button was offered, nothing pressed"
+    if _site(page.url) != site or not _same_address(await field.input_value(), email):
+        return f"{how}; the page or the field changed, nothing pressed"
+    # What is about to be pressed, read from the control itself.
+    label = " ".join((await button.inner_text()).split())
+    if not _SSO_LABEL.search(label) or _MAIL_LABEL.search(label):
+        return f"{how}; the SSO button changed, nothing pressed"
+    await button.click(timeout=10000)
+    shown = label[:40] if "@" not in label else "the SSO button"
+    return f'{how}; pressed "{shown}"'
+
+
+async def _open_start_page(context: Any, url: str, email: str | None, profile_id: str) -> None:
+    """The start page, and on it the profile's address when it has one."""
+    page = await _show_start_page(context, url)
+    if page is None or not email:
+        return
+    began = asyncio.get_running_loop().time()
+    try:
+        outcome = await _sign_in_with_sso(page, url, email)
+    except Exception as exc:  # noqa: BLE001 - the window stays usable by hand
+        # The type only: a driver error can quote the address it was typing.
+        logger.info(
+            f"Email not entered on the start page for profile {profile_id}: {type(exc).__name__}"
+        )
+        return
+    waited = asyncio.get_running_loop().time() - began
+    logger.info(f"Start page sign-in for profile {profile_id} after {waited:.0f}s: {outcome}")
+
+
+async def _show_start_page(context: Any, url: str) -> Any:
+    """Bring the start page up in a tab nobody is using, and return that tab.
 
     This runs after the launch on purpose. A URL handed to the browser as a
     startup argument is requested before the driver's handlers exist, and the
     proxy's credentials are among them. Tabs that already show something are
-    left alone, and nothing is opened when a tab is already on the site.
+    left alone, and nothing is opened (and nothing returned) when a tab is
+    already on the site.
     """
     pages = [page for page in context.pages if not page.is_closed()]
     if not pages:
@@ -277,12 +409,13 @@ async def _show_start_page(context: Any, url: str) -> None:
             pages = []
     site = _site(url)
     if any(_site(page.url) == site for page in pages):
-        return
+        return None
     blank = next((page for page in pages if page.url in _BLANK_PAGES), None)
     page = blank if blank is not None else await context.new_page()
     # "commit": the address is on its way. Waiting for the whole page would only
     # keep this task alive while the person is already using the window.
     await page.goto(url, wait_until="commit", timeout=START_PAGE_TIMEOUT * 1000)
+    return page
 
 
 def _resolve_process_id(obj: Any) -> int | None:
@@ -630,8 +763,11 @@ class BrowserSessionManager:
         logger.info(f"Browser launched for profile {profile_id} (pid={process_id})")
         return session
 
-    def open_start_page(self, profile_id: str, url: str) -> None:
+    def open_start_page(self, profile_id: str, url: str, email: str | None = None) -> None:
         """Show `url` in the browser just launched for this profile, in the background.
+
+        With `email`, the address is entered in the page's sign-in form and its
+        SSO button is pressed, when the page has them.
 
         The launch has already succeeded and stays that way: a page that cannot
         be loaded is the browser's to report in its own window, and a window
@@ -651,7 +787,7 @@ class BrowserSessionManager:
                     f"{type(task.exception()).__name__}"
                 )
 
-        task = asyncio.create_task(_show_start_page(session.context, url))
+        task = asyncio.create_task(_open_start_page(session.context, url, email, profile_id))
         task.add_done_callback(finished)
         session.start_page_task = task
 

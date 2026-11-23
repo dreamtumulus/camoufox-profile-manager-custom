@@ -56,6 +56,7 @@ from camoufox_pm.api.models.profiles import (
 from camoufox_pm.api.models.system import ApiResponse, ExcelImportData
 from camoufox_pm.config import get_settings
 from camoufox_pm.core import proxy_check
+from camoufox_pm.core.app_settings import automation_enabled
 from camoufox_pm.core.browser_session import BrowserTerminationError
 from camoufox_pm.core.database import StaleWriteError
 from camoufox_pm.core.excel_manager import ExcelManager
@@ -452,9 +453,15 @@ async def launch_profile(profile_id: str, request: ProfileLaunchRequest):
         # A window someone asked for by hand opens on the start page. Launches
         # made by schedules, workflows and onboarding navigate for themselves,
         # and a browser that was already running is left as it is.
-        start_url = get_settings().start_url.strip()
+        settings = get_settings()
+        start_url = settings.start_url.strip()
         if start_url and not request.headless and browser_session.get("status") == "launched":
-            profile_manager.browser_sessions.open_start_page(profile_id, start_url)
+            # Opening the page is all that happens unless automation is on.
+            email = None
+            if automation_enabled(profile_manager.storage):
+                launched = await profile_manager.get_profile(profile_id)
+                email = launched.email if launched else None
+            profile_manager.browser_sessions.open_start_page(profile_id, start_url, email=email)
 
         return ProfileLaunchResponse(
             profile_id=profile_id,

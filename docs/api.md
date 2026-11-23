@@ -640,6 +640,7 @@ GET  /health                                liveness and database state
 GET  /api/v1/system/status                  counts, load, memory, disk, uptime
 GET  /api/v1/system/info                    name, version, uptime
 GET  /api/v1/system/config                  effective configuration, no secret values
+PUT  /api/v1/system/automation              { "enabled": true|false }: the automation master switch
 GET  /api/v1/system/profiles/diagnostic     profiles whose storage looks wrong
 POST /api/v1/system/profiles/cleanup        remove orphaned profile directories
 POST /api/v1/system/restart                 close all browsers, ready for a restart
@@ -652,7 +653,13 @@ or container healthcheck sees the failure without parsing anything.
 `/api/v1/system/config` reports whether encryption, the API key and user login
 are on, the bind address, the database path and whether the browser is
 installed — it never returns the values of secrets. It backs the Settings
-screen.
+screen. `automation_enabled` is the master switch for what the program does
+inside a profile's browser on its own, and `automation_locked` says that
+`CPM_AUTOMATION_ENABLED` decides it.
+
+`PUT /api/v1/system/automation` saves that switch (administrators only) and
+answers `{ "enabled": ..., "locked": false }`; it applies to browsers opened
+from then on. While `CPM_AUTOMATION_ENABLED` is set it answers `409`.
 
 `/api/v1/system/restart` does **not** restart the process; it closes every
 browser so you can restart it cleanly yourself.

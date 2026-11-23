@@ -176,3 +176,76 @@ async def test_the_config_endpoint_reports_secrets_as_set_but_never_their_values
         assert "top-secret-encryption" not in response.text
     finally:
         get_settings.cache_clear()
+
+
+@pytest.fixture
+def automation_environment(monkeypatch):
+    def use(value: str | None) -> None:
+        if value is None:
+            monkeypatch.delenv("CPM_AUTOMATION_ENABLED", raising=False)
+        else:
+            monkeypatch.setenv("CPM_AUTOMATION_ENABLED", value)
+        get_settings.cache_clear()
+
+    use(None)
+    yield use
+    use(None)
+
+
+async def automation(client) -> tuple[bool, bool]:
+    data = (await client.get("/api/v1/system/config")).json()["data"]
+    return data["automation_enabled"], data["automation_locked"]
+
+
+@pytest.mark.asyncio
+async def test_automation_is_off_until_switched_on_and_the_switch_is_saved(
+    client, automation_environment
+):
+    assert await automation(client) == (False, False)
+
+    on = await client.put("/api/v1/system/automation", json={"enabled": True})
+    assert on.status_code == 200 and on.json()["data"] == {"enabled": True, "locked": False}
+    assert await automation(client) == (True, False)
+
+    off = await client.put("/api/v1/system/automation", json={"enabled": False})
+    assert off.json()["data"] == {"enabled": False, "locked": False}
+    assert await automation(client) == (False, False)
+
+    from camoufox_pm.api.dependencies import get_storage_manager
+
+    # Newest first. Every change is on record twice: the request itself, and which
+    # way the switch went, which the request's name alone does not say.
+    actions = [event["action"] for event in await get_storage_manager().list_audit()]
+    assert actions[:4] == [
+        "set_automation",
+        "disable_automation",
+        "set_automation",
+        "enable_automation",
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("named,effective", [("true", True), ("false", False)])
+async def test_the_environment_decides_automation_and_the_switch_is_refused(
+    client, automation_environment, named, effective
+):
+    await client.put("/api/v1/system/automation", json={"enabled": not effective})
+
+    automation_environment(named)
+
+    assert await automation(client) == (effective, True)
+    refused = await client.put("/api/v1/system/automation", json={"enabled": not effective})
+    assert refused.status_code == 409 and "CPM_AUTOMATION_ENABLED" in refused.text
+    assert await automation(client) == (effective, True)
+    # What was saved before is still there once the environment stops deciding.
+    automation_environment(None)
+    assert await automation(client) == (not effective, False)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("body", [{}, {"enabled": "maybe"}, {"enabled": True, "scope": "all"}])
+async def test_the_automation_switch_takes_one_plain_answer(client, automation_environment, body):
+    response = await client.put("/api/v1/system/automation", json=body)
+
+    assert response.status_code == 422
+    assert await automation(client) == (False, False)

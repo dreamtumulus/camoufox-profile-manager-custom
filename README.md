@@ -217,6 +217,7 @@ Advanced/source configuration uses environment variables (prefix `CPM_`); copy
 | `CPM_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins                 |
 | `CPM_WEBUI_DIR`    | *(auto)*                | Override where the bundled web UI is served from |
 | `CPM_START_URL`    | `https://claude.ai`     | Page a browser opened with **Run** shows first; empty opens none. Scheduled and workflow launches are not affected |
+| `CPM_AUTOMATION_ENABLED` | *(unset)*         | Overrides **Settings → Automation**, the master switch for what the program does inside a profile's browser on its own (off by default). On, the start page gets the profile's [email address](docs/profile-emails.md#run-enters-the-address-on-the-start-page) in its sign-in form and its SSO button is pressed. Leave unset to use the switch on the Settings screen |
 
 Generate an encryption key with:
 

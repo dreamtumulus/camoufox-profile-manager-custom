@@ -58,6 +58,7 @@ class DesktopUI(unittest.TestCase):
         self.proxy_failure_once = False
         self.import_failure = False
         self.import_elsewhere = 0
+        self.automation_failure = False
         self.assignment_skips = []
         self.browser_state = {"installed": False, "version": None, "state": "idle", "progress": None, "message": "Browser not installed", "error": None}
         self.profiles = []
@@ -96,6 +97,11 @@ class DesktopUI(unittest.TestCase):
             data = {"user_auth_enabled": self.auth_required, "authenticated": not self.auth_required, "username": None, "role": "administrator", "actor_kind": "anonymous_local", "can_manage_access": True}
         elif path == "/system/config":
             data, envelope = self.config, True
+        elif path == "/system/automation":
+            if self.automation_failure:
+                return route.fulfill(status=409, json={"detail": "Automation is set by CPM_AUTOMATION_ENABLED"})
+            self.config["automation_enabled"] = request.post_data_json["enabled"]
+            data, envelope = {"enabled": self.config["automation_enabled"], "locked": False}, True
         elif path == "/system/status":
             data = {"total_profiles": len(self.profiles), "active_profiles": 0, "running_browsers": 0, "total_groups": 0, "system_load": 0, "memory_usage": 0, "disk_usage": 0, "uptime_seconds": 60}
         elif path.startswith("/profiles?"):
@@ -225,6 +231,48 @@ class DesktopUI(unittest.TestCase):
         self.page.goto(self.origin)
         expect(self.page.get_by_role("cell", name="Existing", exact=True)).to_be_visible()
         expect(self.page.get_by_role("region", name="Browser setup")).not_to_be_visible()
+
+    def test_automation_is_off_until_its_switch_is_turned_on_and_says_what_it_does(self):
+        # A server from before the switch reports nothing about it: that reads as off.
+        self.page.goto(f"{self.origin}/settings/")
+        switch = self.page.get_by_role("switch", name="Master switch", exact=True)
+        expect(switch).to_have_attribute("aria-checked", "false")
+        expect(switch).to_be_enabled()
+        expect(self.page.get_by_text("Off. A browser opened with Run is left alone: nothing is entered or pressed for you.", exact=True)).to_be_visible()
+        expect(self.page.get_by_text("Schedules and workflows you set up yourself are not affected.", exact=False)).to_be_visible()
+        self.assertFalse(any(path == "/system/automation" for _, path, _ in self.calls))
+
+        switch.click()
+        expect(switch).to_have_attribute("aria-checked", "true")
+        expect(self.page.get_by_text("Automation turned on", exact=True)).to_be_visible()
+        expect(self.page.get_by_text("On. A browser opened with Run enters the profile's email address on the start page and presses its SSO button.", exact=True)).to_be_visible()
+        saved = [(method, json.loads(body)) for method, path, body in self.calls if path == "/system/automation"]
+        self.assertEqual(saved, [("PUT", {"enabled": True})])
+
+        # Saved by the server: still on after a reload, and off again on the next click.
+        self.page.reload()
+        expect(switch).to_have_attribute("aria-checked", "true")
+        switch.click()
+        expect(switch).to_have_attribute("aria-checked", "false")
+        expect(self.page.get_by_text("Automation turned off", exact=True)).to_be_visible()
+        self.assertEqual([json.loads(body) for _, path, body in self.calls if path == "/system/automation"], [{"enabled": True}, {"enabled": False}])
+
+    def test_automation_switch_set_by_the_environment_is_shown_but_not_offered(self):
+        self.config.update(automation_enabled=True, automation_locked=True)
+        self.page.goto(f"{self.origin}/settings/")
+        switch = self.page.get_by_role("switch", name="Master switch", exact=True)
+        expect(switch).to_have_attribute("aria-checked", "true")
+        expect(switch).to_be_disabled()
+        expect(self.page.get_by_text("Set by CPM_AUTOMATION_ENABLED in the environment. Change it there and restart.", exact=True)).to_be_visible()
+
+    def test_automation_switch_that_cannot_be_saved_stays_as_it_was(self):
+        self.automation_failure = True
+        self.page.goto(f"{self.origin}/settings/")
+        switch = self.page.get_by_role("switch", name="Master switch", exact=True)
+        switch.click()
+        expect(self.page.get_by_text("Could not change automation", exact=True)).to_be_visible()
+        expect(switch).to_have_attribute("aria-checked", "false")
+        expect(switch).to_be_enabled()
 
     def test_release_download_requires_backup_preparation(self):
         self.page.goto(f"{self.origin}/settings/")

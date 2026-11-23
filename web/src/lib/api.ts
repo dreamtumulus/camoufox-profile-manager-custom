@@ -675,6 +675,10 @@ export interface SystemConfig {
   cors_origins: string[]
   camoufox_available: boolean
   uptime_seconds: number
+  /** The master switch for what the app does inside a profile's browser on its own. */
+  automation_enabled?: boolean
+  /** CPM_AUTOMATION_ENABLED decides it; the screen shows the switch without offering it. */
+  automation_locked?: boolean
 }
 
 export interface BrowserReadiness {
@@ -844,6 +848,11 @@ export const systemAPI = {
 
   async config(): Promise<SystemConfig> {
     const body = await request<{ data: SystemConfig }>(`${API_PREFIX}/system/config`)
+    return body.data
+  },
+
+  async setAutomation(enabled: boolean): Promise<{ enabled: boolean; locked: boolean }> {
+    const body = await request<{ data: { enabled: boolean; locked: boolean } }>(`${API_PREFIX}/system/automation`, { method: 'PUT', body: JSON.stringify({ enabled }) })
     return body.data
   },
 }

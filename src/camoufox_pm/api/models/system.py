@@ -97,6 +97,21 @@ class SystemConfigData(BaseModel):
     cors_origins: list[str]
     camoufox_available: bool
     uptime_seconds: int
+    # The master switch for what the program does inside a profile's browser on
+    # its own, and whether CPM_AUTOMATION_ENABLED decides it instead of the
+    # Settings screen.
+    automation_enabled: bool = False
+    automation_locked: bool = False
+
+
+class AutomationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool
+
+
+class AutomationData(BaseModel):
+    enabled: bool
+    locked: bool
 
 
 class DevicePreset(BaseModel):

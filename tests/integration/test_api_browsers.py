@@ -112,7 +112,56 @@ async def test_a_window_opened_by_hand_starts_on_the_configured_page(client, lau
     response = await client.post(f"/api/profiles/{created['id']}/launch", json={"headless": False})
 
     assert response.status_code == 200 and response.json()["status"] == "launched"
-    opened.assert_called_once_with(created["id"], "https://claude.ai")
+    opened.assert_called_once_with(created["id"], "https://claude.ai", email=None)
+
+
+@pytest.fixture
+def environment(monkeypatch):
+    """Set or unset CPM_AUTOMATION_ENABLED for the settings the app reads."""
+    from camoufox_pm.config import get_settings
+
+    def use(value: str | None) -> None:
+        if value is None:
+            monkeypatch.delenv("CPM_AUTOMATION_ENABLED", raising=False)
+        else:
+            monkeypatch.setenv("CPM_AUTOMATION_ENABLED", value)
+        get_settings.cache_clear()
+
+    use(None)
+    yield use
+    use(None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "named,switched,entered",
+    [
+        (None, None, None),  # nobody turned it on: nothing is done in the browser
+        (None, True, "miyu@sso.example"),  # turned on from the Settings screen
+        (None, False, None),
+        ("true", None, "miyu@sso.example"),  # turned on in the environment
+        ("false", None, None),
+    ],
+)
+async def test_a_window_opened_by_hand_is_handed_the_address_only_with_automation_on(
+    client, launches, environment, named, switched, entered
+):
+    _, opened = launches
+    if switched is not None:
+        saved = await client.put("/api/v1/system/automation", json={"enabled": switched})
+        assert saved.status_code == 200
+    environment(named)
+    created = (await client.post("/api/profiles", json={"name": "with address"})).json()
+    await get_profile_manager().storage.db.set_profile_email(
+        created["id"], "miyu@sso.example", created["row_version"]
+    )
+
+    response = await client.post(f"/api/profiles/{created['id']}/launch", json={"headless": False})
+
+    assert response.status_code == 200
+    opened.assert_called_once_with(created["id"], "https://claude.ai", email=entered)
+    # The address goes to the browser, not back to whoever asked for the launch.
+    assert "sso.example" not in response.text
 
 
 @pytest.mark.asyncio

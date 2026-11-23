@@ -97,6 +97,55 @@ page may write the clipboard only while it is handling the click.
 - If the address cannot be copied the browser still starts, and the notification
   shows the address so it can be copied by hand.
 
+## Run enters the address on the start page
+
+This is automation, and automation is **off by default**. It happens only once
+the master switch is on: **Settings → Automation → Master switch**. That one
+switch covers everything the program does inside a profile's browser on its own,
+including what is added later. It is saved, needs no restart, and applies to
+browsers opened from then on. Left off, **Run** opens the start page and touches
+nothing on it. Schedules and workflows you set up yourself are not affected by
+it.
+
+`CPM_AUTOMATION_ENABLED`, when set in the environment (`true` or `false`),
+decides instead: the Settings screen then shows the switch without offering it.
+
+A browser started with **Run** opens on the [start page](../README.md#configuration)
+(`CPM_START_URL`, `https://claude.ai` by default). With automation on, when the
+profile has an address and that page shows a sign-in form, the address is entered in its email
+field, and once the page offers a button labelled **SSO** (as in **Continue with
+SSO**), that button is pressed, once. What follows — the identity provider's
+page, its password — is left to the person at the window.
+
+- **Continue with email** is never pressed: it would send a message to the
+  mailbox. A domain without single sign-on gets the address entered and nothing
+  pressed.
+- A field that already holds something is left alone, and so is a page that is
+  already signed in or has gone to another site.
+- The button is pressed only once it is shown and enabled, and has stayed so for
+  a moment: the site offers it some time after the address is entered, longer
+  through a slow proxy, and may show it greyed out first. It is also pressed
+  only while the field still holds the profile's address.
+- The page is given about a minute to show the form and about 45 seconds to
+  offer SSO; after that nothing more is tried.
+- Only a window opened by hand gets this: **Run**, or **Launch** on several
+  selected profiles, where each window gets its own profile's address. A browser
+  that was already running, a headless launch, a launch by a schedule or
+  workflow, and a profile without an address are not touched.
+- The address is still copied to the clipboard, so it can be pasted when the
+  page did not take it.
+- Copying the address to the clipboard and opening the start page are not
+  automation: they happen whether the switch is on or off.
+
+The form is recognised by its email field and the button by the letters "SSO" in
+its label; an element that merely contains the form's buttons is never pressed.
+A redesigned sign-in page may stop matching either; the browser then opens as
+before and the address is on the clipboard.
+
+What was done is written to the log without the address, for example
+`Start page sign-in for profile abc123 after 7s: address entered; pressed
+"Continue with SSO"`, or `…; no SSO button was offered, nothing pressed`.
+
 ## Double-click copies the address
 
 Double-clicking a row's **Email** cell copies that address and says so in a

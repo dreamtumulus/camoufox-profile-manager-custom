@@ -59,3 +59,12 @@ def test_configured_admin_comes_from_the_environment(monkeypatch):
     monkeypatch.setenv("CPM_ADMIN_PASSWORD", "a-long-password")
     s = Settings(_env_file=None)
     assert (s.admin_username, s.admin_password) == ("root", "a-long-password")
+
+
+def test_automation_is_off_until_its_one_switch_is_turned_on(monkeypatch):
+    assert Settings(_env_file=None).automation_enabled is False
+    # The name the switch had before it became the master switch turns nothing on.
+    monkeypatch.setenv("CPM_START_FILL_EMAIL", "true")
+    assert Settings(_env_file=None).automation_enabled is False
+    monkeypatch.setenv("CPM_AUTOMATION_ENABLED", "true")
+    assert Settings(_env_file=None).automation_enabled is True

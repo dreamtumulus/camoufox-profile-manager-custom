@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const [status, setStatus] = useState<SystemStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [key, setKey] = useState('')
+  const [switching, setSwitching] = useState(false)
   const toast = useToast()
 
   useEffect(() => {
@@ -59,6 +60,20 @@ export default function SettingsPage() {
     )
   }
 
+  async function switchAutomation(enabled: boolean) {
+    if (switching) return
+    setSwitching(true)
+    try {
+      const saved = await systemAPI.setAutomation(enabled)
+      setConfig((current) => current && { ...current, automation_enabled: saved.enabled, automation_locked: saved.locked })
+      toast('ok', saved.enabled ? t('Automation turned on') : t('Automation turned off'), t('Applies to browsers opened from now on.'))
+    } catch {
+      toast('error', t('Could not change automation'), t('Reload the page and try again.'))
+    } finally {
+      setSwitching(false)
+    }
+  }
+
   return (
     <>
       <header className="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-line bg-canvas/85 px-5 backdrop-blur">
@@ -75,6 +90,37 @@ export default function SettingsPage() {
           <UpdateSettings />
           <BackupSettings />
           <SyncSettings />
+
+          <Group
+            title={t('Automation')}
+            note={t('One switch for everything the app does inside a browser on its own. Schedules and workflows you set up yourself are not affected.')}
+          >
+            <div className="flex gap-4 px-4 py-2.5">
+              <span id="automation-switch-label" className="w-[150px] shrink-0 text-ink-dim">{t('Master switch')}</span>
+              <span className="flex flex-1 items-start gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.automation_enabled === true}
+                  aria-labelledby="automation-switch-label"
+                  aria-describedby="automation-switch-help"
+                  disabled={switching || config.automation_locked === true}
+                  onClick={() => switchAutomation(config.automation_enabled !== true)}
+                  className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${config.automation_enabled ? 'border-signal bg-signal' : 'border-line bg-canvas'}`}
+                >
+                  <span aria-hidden className={`absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all ${config.automation_enabled ? 'left-[18px] bg-white' : 'left-0.5 bg-ink-faint'}`} />
+                </button>
+                <span id="automation-switch-help" className="flex flex-col gap-1">
+                  <span className={config.automation_enabled ? '' : 'text-ink-dim'}>
+                    {config.automation_enabled
+                      ? t("On. A browser opened with Run enters the profile's email address on the start page and presses its SSO button.")
+                      : t('Off. A browser opened with Run is left alone: nothing is entered or pressed for you.')}
+                  </span>
+                  {config.automation_locked && <span className="text-ink-faint">{t('Set by CPM_AUTOMATION_ENABLED in the environment. Change it there and restart.')}</span>}
+                </span>
+              </span>
+            </div>
+          </Group>
 
           {/* Security first: these two decide whether this instance is safe to expose. */}
           <Group

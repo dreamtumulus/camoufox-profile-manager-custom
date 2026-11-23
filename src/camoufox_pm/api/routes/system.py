@@ -10,10 +10,12 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict
 
 from camoufox_pm import __version__
-from camoufox_pm.api.access import require_admin
+from camoufox_pm.api.access import record_audit, require_admin
 from camoufox_pm.api.dependencies import get_profile_manager, get_storage_manager
 from camoufox_pm.api.models.system import (
     ApiResponse,
+    AutomationData,
+    AutomationRequest,
     DevicePreset,
     PresetListData,
     ProfileCleanupResponse,
@@ -24,6 +26,11 @@ from camoufox_pm.api.models.system import (
 )
 from camoufox_pm.config import get_settings
 from camoufox_pm.core import fingerprint_store
+from camoufox_pm.core.app_settings import (
+    automation_enabled,
+    automation_locked,
+    set_automation_enabled,
+)
 from camoufox_pm.core.browser_install import installed_browser
 from camoufox_pm.core.cleanup import ProfileCleanupManager
 
@@ -209,6 +216,7 @@ async def get_system_config():
     API key are on without reading environment variables.
     """
     settings = get_settings()
+    storage = get_storage_manager()
     return ApiResponse(
         success=True,
         message="Effective configuration",
@@ -218,12 +226,40 @@ async def get_system_config():
             port=settings.port,
             database_path=str(Path(settings.db_path).resolve()),
             api_key_set=bool(settings.api_key),
-            user_auth_enabled=await get_storage_manager().count_users() > 0,
+            user_auth_enabled=await storage.count_users() > 0,
             encryption_enabled=bool(settings.secret_key),
             cors_origins=settings.cors_origins,
             camoufox_available=installed_browser()[0],
             uptime_seconds=int(time.time() - startup_time),
+            automation_enabled=automation_enabled(storage),
+            automation_locked=automation_locked(),
         ),
+    )
+
+
+@router.put(
+    "/system/automation",
+    response_model=ApiResponse[AutomationData],
+    operation_id="set_automation",
+    summary="Turn automation on or off.",
+    description=(
+        "The master switch for what the program does inside a profile's browser on its "
+        "own. Saved, and applied to browsers opened from then on. Refused with 409 while "
+        "CPM_AUTOMATION_ENABLED decides it."
+    ),
+)
+async def set_automation(request: AutomationRequest):
+    storage = get_storage_manager()
+    try:
+        set_automation_enabled(storage, request.enabled)
+    except PermissionError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    # The request is audited by name like every other; this says which way it went.
+    await record_audit("enable_automation" if request.enabled else "disable_automation", None)
+    return ApiResponse(
+        success=True,
+        message="Automation is on" if request.enabled else "Automation is off",
+        data=AutomationData(enabled=automation_enabled(storage), locked=False),
     )
 
 

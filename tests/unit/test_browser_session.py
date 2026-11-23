@@ -1168,3 +1168,351 @@ async def test_closing_the_browser_stops_a_start_page_still_on_its_way():
 
     await asyncio.wait([session.start_page_task])
     assert session.start_page_task.cancelled()
+
+
+ADDRESS = "miyu.ogura@sso.example"
+
+
+class SignInForm(FakePage):
+    """The start page's sign-in form, reduced to what the driver is asked of it.
+
+    `notices` says which way of entering an address makes the site look at it:
+    "fill" sets the value in one step, "type" sends keys. The SSO button shows
+    once the site has looked at an address on `sso_domain`.
+
+    It starts as the blank tab of a new window and is at `url` once it has been
+    sent to the start page.
+    """
+
+    def __init__(
+        self,
+        url: str = START + "/login",
+        *,
+        form: bool = True,
+        held: str = "",
+        notices: tuple[str, ...] = ("fill", "type"),
+        sso_domain: str = "sso.example",
+        after_entry=None,
+        fail: Exception | None = None,
+        label: str = "Continue with SSO",
+        offer_on_poll: int = 1,
+        enable_on_poll: int = 1,
+        flashes: bool = False,
+    ):
+        super().__init__()
+        self.landed = url
+        self.form, self.value, self.notices, self.sso_domain = form, held, notices, sso_domain
+        self.after_entry = after_entry
+        self.broken = fail
+        self.offered = False
+        self.label = label
+        # Which look at the button first finds it shown, and first finds it enabled.
+        self.offer_on_poll, self.enable_on_poll, self.flashes = (
+            offer_on_poll,
+            enable_on_poll,
+            flashes,
+        )
+        self.looks = 0
+        self.entries: list[tuple[str, str]] = []
+        self.pressed: list[dict] = []
+        self.labels: list = []
+
+    async def goto(self, url: str, **options):
+        self.visits.append((url, options))
+        self.url = self.landed
+
+    def _entered(self, how: str, value: str) -> None:
+        if self.broken is not None:
+            raise self.broken
+        self.entries.append((how, value))
+        self.value = value
+        if how in self.notices:
+            self.offered = value.endswith("@" + self.sso_domain)
+        if self.after_entry is not None:
+            self.after_entry(self)
+
+    def locator(self, selector: str):
+        page = self
+
+        class Field:
+            first = property(lambda self: self)
+
+            async def is_visible(self):
+                return page.form
+
+            async def input_value(self):
+                return page.value
+
+            async def fill(self, value):
+                page._entered("fill", value)
+
+            async def press_sequentially(self, value):
+                page._entered("type", value)
+
+        class Buttons:
+            first = property(lambda self: self)
+
+            def filter(self, has_text, has_not_text, visible):
+                assert visible is True  # a hidden lookalike is never the button
+                assert has_not_text.search("Continue with email")
+                assert not has_not_text.search("Continue with SSO")
+                page.labels.append(has_text)
+                return self
+
+            async def is_visible(self):
+                if not page.offered:
+                    return False
+                page.looks += 1
+                if page.flashes:
+                    return page.looks == 1
+                return page.looks >= page.offer_on_poll
+
+            async def is_enabled(self, **options):
+                return page.looks >= page.enable_on_poll
+
+            async def inner_text(self):
+                return page.label
+
+            async def click(self, **options):
+                assert page.looks >= max(page.offer_on_poll, page.enable_on_poll)
+                page.pressed.append(options)
+
+        assert selector in (bs.EMAIL_FIELD, bs.SSO_BUTTON)
+        return Field() if selector == bs.EMAIL_FIELD else Buttons()
+
+
+@pytest.fixture(autouse=True)
+def quick_looks(monkeypatch):
+    monkeypatch.setattr(bs, "SSO_SETTLE", 0.01)
+    monkeypatch.setattr(bs, "_POLL", 0.01)
+
+
+@pytest.fixture
+def short_waits(monkeypatch):
+    for name in ("EMAIL_FIELD_WAIT", "SSO_WAIT_AFTER_FILL", "SSO_WAIT_AFTER_TYPING"):
+        monkeypatch.setattr(bs, name, 0.05)
+
+
+async def sign_in(form: SignInForm, email: str | None = ADDRESS) -> BrowserSession:
+    manager, session = started(FakeContext(form))
+    manager.open_start_page("p", START, email=email)
+    await session.start_page_task
+    return session
+
+
+@pytest.mark.asyncio
+async def test_start_page_gets_the_profiles_address_and_its_sso_button_is_pressed_once():
+    form = SignInForm()
+
+    await sign_in(form)
+
+    assert [url for url, _ in form.visits] == [START]
+    assert form.entries == [("fill", ADDRESS)] and len(form.pressed) == 1
+    # Looked at twice before it was pressed: shown, and still shown a moment later.
+    assert form.looks >= 2
+    # The button is found by the acronym alone, never by the one that sends mail.
+    (label,) = form.labels
+    assert label.search("Continue with SSO") and label.search("Continuer avec SSO")
+    assert not label.search("Continue with email") and not label.search("Continue with Google")
+    assert not label.search("Lessons") and not label.search("sso")
+
+
+@pytest.mark.asyncio
+async def test_a_form_that_only_reads_keys_is_given_the_address_again_as_keys(short_waits):
+    form = SignInForm(notices=("type",))
+
+    await sign_in(form)
+
+    assert form.entries == [("fill", ADDRESS), ("fill", ""), ("type", ADDRESS)]
+    assert form.value == ADDRESS and len(form.pressed) == 1
+
+
+@pytest.mark.asyncio
+async def test_an_address_without_single_sign_on_is_entered_and_nothing_is_pressed(short_waits):
+    form = SignInForm(sso_domain="elsewhere.example")
+
+    await sign_in(form)
+
+    assert form.value == ADDRESS and form.pressed == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "form",
+    [
+        SignInForm(held="someone@else.example"),  # the field is somebody's already
+        SignInForm(held=ADDRESS),
+        SignInForm(form=False),  # signed in already: there is no form
+        SignInForm("https://accounts.example/login"),  # the start page sent the tab elsewhere
+    ],
+)
+async def test_a_page_that_is_not_an_empty_sign_in_form_is_left_as_it_is(short_waits, form):
+    held = form.value
+
+    await sign_in(form)
+
+    assert form.entries == [] and form.pressed == [] and form.value == held
+
+
+@pytest.mark.asyncio
+async def test_start_page_without_an_address_only_opens():
+    class NoForm(FakePage):
+        def locator(self, selector):
+            raise AssertionError("the page must not be touched")
+
+    tab = NoForm()
+    manager, session = started(FakeContext(tab))
+
+    for email in (None, ""):
+        manager.open_start_page("p", START, email=email)
+        await session.start_page_task
+        tab.url = "about:blank"
+
+    assert [url for url, _ in tab.visits] == [START, START]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("notices", [("fill", "type"), ()])
+async def test_sso_is_not_pressed_once_the_address_in_the_field_is_no_longer_the_profiles(
+    short_waits, notices
+):
+    def someone_edits(page):
+        page.value = "someone@sso.example"
+        page.offered = True
+
+    form = SignInForm(notices=notices, after_entry=someone_edits)
+
+    await sign_in(form)
+
+    assert form.entries == [("fill", ADDRESS)] and form.pressed == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("notices", [("fill", "type"), ()])
+async def test_sso_is_not_pressed_on_another_site(short_waits, notices):
+    def leaves(page):
+        page.url = "https://accounts.example/sign-in"
+        page.offered = True
+
+    form = SignInForm(notices=notices, after_entry=leaves)
+
+    await sign_in(form)
+
+    assert form.entries == [("fill", ADDRESS)] and form.pressed == []
+
+
+@pytest.mark.asyncio
+async def test_a_sign_in_form_that_fails_leaves_the_browser_running_and_the_address_unlogged():
+    from loguru import logger
+
+    form = SignInForm(fail=RuntimeError(f'locator.fill("{ADDRESS}") failed'))
+    messages: list[str] = []
+    handler = logger.add(lambda message: messages.append(str(message)), level="DEBUG")
+    try:
+        session = await sign_in(form)
+    finally:
+        logger.remove(handler)
+
+    assert session.start_page_task.exception() is None
+    said = "".join(messages)
+    assert "Email not entered on the start page for profile p: RuntimeError" in said
+    assert ADDRESS not in said and "sso.example" not in said
+
+
+@pytest.mark.asyncio
+async def test_closing_the_browser_stops_the_wait_for_a_sign_in_form(monkeypatch):
+    monkeypatch.setattr(bs, "EMAIL_FIELD_WAIT", 3600)
+    looked = asyncio.Event()
+
+    class Loading(SignInForm):
+        def locator(self, selector):
+            looked.set()
+            return super().locator(selector)
+
+    form = Loading(form=False)
+    manager, session = started(FakeContext(form))
+    manager.open_start_page("p", START, email=ADDRESS)
+    await looked.wait()
+
+    await manager.close("p")
+
+    await asyncio.wait([session.start_page_task])
+    assert session.start_page_task.cancelled() and form.entries == []
+
+
+@pytest.mark.asyncio
+async def test_sso_button_that_takes_its_time_is_waited_for_without_typing_again():
+    """Through a slow proxy the site answers late; the address is not entered twice."""
+    form = SignInForm(offer_on_poll=12)
+
+    await sign_in(form)
+
+    assert form.entries == [("fill", ADDRESS)] and len(form.pressed) == 1
+
+
+@pytest.mark.asyncio
+async def test_sso_button_shown_greyed_out_is_pressed_only_once_it_is_enabled():
+    form = SignInForm(enable_on_poll=8)
+
+    await sign_in(form)
+
+    # The fake refuses a press before the eighth look.
+    assert form.entries == [("fill", ADDRESS)] and len(form.pressed) == 1 and form.looks >= 9
+
+
+@pytest.mark.asyncio
+async def test_sso_button_that_only_flashes_up_is_not_pressed(short_waits):
+    form = SignInForm(flashes=True)
+
+    await sign_in(form)
+
+    assert form.pressed == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "label", ["Continue with email", "Continue with email or SSO", "Continue", ""]
+)
+async def test_a_control_that_does_not_read_as_the_sso_button_is_not_pressed(short_waits, label):
+    form = SignInForm(label=label)
+
+    await sign_in(form)
+
+    assert form.value == ADDRESS and form.pressed == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "form,said",
+    [
+        (SignInForm(), 'address entered; pressed "Continue with SSO"'),
+        (SignInForm(label="Weiter mit SSO"), 'address entered; pressed "Weiter mit SSO"'),
+        (
+            SignInForm(notices=("type",)),
+            'address entered, then typed again as keys; pressed "Continue with SSO"',
+        ),
+        (SignInForm(sso_domain="elsewhere.example"), "no SSO button was offered, nothing pressed"),
+        (SignInForm(held="someone@else.example"), "the email field already held something"),
+        (SignInForm(form=False), "no sign-in form appeared"),
+    ],
+)
+async def test_what_was_done_on_the_sign_in_form_is_logged_without_the_address(
+    short_waits, form, said
+):
+    from loguru import logger
+
+    messages: list[str] = []
+    handler = logger.add(lambda message: messages.append(str(message)), level="INFO")
+    try:
+        await sign_in(form)
+    finally:
+        logger.remove(handler)
+
+    logged = "".join(messages)
+    assert "Start page sign-in for profile p after " in logged and said in logged
+    assert ADDRESS not in logged and "someone@" not in logged
+
+
+def test_the_sso_button_is_a_control_with_nothing_pressable_inside_it():
+    """A wrapper around the form contains the same letters; its middle is some other button."""
+    assert ":not(:has(" in bs.SSO_BUTTON and "button" in bs.SSO_BUTTON.split(":not(")[1]

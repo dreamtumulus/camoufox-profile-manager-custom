@@ -49,6 +49,16 @@ class Settings(BaseSettings):
     front_proxy_mode: str = "system"
     # The page a browser opened by hand shows first. Empty opens nothing.
     start_url: str = "https://claude.ai"
+    # The one switch for everything this program does inside a profile's browser
+    # on its own. Off, which is the default, a browser is opened and left to the
+    # person. On, today: on the start page, the profile's email address is
+    # entered in the sign-in form and its SSO button is pressed. Automation added
+    # later belongs behind this switch too, so that off always means "nothing is
+    # done in my browsers for me".
+    # Left unset here, the switch is the one on the Settings screen, which is
+    # saved in the database. Set here, either way, it overrides that one. Ask
+    # core.app_settings.automation_enabled rather than reading this field.
+    automation_enabled: bool = False
     backup_interval_hours: int = Field(default=24, ge=1)
     backup_retention: int = Field(default=7, ge=1)
 
