@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Publish a release by itself once its builds have succeeded. A release made
+  by a tag without the `-zhaolusi` suffix used to stay a draft until someone
+  published it on GitHub; a new workflow now checks every file against the
+  checksum file beside it and publishes the draft when the **Release** run has
+  completed without a failure. This applied to 0.7.1 already.
+
 ## [0.7.1] - 2026-11-24
 
 This release covers what the custom builds published as `v0.7.0-zhaolusi1` to

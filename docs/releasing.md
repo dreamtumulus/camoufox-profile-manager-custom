@@ -3,10 +3,21 @@
 A `v*` tag triggers `.github/workflows/release.yml`. It builds the web UI into
 Python wheel/sdist packages and calls the reusable `desktop.yml` workflow with
 the tag. Desktop jobs build native macOS ARM/Intel, Windows x64 and Linux x64
-installers and attach them to the same draft GitHub Release. A maintainer
-publishes it only after all jobs and the asset/checksum audit pass. No manual second workflow
-is needed. The Actions **Desktop builds** manual dispatch remains available; an
-optional `release_tag` checks out that tag and attaches its installers.
+installers and attach them to the same draft GitHub Release. The draft is
+published without anyone pressing a button: when the **Release** run has
+completed with every job successful, `.github/workflows/publish-release.yml`
+checks that each file of the draft matches the checksum file published beside
+it, and publishes it. A run that failed, a missing checksum file or a file that
+does not match leaves the draft unpublished, to be looked at and published or
+discarded by hand. That workflow is read from the default branch, so it applies
+whichever commit a tag is on. The Actions **Desktop builds** manual dispatch
+remains available; an optional `release_tag` checks out that tag and attaches
+its installers.
+
+A tag with the `-zhaolusi` suffix also runs **Custom desktop releases**, which
+uploads without the draft flag and so publishes that release as soon as its
+first installer is ready. A tag without the suffix, such as `v0.7.1`, runs
+**Release** alone.
 
 ## Release policy
 
@@ -111,8 +122,9 @@ test checks the installed library for the required sequencer API as well.
    [scope and reproducible protocol trials](proxy-support.md#installed-package-acceptance).
    These disposable package trials do not replace the physical-system checks above.
 7. Only after release approval, create and push an annotated `v<version>` tag.
-   Watch **Release** and all four **Desktop builds** jobs finish. Check every
-   expected asset is present and its checksum matches before publishing the draft.
+   Watch **Release** and all four **Desktop builds** jobs finish, then
+   **Publish release** check every file against its checksum and publish the
+   draft. Pushing the tag is therefore the approval to publish.
    Mark `-rc` tags as prereleases and leave the previous stable release as Latest.
    Jobs upload independently, so a failed build leaves the draft unpublished.
    The release candidate is a public testing preview: unresolved stable acceptance
