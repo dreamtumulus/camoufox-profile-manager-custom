@@ -1,0 +1,72 @@
+name: Publish release
+
+# The Release workflow leaves its release a draft, so that a build that failed
+# never shows up as a release. Nobody has to press Publish: once every Release
+# job has succeeded, this checks that every file of the draft matches the
+# checksum published beside it and publishes it. A draft that fails the check,
+# or whose Release run did not succeed, stays a draft.
+#
+# A workflow_run trigger is read from the default branch, so this applies to
+# every tag pushed after it landed there, whichever commit the tag is on.
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish the draft
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the files against their checksums and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+
+          case "$TAG" in v[0-9]*) ;; *) fail "'$TAG' is not a release tag" ;; esac
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" --silent < /dev/null \
+            || fail "there is no tag $TAG"
+
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" < /dev/null \
+            | jq --arg tag "$TAG" '[.[] | select(.tag_name == $tag)]' > found.json
+          [ "$(jq length found.json)" = "1" ] \
+            || fail "expected one release for $TAG, found $(jq length found.json)"
+          jq '.[0]' found.json > release.json
+          if [ "$(jq -r .draft release.json)" != "true" ]; then
+            echo "$TAG is published already; nothing to do."
+            exit 0
+          fi
+
+          jq -r '.assets[] | select(.name | endswith(".sha256") | not) | .name' release.json > names.txt
+          [ -s names.txt ] || fail "the draft for $TAG has no files"
+          while IFS= read -r name; do
+            state=$(jq -r --arg n "$name" '.assets[] | select(.name == $n) | .state' release.json)
+            [ "$state" = "uploaded" ] || fail "$name is not uploaded ($state)"
+            id=$(jq -r --arg n "$name" '.assets[] | select(.name == $n) | .id' release.json)
+            side=$(jq -r --arg n "$name.sha256" '.assets[] | select(.name == $n) | .id' release.json)
+            [ -n "$side" ] || fail "$name has no checksum file beside it"
+            told=$(gh api -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$side" < /dev/null \
+              | awk '{ print tolower($1); exit }')
+            [ "${#told}" = "64" ] || fail "the checksum file of $name is not a SHA-256"
+            # GitHub's own digest of the stored file; computed here where it gives none.
+            digest=$(jq -r --arg n "$name" '.assets[] | select(.name == $n) | .digest // ""' release.json)
+            if [ -z "$digest" ]; then
+              digest="sha256:$(gh api -H "Accept: application/octet-stream" \
+                "repos/$GITHUB_REPOSITORY/releases/assets/$id" < /dev/null | sha256sum | awk '{ print $1 }')"
+            fi
+            [ "$digest" = "sha256:$told" ] || fail "$name does not match its checksum file"
+            echo "ok  $name"
+          done < names.txt
+
+          release_id=$(jq -r .id release.json)
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$release_id" -F draft=false --silent < /dev/null
+          echo "Published $TAG with $(wc -l < names.txt | tr -d ' ') files."
