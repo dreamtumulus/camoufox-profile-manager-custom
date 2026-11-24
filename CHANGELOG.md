@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Draw synthetic Firefox identities directly from Scrapfly's fpgen model and
+  preserve the selected sample's hardware through Camoufox conversion and pinning.
+- Show fpgen or captured real-device selection in the main profile form and every
+  profile row, persist the preset id, and allow deliberate source selection when
+  regenerating a fingerprint.
+
 ### Changed
 - Publish a release by itself once its builds have succeeded. A release made
   by a tag without the `-zhaolusi` suffix used to stay a draft until someone

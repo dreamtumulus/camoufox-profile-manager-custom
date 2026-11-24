@@ -258,7 +258,7 @@ this way either; nothing else in the API writes a profile without a version.
 
 ```http
 POST /api/v1/profiles/{id}/clone              {"new_name": "...", "regenerate_fingerprint": true}
-POST /api/v1/profiles/{id}/reset-fingerprint
+POST /api/v1/profiles/{id}/reset-fingerprint     {"fingerprint_preset": "windows:42"}
 GET  /api/v1/profiles/{id}/stats
 ```
 
@@ -269,8 +269,12 @@ core count and noise seeds forever, which is provably one computer. Pass
 `{"regenerate_fingerprint": false}` to copy the machine as well, and know what you
 are asking for.
 
-`reset-fingerprint` generates new settings **and drops the pinned machine**, so
-the next launch assigns fresh hardware.
+`reset-fingerprint` without a preset draws a new fpgen identity **and drops the
+pinned machine**, so the next launch assigns fresh hardware. Send
+`{"fingerprint_preset": "windows:42"}` to pin that real device immediately;
+`{"fingerprint_preset": null}` explicitly selects fpgen. Profile browser settings
+retain `fingerprint_source` and `fingerprint_preset_id`, and a pinned
+`fingerprint` summary repeats them as `source` and `preset_id`.
 
 ```http
 POST /api/v1/profiles/{id}/refresh-browser

@@ -1,11 +1,13 @@
 # Profile settings
 
-A profile's `browser_settings` control how Camoufox launches the browser. The
-manager sets **high-level constraints** and lets Camoufox generate a consistent
-fingerprint from them — it deliberately does not hand-pick the user agent or WebGL
-renderer, because inconsistent values are easy to detect.
+A profile's `browser_settings` control how Camoufox launches the browser. For
+synthetic identities the manager draws a complete Firefox fingerprint directly
+from [Scrapfly fpgen](https://github.com/scrapfly/fingerprint-generator), then
+Camoufox converts it and applies its coherence checks. The manager does not
+hand-pick a user agent or WebGL renderer, because inconsistent values are easy
+to detect.
 
-This document describes Camoufox **0.5.8 / 156.0.1-beta.36**. See
+This document describes Camoufox **0.5.9 / 158.0.1-beta.41**. See
 [Camoufox compatibility](camoufox-compatibility.md) for the supported pair and
 upgrade procedure. Measurements from older builds are labelled separately.
 
@@ -24,6 +26,8 @@ upgrade procedure. Measurements from older builds are labelled separately.
 | `hardware_concurrency` | int \| null | CPU cores reported to the page                |
 | `device_memory`        | int \| null | Stored intent (not all values map to Camoufox)|
 | `max_touch_points`     | int         | Stored intent; see the limitations below      |
+| `fingerprint_source`   | str \| null | `fpgen`, `preset`, or null for a legacy profile |
+| `fingerprint_preset_id` | str \| null | Selected real-device id, e.g. `windows:42`   |
 | `webrtc_mode`          | str         | `replace`, `real`, `forward`, or `none`       |
 | `webrtc_public_ip`     | str \| null | Public IP reported over WebRTC                |
 | `fonts`                | list \| null| Font families to advertise                    |
@@ -63,9 +67,13 @@ one. Without pinning, the same profile is measurably different hardware each
 session — verified, and guarded by `tests/browser/test_fingerprint_stability.py`.
 
 So the **first launch resolves the fingerprint once and stores it** on the
-profile (the `fingerprint` column). Every later launch replays it. Camoufox fills
-a config key only when it is absent, so a stored value always wins over a freshly
-generated one, and the profile's own overrides still win over both.
+profile (the `fingerprint` column). The raw fpgen draw is held internally until
+then (`fpgen_sample`), so the editable CPU/screen values and the complete identity
+come from the same draw rather than two independent samples; it is cleared after
+a successful pin and is never exposed by the profile API. Every later launch
+replays the pin. Camoufox fills a config key only when it is absent, so a stored
+value always wins over a freshly generated one, and the profile's own overrides
+still win over both.
 
 Only the machine is frozen:
 
@@ -86,8 +94,10 @@ Camoufox 0.5.8 no longer generates those fields. Preserving an old config value
 does not establish that the current engine consumes it, or that native canvas
 pixels are identical on every host.
 
-*Regenerate fingerprint* clears the pin, so the next launch assigns new hardware.
-The pinned values are shown read-only in the profile form.
+*Regenerate fingerprint* uses the source selected in the main **Device fingerprint**
+panel. With fpgen it clears the pin so the next launch assigns new hardware; with
+a real-device preset it pins that device immediately. The current source, preset
+id and pinned values are shown in the profile list and edit form.
 
 ### Keeping a pin from going stale
 

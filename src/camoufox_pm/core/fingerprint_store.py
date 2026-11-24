@@ -163,11 +163,16 @@ def _fill_app_version(pin: dict[str, Any]) -> None:
         pin["navigator.appVersion"] = derived
 
 
-def resolve(launch_options: dict[str, Any], preset: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Ask Camoufox to resolve a full fingerprint for these launch constraints.
+def resolve(
+    launch_options: dict[str, Any],
+    preset: dict[str, Any] | None = None,
+    fpgen_fingerprint: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Resolve a full fpgen or real-device fingerprint for these constraints.
 
-    With a ``preset``, the fingerprint is built from a captured real device
-    instead of being generated synthetically.
+    Synthetic identities are drawn explicitly from Scrapfly's fpgen model here,
+    then passed to Camoufox for conversion and coherence checks. With a ``preset``
+    the captured real device is used instead.
 
     Returns the frozen subset, or an empty dict if Camoufox cannot resolve one
     (it is not installed, or its internals moved). An empty result is not fatal:
@@ -208,6 +213,18 @@ def resolve(launch_options: dict[str, Any], preset: dict[str, Any] | None = None
             constraints["config"] = config
 
     try:
+        if preset is None:
+            from .fingerprint_generator import generate_fpgen_fingerprint
+
+            if fpgen_fingerprint is not None:
+                constraints["fingerprint"] = fpgen_fingerprint
+            elif "fingerprint" not in constraints:
+                constraints["fingerprint"] = generate_fpgen_fingerprint(constraints.get("os"))
+            cores = constraints["fingerprint"].get("navigator", {}).get("hardwareConcurrency")
+            if type(cores) is int and cores > 0:
+                config = dict(constraints.get("config") or {})
+                config.setdefault("navigator.hardwareConcurrency", cores)
+                constraints["config"] = config
         resolved = camoufox_launch_options(**constraints)
         # Windows limits each chunk to 2047 characters; fonts and WebGL data
         # commonly span several chunks. Reassemble the entire config in numeric
@@ -226,7 +243,7 @@ def resolve(launch_options: dict[str, Any], preset: dict[str, Any] | None = None
 
     frozen = freeze(config)
     _fill_app_version(frozen)
-    source = "preset" if preset is not None else "generated"
+    source = "real-device preset" if preset is not None else "fpgen"
     logger.info(f"Pinned a {source} fingerprint with {len(frozen)} properties")
     return frozen
 
@@ -437,7 +454,10 @@ def get_preset(preset_id: str) -> dict[str, Any] | None:
 
 
 def summarize(
-    fingerprint: dict[str, Any] | None, settings_os: str | None = None
+    fingerprint: dict[str, Any] | None,
+    settings_os: str | None = None,
+    source: str | None = None,
+    preset_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Describe a pinned fingerprint in the few values worth showing a user.
 
@@ -472,4 +492,6 @@ def summarize(
         "pinned_os": pinned,
         "settings_os": settings_os,
         "os_mismatch": bool(pinned and settings_os and pinned != settings_os),
+        "source": source,
+        "preset_id": preset_id,
     }

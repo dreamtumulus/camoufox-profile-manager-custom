@@ -906,6 +906,7 @@ export default function ProfilesPage() {
                   </td>
                   <td className="py-2.5 pr-4 text-ink-dim">
                     {OS_LABELS[profile.browser_settings?.os ?? ''] ?? profile.browser_settings?.os}
+                    <FingerprintSource profile={profile} />
                   </td>
                   <td className="py-2.5 pr-4">
                     <StatusCell status={profile.status} running={isRunning} />
@@ -1127,6 +1128,21 @@ export default function ProfilesPage() {
         </p>
       </Modal>
     </>
+  )
+}
+
+function FingerprintSource({ profile }: { profile: Profile }) {
+  const { t } = useI18n()
+  const settings = profile.browser_settings
+  const label = settings.fingerprint_source === 'preset'
+    ? `${t('Real device preset')} · ${settings.fingerprint_preset_id ?? '—'}`
+    : settings.fingerprint_source === 'fpgen'
+      ? 'fpgen · Scrapfly'
+      : t('Automatic (legacy)')
+  return (
+    <div className="mt-0.5 max-w-[220px] truncate font-mono text-[11px] text-ink-faint" title={profile.fingerprint?.gpu ?? label}>
+      {label}
+    </div>
   )
 }
 

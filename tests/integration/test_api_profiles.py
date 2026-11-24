@@ -13,6 +13,8 @@ from camoufox_pm.core.models import UsageStats
 async def test_create_and_get_profile(client):
     created = await client.post("/api/profiles", json={"name": "acct-1"})
     assert created.status_code == 201
+    assert created.json()["browser_settings"]["fingerprint_source"] == "fpgen"
+    assert "fpgen_sample" not in created.json(), "the large raw model draw is internal"
     profile_id = created.json()["id"]
 
     fetched = await client.get(f"/api/profiles/{profile_id}")
@@ -308,6 +310,34 @@ async def test_creating_from_a_preset_pins_that_device(client):
     assert body["fingerprint"]["screen"] == preset["screen"]
     assert body["fingerprint"]["hardware_concurrency"] == preset["hardware_concurrency"]
     assert body["browser_settings"]["os"] == "windows"
+    assert body["browser_settings"]["fingerprint_source"] == "preset"
+    assert body["browser_settings"]["fingerprint_preset_id"] == preset["id"]
+    assert body["fingerprint"]["source"] == "preset"
+    assert body["fingerprint"]["preset_id"] == preset["id"]
+
+
+@pytest.mark.browser
+@pytest.mark.asyncio
+async def test_regenerating_can_select_and_remember_a_real_device(client):
+    if not fingerprint_store.can_resolve():
+        pytest.skip("pinning a preset needs the Camoufox browser on disk")
+    listed = await client.get("/api/fingerprints/presets", params={"os": "linux"})
+    preset = listed.json()["data"]["presets"][0]
+    created = await client.post("/api/profiles", json={"name": "choose-on-regenerate"})
+    profile_id = created.json()["id"]
+
+    regenerated = await client.post(
+        f"/api/profiles/{profile_id}/reset-fingerprint",
+        json={"fingerprint_preset": preset["id"]},
+    )
+
+    assert regenerated.status_code == 200
+    body = regenerated.json()
+    assert body["browser_settings"]["fingerprint_source"] == "preset"
+    assert body["browser_settings"]["fingerprint_preset_id"] == preset["id"]
+    assert body["fingerprint"]["source"] == "preset"
+    assert body["fingerprint"]["preset_id"] == preset["id"]
+    assert body["fingerprint"]["screen"] == preset["screen"]
 
 
 @pytest.mark.browser
@@ -702,6 +732,8 @@ async def test_regenerating_drops_the_pinned_machine(client):
     reset = await client.post(f"/api/profiles/{profile_id}/reset-fingerprint")
     assert reset.status_code == 200
     assert reset.json()["fingerprint"] is None
+    assert reset.json()["browser_settings"]["fingerprint_source"] == "fpgen"
+    assert reset.json()["browser_settings"]["fingerprint_preset_id"] is None
 
 
 @pytest.mark.asyncio

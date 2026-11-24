@@ -173,18 +173,17 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
       setBaseVersion(profile?.row_version ?? 0)
       setMachine(profile?.fingerprint)
       setStoredGeography(profile ? hasGeography(profile) : false)
-      setPresetId('')
+      setPresetId(profile?.browser_settings.fingerprint_preset_id ?? '')
     }
   }, [open, profile])
 
-  // Presets only matter while creating: an existing profile is already pinned.
   useEffect(() => {
-    if (!open || isEdit || presets.length) return
+    if (!open || presets.length) return
     presetsAPI
       .list()
       .then(setPresets)
       .catch(() => setPresets([]))
-  }, [open, isEdit, presets.length])
+  }, [open, presets.length])
 
   const presetsForOs = useMemo(
     () => presets.filter((preset) => preset.os === form.os),
@@ -390,6 +389,7 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
       const updated = await profilesAPI.reconcileOs(profile.id, keepMachine)
       setMachine(updated.fingerprint)
       set('os', updated.browser_settings.os)
+      setPresetId(updated.browser_settings.fingerprint_preset_id ?? '')
       toast(
         'ok',
         keepMachine
@@ -427,9 +427,10 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
     if (!profile) return
     setRegenerating(true)
     try {
-      const updated = await profilesAPI.resetFingerprint(profile.id)
+      const updated = await profilesAPI.resetFingerprint(profile.id, presetId || null)
       setForm(fromProfile(updated))
       setMachine(updated.fingerprint)
+      setPresetId(updated.browser_settings.fingerprint_preset_id ?? '')
       toast('ok', t('Fingerprint regenerated'))
       onSaved()
     } catch (err) {
@@ -517,7 +518,10 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
               id="pf-os"
               className="field"
               value={form.os}
-              onChange={(e) => set('os', e.target.value)}
+              onChange={(e) => {
+                set('os', e.target.value)
+                setPresetId('')
+              }}
             >
               <option value="windows">Windows</option>
               <option value="macos">macOS</option>
@@ -570,6 +574,56 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
             />
+          </div>
+        </Section>
+
+        <Section
+          title={t('Device fingerprint')}
+          hint={t('Choose Scrapfly fpgen generation or a captured real-device preset. The selected machine stays pinned across launches.')}
+        >
+          {isEdit && (
+            <div className="col-span-2">
+              <PinnedMachine
+                fingerprint={machine}
+                onRefreshBrowser={handleRefreshBrowser}
+                refreshing={refreshingBrowser}
+                onReconcileOs={handleReconcileOs}
+                reconciling={reconciling}
+              />
+            </div>
+          )}
+          <div className="col-span-2">
+            <label className="field-label" htmlFor="pf-device-preset">
+              {isEdit ? t('Device for the next regeneration') : t('Real device fingerprint preset')}
+            </label>
+            <select
+              id="pf-device-preset"
+              className="field font-mono"
+              value={presetId}
+              onChange={(event) => setPresetId(event.target.value)}
+            >
+              <option value="">{t('fpgen automatic generation')}</option>
+              {presetId && !presetsForOs.some((preset) => preset.id === presetId) && (
+                <option value={presetId}>{presetId} · {t('Current selection')}</option>
+              )}
+              {presetsForOs.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {[preset.id, preset.screen, t('{count} cores', { count: preset.hardware_concurrency }), shortGpu(preset.gpu)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-ink-faint">
+              {isEdit
+                ? t('Used only when you click Regenerate fingerprint. Saving other changes does not replace the current device.')
+                : t('A preset is a combination captured from a real machine. Automatic mode draws a coherent Firefox identity from the fpgen traffic model.')}
+            </p>
+            {presetsForOs.length > 0 && (
+              <p className="mt-1.5 text-ink-faint">
+                {t('{count} real {os} devices available.', { count: presetsForOs.length, os: OS_LABELS[form.os] ?? form.os })}
+              </p>
+            )}
           </div>
         </Section>
 
@@ -671,45 +725,6 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
             </select>
             <p className="mt-1.5 text-ink-dim">{t('Controls the browser window interface. It does not change the operating system websites see in your fingerprint.')}</p>
           </div>
-        {isEdit ? (
-          <PinnedMachine
-            fingerprint={machine}
-            onRefreshBrowser={handleRefreshBrowser}
-            refreshing={refreshingBrowser}
-            onReconcileOs={handleReconcileOs}
-            reconciling={reconciling}
-          />
-        ) : (
-          <fieldset>
-            <legend className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-faint">
-              {t('Machine')}
-      </legend>
-            <p className="mb-2.5 text-ink-faint">
-              {t('A generated fingerprint is internally consistent; a preset is a combination that genuinely exists. Either way the profile keeps it for good.')}
-            </p>
-            <select
-              className="field"
-              value={presetId}
-              onChange={(event) => setPresetId(event.target.value)}
-              aria-label={t('Device preset')}
-            >
-              <option value="">{t('Generate one automatically')}</option>
-              {presetsForOs.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {[preset.screen, t('{count} cores', { count: preset.hardware_concurrency }), shortGpu(preset.gpu)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </option>
-              ))}
-            </select>
-            {presetsForOs.length > 0 && (
-              <p className="mt-1.5 text-ink-faint">
-                {t('{count} real {os} devices available.', { count: presetsForOs.length, os: OS_LABELS[form.os] ?? form.os })}
-              </p>
-            )}
-          </fieldset>
-        )}
-
         <Section
           title={t('Fingerprint')}
           hint={t('Camoufox keeps the fingerprint internally consistent; only override what you need.')}
@@ -948,6 +963,15 @@ function PinnedMachine({
   }
 
   const rows: [string, string | number | null | undefined][] = [
+    [
+      t('Generation source'),
+      fingerprint.source === 'preset'
+        ? t('Real device preset')
+        : fingerprint.source === 'fpgen'
+          ? 'fpgen (Scrapfly)'
+          : null,
+    ],
+    [t('Device preset'), fingerprint.preset_id],
     [t('Browser'), fingerprint.browser_major ? `Firefox ${fingerprint.browser_major}` : null],
     [t('Screen'), fingerprint.screen],
     [t('CPU cores'), fingerprint.hardware_concurrency],

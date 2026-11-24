@@ -60,6 +60,14 @@ class ProfileCreateRequest(BaseModel):
     )
 
 
+class ProfileResetFingerprintRequest(BaseModel):
+    """Optional real-device selection for fingerprint regeneration."""
+
+    fingerprint_preset: str | None = Field(
+        None, description="Preset id from GET /api/v1/fingerprints/presets; null uses fpgen."
+    )
+
+
 class ProfileUpdateRequest(BaseModel):
     """Request body for updating a profile."""
 
@@ -238,6 +246,8 @@ class ProfileResponse(BaseModel):
             fingerprint=fingerprint_store.summarize(
                 profile.fingerprint,
                 profile.browser_settings.os if profile.browser_settings else None,
+                profile.browser_settings.fingerprint_source if profile.browser_settings else None,
+                profile.browser_settings.fingerprint_preset_id if profile.browser_settings else None,
             ),
             proxy_check=(
                 profile.proxy_check

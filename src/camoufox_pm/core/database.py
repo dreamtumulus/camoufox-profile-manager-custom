@@ -109,6 +109,7 @@ class DatabaseManager:
             "proxy_inventory": [("group_name", "TEXT")],
             "profiles": [
                 ("fingerprint", "TEXT"),
+                ("fpgen_sample", "TEXT"),
                 ("proxy_check", "TEXT"),
                 # Lease columns (see core/leases.py). NULL means free, which is
                 # what an existing row gets when the column is added — every
@@ -194,6 +195,7 @@ class DatabaseManager:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_used TIMESTAMP,
                 fingerprint TEXT,
+                fpgen_sample TEXT,
                 proxy_check TEXT,
                 locked_by TEXT,
                 lock_expires TIMESTAMP,
@@ -339,6 +341,7 @@ class DatabaseManager:
             json.dumps(profile.fingerprint) if profile.fingerprint else None,
             profile.proxy_check.model_dump_json() if profile.proxy_check else None,
             json.dumps(profile.tags, ensure_ascii=False),
+            json.dumps(profile.fpgen_sample) if profile.fpgen_sample else None,
         )
 
     def _upsert_profile(self, profile: Profile) -> None:
@@ -358,8 +361,8 @@ class DatabaseManager:
             INSERT INTO profiles (
                 id, name, group_id, status, browser_settings, proxy_config,
                 extensions, storage_path, notes, created_at, updated_at, last_used,
-                fingerprint, proxy_check, tags, email_allowed
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                fingerprint, proxy_check, tags, fpgen_sample, email_allowed
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 group_id = excluded.group_id,
@@ -374,7 +377,8 @@ class DatabaseManager:
                 last_used = excluded.last_used,
                 fingerprint = excluded.fingerprint,
                 proxy_check = excluded.proxy_check,
-                tags = excluded.tags
+                tags = excluded.tags,
+                fpgen_sample = excluded.fpgen_sample
         """,
             self._profile_columns(profile),
         )
@@ -391,8 +395,8 @@ class DatabaseManager:
                 """INSERT INTO profiles (
                     id, name, group_id, status, browser_settings, proxy_config,
                     extensions, storage_path, notes, created_at, updated_at, last_used,
-                    fingerprint, proxy_check, tags, email_allowed
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    fingerprint, proxy_check, tags, fpgen_sample, email_allowed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                 ON CONFLICT(id) DO NOTHING""",
                 self._profile_columns(profile),
             )
@@ -438,7 +442,7 @@ class DatabaseManager:
                 name = ?, group_id = ?, status = ?, browser_settings = ?,
                 proxy_config = ?, extensions = ?, storage_path = ?, notes = ?,
                 created_at = ?, updated_at = ?, last_used = ?, fingerprint = ?,
-                proxy_check = ?, tags = ?, row_version = row_version + 1
+                proxy_check = ?, tags = ?, fpgen_sample = ?, row_version = row_version + 1
             WHERE id = ? AND row_version = ? AND deleted_at IS NULL
             """,
             (*self._profile_columns(profile)[1:], profile.id, expected_row_version),
@@ -509,22 +513,28 @@ class DatabaseManager:
         self._connection.commit()
 
     async def set_launch_pin(
-        self, profile_id: str, fingerprint: dict | None, last_used: datetime
+        self,
+        profile_id: str,
+        fingerprint: dict | None,
+        last_used: datetime,
+        fpgen_sample: dict | None = None,
     ) -> None:
-        """Write only what a launch owns: the pinned machine and the timestamp.
+        """Write only what a launch owns: the pin, pending sample and timestamp.
 
         A targeted write for the same reason as ``set_proxy_check``. A launch
         resolves a fingerprint, which can fetch the uBlock addon over the
         network on a fresh install, and writing a whole Profile back after that
-        would revert anything edited while it ran. Naming the two columns a
+        would revert anything edited while it ran. Naming only the columns a
         launch actually owns removes the hazard rather than guarding against it,
         and leaves the row's version alone: starting a browser is not an edit of
         the profile, so it must not make a concurrent editor's save go stale.
         """
         self._connection.execute(
-            "UPDATE profiles SET fingerprint = ?, last_used = ?, updated_at = ? WHERE id = ?",
+            "UPDATE profiles SET fingerprint = ?, fpgen_sample = ?, last_used = ?, "
+            "updated_at = ? WHERE id = ?",
             (
                 json.dumps(fingerprint) if fingerprint else None,
+                json.dumps(fpgen_sample) if fpgen_sample else None,
                 last_used.isoformat(),
                 last_used.isoformat(),
                 profile_id,
@@ -1325,6 +1335,11 @@ class DatabaseManager:
         fingerprint = (
             json.loads(row["fingerprint"]) if "fingerprint" in keys and row["fingerprint"] else None
         )
+        fpgen_sample = (
+            json.loads(row["fpgen_sample"])
+            if "fpgen_sample" in keys and row["fpgen_sample"]
+            else None
+        )
         stored_check = None
         if "proxy_check" in keys and row["proxy_check"]:
             try:
@@ -1352,6 +1367,7 @@ class DatabaseManager:
             updated_at=datetime.fromisoformat(row["updated_at"]),
             last_used=datetime.fromisoformat(row["last_used"]) if row["last_used"] else None,
             fingerprint=fingerprint,
+            fpgen_sample=fpgen_sample,
             proxy_check=stored_check,
             row_version=row["row_version"],
             deleted_at=datetime.fromisoformat(row["deleted_at"]) if row["deleted_at"] else None,
@@ -1396,9 +1412,13 @@ class StorageManager:
         await self.db.set_proxy_check(profile_id, record)
 
     async def set_launch_pin(
-        self, profile_id: str, fingerprint: dict | None, last_used: datetime
+        self,
+        profile_id: str,
+        fingerprint: dict | None,
+        last_used: datetime,
+        fpgen_sample: dict | None = None,
     ) -> None:
-        await self.db.set_launch_pin(profile_id, fingerprint, last_used)
+        await self.db.set_launch_pin(profile_id, fingerprint, last_used, fpgen_sample)
 
     async def delete_profile(self, profile_id: str) -> bool:
         return await self.db.delete_profile(profile_id)

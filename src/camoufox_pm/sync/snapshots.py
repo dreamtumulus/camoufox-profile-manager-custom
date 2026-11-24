@@ -87,6 +87,7 @@ class PortableProfile(_Strict):
     browser_settings: dict[str, Any]
     proxy: dict[str, Any] | None = None
     fingerprint: dict[str, Any] | None = None
+    fpgen_sample: dict[str, Any] | None = None
 
     @field_validator("browser_settings")
     @classmethod
@@ -224,6 +225,7 @@ def _metadata(profile: Profile, compatibility: Compatibility, files) -> Snapshot
             browser_settings=profile.browser_settings.model_dump(mode="json"),
             proxy=profile.proxy.model_dump(mode="json") if profile.proxy else None,
             fingerprint=profile.fingerprint,
+            fpgen_sample=profile.fpgen_sample,
         ),
         files=files,
     )

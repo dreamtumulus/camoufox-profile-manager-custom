@@ -94,6 +94,41 @@ class ProfileManager:
         self.browser_sessions.start_heartbeat()
         logger.info("ProfileManager initialized")
 
+    def _pin_to_preset(
+        self, profile: Profile, fingerprint_preset: str, asked_for: set[str]
+    ) -> None:
+        preset = fingerprint_store.get_preset(fingerprint_preset)
+        if preset is None:
+            raise ValueError(f"Unknown fingerprint preset: {fingerprint_preset}")
+        if not fingerprint_store.can_resolve():
+            raise ValueError(
+                "The Camoufox browser is required to pin a device preset. "
+                "Run 'camoufox fetch', then create the profile."
+            )
+
+        preset_os = fingerprint_preset.split(":", 1)[0]
+        if preset_os in ("windows", "macos", "linux"):
+            profile.browser_settings.os = preset_os
+
+        # The preset supplies the hardware unless the caller explicitly overrides it.
+        described = fingerprint_store.describe_preset(preset)
+        if "hardware_concurrency" not in asked_for:
+            profile.browser_settings.hardware_concurrency = None
+        if "screen" not in asked_for and described.get("screen"):
+            profile.browser_settings.screen = described["screen"]
+
+        profile.fingerprint = fingerprint_store.resolve(
+            profile.to_camoufox_launch_options(), preset=preset
+        )
+        if not profile.fingerprint:
+            raise ValueError(
+                f"Could not pin the device for preset {fingerprint_preset}. "
+                "No change was saved; see the server log for the cause."
+            )
+        profile.browser_settings.fingerprint_source = "preset"
+        profile.browser_settings.fingerprint_preset_id = fingerprint_preset
+        profile.fpgen_sample = None
+
     async def create_profile(
         self,
         name: str,
@@ -125,8 +160,9 @@ class ProfileManager:
 
         # Generate a browser fingerprint if requested
         if generate_fingerprint:
-            fingerprint = await self.fingerprint_generator.generate_fingerprint(browser_settings)
+            fingerprint, sample = await self.fingerprint_generator.generate_device(browser_settings)
             profile.browser_settings = fingerprint
+            profile.fpgen_sample = sample
 
         # Apply user-provided browser settings over the generated fingerprint.
         if browser_settings:
@@ -150,49 +186,10 @@ class ProfileManager:
             profile.proxy.validate_authentication()
 
         # Pin a real device now, if one was chosen. Otherwise the first launch
-        # pins a generated fingerprint instead.
+        # pins an explicitly generated fpgen fingerprint instead.
         if fingerprint_preset:
-            preset = fingerprint_store.get_preset(fingerprint_preset)
-            if preset is None:
-                raise ValueError(f"Unknown fingerprint preset: {fingerprint_preset}")
-            # The catalogue can be read without the browser, but pinning a device
-            # cannot. Say so instead of quietly creating the profile and letting
-            # its first launch generate a different machine than the one chosen.
-            if not fingerprint_store.can_resolve():
-                raise ValueError(
-                    "The Camoufox browser is required to pin a device preset. "
-                    "Run 'camoufox fetch', then create the profile."
-                )
-
-            # A preset carries its own OS; keep the profile's setting in step so
-            # the two cannot describe different machines.
-            preset_os = fingerprint_preset.split(":", 1)[0]
-            if preset_os in ("windows", "macos", "linux"):
-                profile.browser_settings.os = preset_os
-
-            # The preset *is* the hardware, so generated values must not override
-            # it — an explicit hardware_concurrency wins over the preset's own and
-            # would give the profile a CPU count the real device never had. Values
-            # the caller asked for are still honoured.
             asked_for = set(browser_settings) if isinstance(browser_settings, dict) else set()
-            described = fingerprint_store.describe_preset(preset)
-            if "hardware_concurrency" not in asked_for:
-                profile.browser_settings.hardware_concurrency = None
-            if "screen" not in asked_for and described.get("screen"):
-                profile.browser_settings.screen = described["screen"]
-
-            profile.fingerprint = fingerprint_store.resolve(
-                profile.to_camoufox_launch_options(), preset=preset
-            )
-            # can_resolve() only rules out a missing browser; resolution can still
-            # fail for other reasons. Check the result, not a proxy for it —
-            # otherwise the profile is created unpinned and its first launch
-            # quietly assigns a generated machine instead of the chosen device.
-            if not profile.fingerprint:
-                raise ValueError(
-                    f"Could not pin the device for preset {fingerprint_preset}. "
-                    "The profile was not created; see the server log for the cause."
-                )
+            self._pin_to_preset(profile, fingerprint_preset, asked_for)
 
         # Create the profile data directory
         profile_dir = Path(profile.get_storage_path(str(self.profiles_dir)))
@@ -523,8 +520,9 @@ class ProfileManager:
 
         # Generate a new fingerprint if requested
         if regenerate_fingerprint:
-            fingerprint = await self.fingerprint_generator.generate_fingerprint()
+            fingerprint, sample = await self.fingerprint_generator.generate_device()
             new_profile.browser_settings = fingerprint
+            new_profile.fpgen_sample = sample
             # And drop the pinned machine, which the copy above brought along.
             # Without this the clone reported the same GPU, screen, core count
             # and noise seeds as its source for the rest of its life: two
@@ -568,21 +566,27 @@ class ProfileManager:
         return new_profile
 
     @sync_mutation_guard
-    async def rotate_profile_fingerprint(self, profile_id: str) -> Profile | None:
-        """Rotate a profile's fingerprint."""
+    async def rotate_profile_fingerprint(
+        self, profile_id: str, fingerprint_preset: str | None = None
+    ) -> Profile | None:
+        """Rotate a profile's fingerprint using fpgen or a selected real device."""
         logger.info(f"Rotating fingerprint for profile {profile_id}")
 
         profile = await self.get_profile(profile_id)
         if not profile:
             return None
 
-        # Generate a new fingerprint
-        new_fingerprint = await self.fingerprint_generator.generate_fingerprint()
-        profile.browser_settings = new_fingerprint
-        # Drop the pinned machine too, otherwise the profile would keep the old
-        # hardware forever and only its high-level settings would change. The
-        # next launch resolves and pins a new one.
-        profile.fingerprint = None
+        if fingerprint_preset:
+            self._pin_to_preset(profile, fingerprint_preset, set())
+            new_fingerprint = profile.browser_settings
+        else:
+            new_fingerprint, sample = await self.fingerprint_generator.generate_device()
+            profile.browser_settings = new_fingerprint
+            profile.fpgen_sample = sample
+            # Drop the pinned machine too, otherwise the profile would keep the old
+            # hardware forever and only its high-level settings would change. The
+            # next launch resolves and pins a new one.
+            profile.fingerprint = None
         profile.updated_at = datetime.now()
 
         # Persist the change
@@ -859,6 +863,9 @@ class ProfileManager:
                     "Check that Camoufox is installed ('camoufox fetch')."
                 )
             profile.fingerprint = resolved
+            profile.browser_settings.fingerprint_source = "fpgen"
+            profile.browser_settings.fingerprint_preset_id = None
+            profile.fpgen_sample = None
             # The stored screen described the machine that has just been replaced.
             width, height = resolved.get("screen.width"), resolved.get("screen.height")
             if width and height:
@@ -1108,9 +1115,10 @@ class ProfileManager:
                 # names only the columns a launch owns, so there is nothing left
                 # for an await to clobber; moving this off the event loop is a
                 # separate change, and this comment is the note that it is safe.
-                pinned = fingerprint_store.resolve(options)
+                pinned = fingerprint_store.resolve(options, fpgen_fingerprint=profile.fpgen_sample)
                 if pinned:
                     profile.fingerprint = pinned
+                    profile.fpgen_sample = None
             if pinned:
                 options["config"] = {**pinned, **options.get("config", {})}
 
@@ -1120,7 +1128,9 @@ class ProfileManager:
             # a concurrent editor is holding. Starting a browser is not an edit.
             profile.last_used = datetime.now()
             profile.updated_at = profile.last_used
-            await self.storage.set_launch_pin(profile_id, profile.fingerprint, profile.last_used)
+            await self.storage.set_launch_pin(
+                profile_id, profile.fingerprint, profile.last_used, profile.fpgen_sample
+            )
 
             await self.storage.log_usage(
                 UsageStats(

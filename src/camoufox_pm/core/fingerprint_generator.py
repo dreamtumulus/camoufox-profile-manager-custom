@@ -1,29 +1,35 @@
-"""Browser fingerprint generator.
+"""Generate Firefox device fingerprints with Scrapfly's Bayesian fpgen model."""
 
-Produces high-level constraints only (os, screen, region-derived locale,
-timezone and geolocation, and hardware characteristics). Camoufox owns the
-concrete fingerprint — user-agent, WebGL, canvas and fonts — so those are never
-hand-crafted here; doing so would break the fingerprint's internal consistency.
-"""
-
+import asyncio
 import random
 from typing import Any
 
 from .models import BrowserSettings
 
+_FPGEN_OS = {"windows": "Windows", "macos": "MacOS", "linux": "Linux"}
+_FPGEN_TO_CAMOUFOX_OS = {value.lower(): key for key, value in _FPGEN_OS.items()}
+
+
+def generate_fpgen_fingerprint(os_name: str | list[str] | tuple[str, ...] | None = None) -> dict:
+    """Draw one complete Firefox fingerprint, optionally constrained by OS."""
+    import fpgen
+
+    conditions: dict[str, Any] = {"browser": "Firefox"}
+    if isinstance(os_name, str):
+        conditions["os"] = _FPGEN_OS.get(os_name, os_name)
+    elif os_name:
+        conditions["os"] = tuple(_FPGEN_OS.get(name, name) for name in os_name)
+    return fpgen.generate(conditions)
+
+
+def _integer(value: Any) -> int | None:
+    return value if type(value) is int else None
+
 
 class FingerprintGenerator:
-    """Generate realistic, Camoufox-friendly browser constraints."""
+    """Generate realistic, Camoufox-friendly browser constraints with fpgen."""
 
     def __init__(self) -> None:
-        # Realistic screen resolutions per operating system.
-        self.os_screen_combinations = {
-            "windows": ["1920x1080", "1366x768", "1536x864", "1440x900", "1600x900", "2560x1440"],
-            "macos": ["1440x900", "1680x1050", "1920x1080", "2560x1600", "2880x1800", "3840x2160"],
-            "linux": ["1920x1080", "1366x768", "1280x1024", "1600x900", "1440x900", "2560x1440"],
-        }
-
-        # Language sets per region.
         self.language_sets = {
             "us": ["en-US", "en"],
             "uk": ["en-GB", "en"],
@@ -35,8 +41,6 @@ class FingerprintGenerator:
             "china": ["zh-CN", "zh", "en"],
             "japan": ["ja-JP", "ja", "en"],
         }
-
-        # Locale per region.
         self.locale_map = {
             "us": "en_US",
             "uk": "en_GB",
@@ -48,7 +52,6 @@ class FingerprintGenerator:
             "china": "zh_CN",
             "japan": "ja_JP",
         }
-
         self.timezone_map = {
             "us": "America/New_York",
             "uk": "Europe/London",
@@ -60,7 +63,6 @@ class FingerprintGenerator:
             "china": "Asia/Shanghai",
             "japan": "Asia/Tokyo",
         }
-
         self.coords_map = {
             "us": {"lat": 40.7128, "lon": -74.0060},
             "uk": {"lat": 51.5074, "lon": -0.1278},
@@ -73,49 +75,44 @@ class FingerprintGenerator:
             "japan": {"lat": 35.6762, "lon": 139.6503},
         }
 
-        # Realistic (cores, memory GB) hardware pairs.
-        self.hardware_specs = [
-            {"cores": 2, "memory": 4},
-            {"cores": 4, "memory": 8},
-            {"cores": 6, "memory": 8},
-            {"cores": 8, "memory": 16},
-            {"cores": 12, "memory": 16},
-            {"cores": 16, "memory": 32},
-        ]
-
     async def generate_fingerprint(
         self, constraints: dict[str, Any] | BrowserSettings | None = None
     ) -> BrowserSettings:
-        """Generate a set of high-level browser constraints."""
+        """Draw a coherent fpgen sample and retain its user-editable constraints."""
+        settings, _ = await self.generate_device(constraints)
+        return settings
+
+    async def generate_device(
+        self, constraints: dict[str, Any] | BrowserSettings | None = None
+    ) -> tuple[BrowserSettings, dict]:
+        """Return settings and the same raw sample to resolve on the first launch."""
         if isinstance(constraints, BrowserSettings):
             constraints = constraints.model_dump()
 
-        os_choice = (constraints or {}).get("os") or random.choice(["windows", "macos", "linux"])
-        region = (constraints or {}).get("region")
+        requested = constraints or {}
+        fingerprint = await asyncio.to_thread(generate_fpgen_fingerprint, requested.get("os"))
+        navigator = fingerprint.get("navigator") or {}
+        screen = fingerprint.get("screen") or {}
+        width, height = _integer(screen.get("width")), _integer(screen.get("height"))
+        os_name = _FPGEN_TO_CAMOUFOX_OS.get(str(fingerprint.get("os", "")).lower())
+        if os_name is None:
+            os_name = requested.get("os") or "windows"
 
-        screen = random.choice(self.os_screen_combinations[os_choice])
-        hardware = random.choice(self.hardware_specs)
-
-        # A new profile is a machine, not a place. Where it appears to be comes
-        # from its proxy: Camoufox derives the timezone, the coordinates and the
-        # WebRTC address from the exit address, but only for the values a profile
-        # leaves unset. Picking a random country here — as this used to — gave
-        # every new profile a timezone and coordinates that contradicted whatever
-        # proxy it was later given, and coordinates additionally turn the whole
-        # IP lookup off. Geography is pinned only when a region is asked for.
         settings = BrowserSettings(
-            os=os_choice,
-            screen=screen,
-            hardware_concurrency=hardware["cores"],
-            device_memory=hardware["memory"],
-            max_touch_points=0,  # desktop operating systems only
+            os=os_name,
+            screen=f"{width}x{height}" if width and height else "1920x1080",
+            hardware_concurrency=_integer(navigator.get("hardwareConcurrency")),
+            device_memory=_integer(navigator.get("deviceMemory")),
+            max_touch_points=_integer(navigator.get("maxTouchPoints")) or 0,
+            fingerprint_source="fpgen",
         )
+        region = requested.get("region")
         if region:
             settings.languages = self.language_sets.get(region, ["en-US", "en"])
             settings.locale = self.locale_map.get(region, "en_US")
             settings.timezone = self.timezone_map.get(region, "UTC")
             settings.geolocation = self._geolocation_for_region(region)
-        return settings
+        return settings, fingerprint
 
     async def reset_fingerprint(self, profile_id: str) -> BrowserSettings:
         """Regenerate a fingerprint from scratch."""

@@ -46,6 +46,7 @@ from camoufox_pm.api.models.profiles import (
     ProfileLaunchRequest,
     ProfileLaunchResponse,
     ProfileListResponse,
+    ProfileResetFingerprintRequest,
     ProfileResponse,
     ProfileStatsResponse,
     ProfileUpdateRequest,
@@ -930,7 +931,9 @@ async def import_profile(
     summary="Reset the fingerprint.",
     description="Fully regenerate the browser fingerprint for a profile.",
 )
-async def reset_profile_fingerprint(profile_id: str):
+async def reset_profile_fingerprint(
+    profile_id: str, request: ProfileResetFingerprintRequest | None = None
+):
     """Reset and regenerate a profile's fingerprint."""
     await require_profile_access(profile_id, "edit")
     try:
@@ -942,7 +945,9 @@ async def reset_profile_fingerprint(profile_id: str):
             raise HTTPException(status_code=404, detail=f"Profile with ID {profile_id} not found")
 
         # Regenerate the fingerprint
-        updated_profile = await profile_manager.rotate_profile_fingerprint(profile_id)
+        updated_profile = await profile_manager.rotate_profile_fingerprint(
+            profile_id, fingerprint_preset=request.fingerprint_preset if request else None
+        )
         if not updated_profile:
             raise HTTPException(status_code=404, detail=f"Profile with ID {profile_id} not found")
 
@@ -956,6 +961,10 @@ async def reset_profile_fingerprint(profile_id: str):
         # Let it reach the app-level handler, which renders it as 409. The
         # catch-all below would otherwise report a conflict as a server fault.
         raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400, detail=str(e) if is_admin() else "Profile operation failed"
+        ) from e
     except Exception as e:
         logger.error(f"Failed to reset fingerprint for profile {profile_id}: {e}")
         raise HTTPException(

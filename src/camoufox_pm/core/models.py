@@ -150,6 +150,11 @@ class BrowserSettings(BaseModel):
     device_memory: int | None = None
     max_touch_points: int = 0
 
+    # Generation metadata is stored with the profile so every view can identify
+    # the selected source even after the preset catalogue changes.
+    fingerprint_source: Literal["fpgen", "preset"] | None = None
+    fingerprint_preset_id: str | None = Field(default=None, max_length=32)
+
     # Fingerprint noise preferences. Camoufox applies canvas/WebGL/audio spoofing
     # itself; these flags are stored intent and are not forwarded as config keys.
     canvas_noise: bool = True
@@ -332,6 +337,9 @@ class Profile(BaseModel):
     # replayed from then on so the profile does not look like new hardware every
     # session. See core/fingerprint_store.py for what is frozen and what is not.
     fingerprint: dict[str, Any] | None = None
+    # Raw fpgen draw awaiting its first resolution. Kept out of API responses;
+    # cleared once the corresponding Camoufox pin has been saved.
+    fpgen_sample: dict[str, Any] | None = None
 
     # The last time this profile's proxy was checked, so the list can show it
     # without checking again. Cleared when the proxy changes: an answer from the

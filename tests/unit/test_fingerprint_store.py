@@ -1,8 +1,19 @@
 """What gets frozen into a profile's identity, and what must stay dynamic."""
 
+import fpgen
 import pytest
 
 from camoufox_pm.core import fingerprint_store
+
+
+@pytest.fixture(autouse=True)
+def synthetic_fpgen_sample(monkeypatch):
+    monkeypatch.setattr(
+        fpgen,
+        "generate",
+        lambda _conditions: {"browser": "Firefox", "os": "Windows", "navigator": {}},
+    )
+
 
 RESOLVED = {
     # Hardware — must be frozen so the profile is the same machine every time.
@@ -484,3 +495,78 @@ def test_resolve_never_pins_an_incomplete_chunked_identity(monkeypatch, env):
 
     monkeypatch.setattr(utils, "launch_options", lambda **options: {"env": env})
     assert fingerprint_store.resolve({}) == {}
+
+
+
+def test_resolve_draws_firefox_from_fpgen_and_passes_it_to_camoufox(monkeypatch):
+    import json
+
+    from camoufox import utils
+
+    sample = {"browser": "Firefox", "os": "MacOS", "navigator": {"hardwareConcurrency": 12}}
+    conditions = []
+
+    def generate(received):
+        conditions.append(received)
+        return sample
+
+    def resolve_options(**options):
+        assert options["fingerprint"] is sample
+        assert options["config"]["navigator.hardwareConcurrency"] == 12
+        config = {
+            "navigator.platform": "MacIntel",
+            "navigator.hardwareConcurrency": 12,
+            "screen.width": 1440,
+        }
+        return {"env": {"CAMOU_CONFIG_1": json.dumps(config)}}
+
+    monkeypatch.setattr(fpgen, "generate", generate)
+    monkeypatch.setattr(utils, "launch_options", resolve_options)
+
+    pinned = fingerprint_store.resolve({"os": "macos"})
+
+    assert conditions == [{"browser": "Firefox", "os": "MacOS"}]
+    assert pinned["navigator.platform"] == "MacIntel"
+
+
+def test_resolve_does_not_replace_a_caller_supplied_fpgen_sample(monkeypatch):
+    import json
+
+    from camoufox import utils
+
+    sample = {"browser": "Firefox", "os": "Windows", "navigator": {}}
+
+    def resolve_options(**options):
+        assert options["fingerprint"] is sample
+        return {"env": {"CAMOU_CONFIG_1": json.dumps({"screen.width": 1920})}}
+
+    monkeypatch.setattr(utils, "launch_options", resolve_options)
+    monkeypatch.setattr(
+        fpgen,
+        "generate",
+        lambda _conditions: pytest.fail("a supplied sample must not be regenerated"),
+    )
+
+    assert fingerprint_store.resolve({"fingerprint": sample})["screen.width"] == 1920
+
+
+
+def test_explicit_cpu_override_beats_the_fpgen_sample(monkeypatch):
+    import json
+
+    from camoufox import utils
+
+    sample = {"browser": "Firefox", "os": "Windows", "navigator": {"hardwareConcurrency": 12}}
+    original = {"navigator.hardwareConcurrency": 16}
+
+    def resolve_options(**options):
+        assert options["config"]["navigator.hardwareConcurrency"] == 16
+        assert options["config"] is not original
+        return {"env": {"CAMOU_CONFIG_1": json.dumps(options["config"])}}
+
+    monkeypatch.setattr(fpgen, "generate", lambda _conditions: sample)
+    monkeypatch.setattr(utils, "launch_options", resolve_options)
+
+    pinned = fingerprint_store.resolve({"config": original})
+    assert pinned["navigator.hardwareConcurrency"] == 16
+    assert original == {"navigator.hardwareConcurrency": 16}

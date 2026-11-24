@@ -290,19 +290,29 @@ async def test_the_profiles_own_settings_still_beat_the_pin(profile_manager, lau
 @pytest.mark.asyncio
 async def test_the_first_launch_pins_the_machine_it_resolved(profile_manager, monkeypatch):
     resolved = {"navigator.platform": "Win32", "screen.width": 1920}
+    received = {}
 
     async def fake_launch(profile_id, options, on_exit=None):
         profile_manager.browser_sessions.active_sessions[profile_id] = object()
         return type("S", (), {"process_id": None})()
 
+    def fake_resolve(options, preset=None, fpgen_fingerprint=None):
+        received["sample"] = fpgen_fingerprint
+        return resolved
+
     monkeypatch.setattr(profile_manager.browser_sessions, "launch", fake_launch)
-    monkeypatch.setattr(pm_module.fingerprint_store, "resolve", lambda *_a, **_k: resolved)
+    monkeypatch.setattr(pm_module.fingerprint_store, "resolve", fake_resolve)
     profile = await profile_manager.create_profile(name="p")
+    sample = profile.fpgen_sample
+    assert sample is not None
+    assert (await profile_manager.get_profile(profile.id)).fpgen_sample == sample
 
     await profile_manager.launch_browser(profile.id)
 
     stored = await profile_manager.get_profile(profile.id)
+    assert received["sample"] == sample
     assert stored.fingerprint == resolved
+    assert stored.fpgen_sample is None
     assert stored.last_used is not None
 
 

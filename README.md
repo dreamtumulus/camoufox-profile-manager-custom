@@ -34,8 +34,13 @@ from it in January still looks like the same computer in June.
   it; every launch after replays it. Location, timezone and WebRTC stay dynamic
   so they keep following the proxy. See
   [docs/profile-settings.md](docs/profile-settings.md).
-- **Real device fingerprints.** Create a profile from one of the 312 fingerprints
-  Camoufox captured from actual machines, instead of a synthetic one.
+- **Scrapfly fpgen generation.** Synthetic profiles draw a complete Firefox
+  identity directly from the Bayesian fpgen traffic model, then Camoufox applies
+  its conversion and coherence checks before the identity is pinned.
+- **Real device fingerprints.** Choose one of the 312 fingerprints Camoufox
+  captured from actual machines in the main **Device fingerprint** panel. Every
+  profile row and edit form shows whether it uses fpgen or a real-device preset,
+  including the preset id; regeneration can switch sources deliberately.
 - **Profiles and groups** — create, edit, clone, delete, search, filter, bulk
   actions, and grouping by client or purpose. A clone gets its own machine by
   default: two profiles sharing one fingerprint are provably one computer.
@@ -312,8 +317,8 @@ src/camoufox_pm/
 │   ├── database.py          SQLite storage and migrations
 │   ├── profile_manager.py   profile lifecycle and browser control
 │   ├── browser_session.py   running browsers
-│   ├── fingerprint_store.py pinning, refreshing, and the real device presets
-│   ├── fingerprint_generator.py  the high-level constraints a new profile starts from
+│   ├── fingerprint_store.py direct fpgen resolution, pinning and real device presets
+│   ├── fingerprint_generator.py  fpgen-derived constraints for a new profile
 │   ├── proxy_check.py       where a proxy exits, and whether the profile agrees
 │   ├── scheduler.py         scheduled launches and browser refreshes
 │   ├── profile_archive.py   whole-profile export and import

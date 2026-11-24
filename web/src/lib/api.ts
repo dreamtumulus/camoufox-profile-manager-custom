@@ -32,6 +32,8 @@ export interface BrowserSettings {
   hardware_concurrency?: number | null
   device_memory?: number | null
   max_touch_points?: number
+  fingerprint_source?: 'fpgen' | 'preset' | null
+  fingerprint_preset_id?: string | null
   webrtc_mode?: string
   /** Keep the canvas reproducible across launches, at the cost of cross-site unlinkability. */
   stable_canvas?: boolean
@@ -69,6 +71,8 @@ export interface FingerprintSummary {
   settings_os?: string | null
   /** The setting names one operating system and the pinned machine another. */
   os_mismatch?: boolean
+  source?: 'fpgen' | 'preset' | null
+  preset_id?: string | null
 }
 
 export interface Profile {
@@ -436,8 +440,11 @@ export const profilesAPI = {
     return request<unknown>(`${API_PREFIX}/profiles/${id}/close`, { method: 'POST' })
   },
 
-  resetFingerprint(id: string): Promise<Profile> {
-    return request<Profile>(`${API_PREFIX}/profiles/${id}/reset-fingerprint`, { method: 'POST' })
+  resetFingerprint(id: string, fingerprintPreset: string | null = null): Promise<Profile> {
+    return request<Profile>(`${API_PREFIX}/profiles/${id}/reset-fingerprint`, {
+      method: 'POST',
+      body: JSON.stringify({ fingerprint_preset: fingerprintPreset }),
+    })
   },
 
   refreshBrowserVersion(id: string): Promise<Profile> {

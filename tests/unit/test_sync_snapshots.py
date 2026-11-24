@@ -68,6 +68,7 @@ def test_round_trip_preserves_identity_and_only_portable_metadata(area, compat):
         extensions=[],
         notes="Private note",
         fingerprint={"navigator.hardwareConcurrency": 8},
+        fpgen_sample={"navigator": {"hardwareConcurrency": 8}},
         proxy=ProxyConfig(
             type=ProxyType.SOCKS5,
             server="proxy.invalid:1080",
@@ -81,6 +82,7 @@ def test_round_trip_preserves_identity_and_only_portable_metadata(area, compat):
     assert built == decoded
     assert (root / "stage/data/cookies.sqlite").read_bytes() == b"opaque browser cookies"
     assert decoded.profile.proxy["password"] == "private-password"
+    assert decoded.profile.fpgen_sample == {"navigator": {"hardwareConcurrency": 8}}
     assert set(decoded.profile.apply_fields()) == {
         "name",
         "tags",
@@ -88,6 +90,7 @@ def test_round_trip_preserves_identity_and_only_portable_metadata(area, compat):
         "browser_settings",
         "proxy",
         "fingerprint",
+        "fpgen_sample",
     }
     assert "local-group" not in json.dumps(decoded.model_dump(mode="json"))
     if os.name != "nt":

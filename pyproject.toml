@@ -27,6 +27,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "sqlalchemy>=2.0",
     "camoufox[geoip]==0.5.9",
+    "fpgen>=1.3.0,<2.0.0",
     "playwright>=1.61,<1.63",
     "python-dotenv>=1.0",
     "python-multipart>=0.0.18",

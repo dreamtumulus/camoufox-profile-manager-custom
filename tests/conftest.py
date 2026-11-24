@@ -99,6 +99,26 @@ def _is_loopback(host: str) -> bool:
 
 
 @pytest.fixture(autouse=True)
+def synthetic_fpgen_for_offline_tests(request, monkeypatch):
+    if request.node.get_closest_marker("browser") is not None:
+        return
+    import fpgen
+
+    def generate(conditions):
+        os_name = conditions.get("os", "Windows")
+        if isinstance(os_name, tuple):
+            os_name = os_name[0]
+        return {
+            "browser": "Firefox",
+            "os": os_name,
+            "navigator": {"hardwareConcurrency": 8, "deviceMemory": 8, "maxTouchPoints": 0},
+            "screen": {"width": 1920, "height": 1080},
+        }
+
+    monkeypatch.setattr(fpgen, "generate", generate)
+
+
+@pytest.fixture(autouse=True)
 def synthetic_browser_ipv6(request, monkeypatch):
     """Use a synthetic IPv4-only host for browser tests; keep the network guard."""
     if request.node.get_closest_marker("browser") is not None:
