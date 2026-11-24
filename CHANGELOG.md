@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-24
+
+This release adds direct Scrapfly fpgen generation and visible real-device
+selection. Existing pinned profiles keep their current hardware. Newly generated
+profiles store their pending fpgen draw until the first successful pin; back up
+the data directory before upgrading because this adds a database column.
+
 ### Added
 - Draw synthetic Firefox identities directly from Scrapfly's fpgen model and
   preserve the selected sample's hardware through Camoufox conversion and pinning.
@@ -14,6 +21,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   regenerating a fingerprint.
 
 ### Changed
+- Set the version to 0.7.2.
 - Publish a release by itself once its builds have succeeded. A release made
   by a tag without the `-zhaolusi` suffix used to stay a draft until someone
   published it on GitHub; a new workflow now checks every file against the
@@ -1136,7 +1144,8 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...v0.7.1
 [0.7.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.5.0...v0.6.0

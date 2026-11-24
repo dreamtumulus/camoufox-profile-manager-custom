@@ -247,7 +247,9 @@ class ProfileResponse(BaseModel):
                 profile.fingerprint,
                 profile.browser_settings.os if profile.browser_settings else None,
                 profile.browser_settings.fingerprint_source if profile.browser_settings else None,
-                profile.browser_settings.fingerprint_preset_id if profile.browser_settings else None,
+                profile.browser_settings.fingerprint_preset_id
+                if profile.browser_settings
+                else None,
             ),
             proxy_check=(
                 profile.proxy_check

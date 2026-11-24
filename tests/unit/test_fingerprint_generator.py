@@ -28,9 +28,7 @@ async def test_draws_a_firefox_fingerprint_directly_from_fpgen(monkeypatch):
         return SAMPLE
 
     monkeypatch.setattr(fpgen, "generate", generate)
-    settings = await FingerprintGenerator().generate_fingerprint(
-        {"os": "windows", "region": "us"}
-    )
+    settings = await FingerprintGenerator().generate_fingerprint({"os": "windows", "region": "us"})
 
     assert calls == [{"browser": "Firefox", "os": "Windows"}]
     assert settings.os == "windows"

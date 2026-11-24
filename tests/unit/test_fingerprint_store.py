@@ -497,7 +497,6 @@ def test_resolve_never_pins_an_incomplete_chunked_identity(monkeypatch, env):
     assert fingerprint_store.resolve({}) == {}
 
 
-
 def test_resolve_draws_firefox_from_fpgen_and_passes_it_to_camoufox(monkeypatch):
     import json
 
@@ -548,7 +547,6 @@ def test_resolve_does_not_replace_a_caller_supplied_fpgen_sample(monkeypatch):
     )
 
     assert fingerprint_store.resolve({"fingerprint": sample})["screen.width"] == 1920
-
 
 
 def test_explicit_cpu_override_beats_the_fpgen_sample(monkeypatch):
