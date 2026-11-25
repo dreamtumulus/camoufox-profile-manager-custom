@@ -16,6 +16,7 @@ Berlin timezone onto a profile that later moves to a Tokyo proxy — a mismatch
 that is trivial to detect and worse than no spoofing at all.
 """
 
+import hashlib
 import json
 import re
 from functools import lru_cache
@@ -246,6 +247,98 @@ def resolve(
     source = "real-device preset" if preset is not None else "fpgen"
     logger.info(f"Pinned a {source} fingerprint with {len(frozen)} properties")
     return frozen
+
+
+class DuplicateFingerprint(ValueError):
+    pass
+
+
+def _identity_key(settings: dict, sample: dict | None, pin: dict | None) -> str | None:
+    preset_id = settings.get("fingerprint_preset_id")
+    if settings.get("fingerprint_source") == "preset" and preset_id:
+        return f"preset:{preset_id}"
+    value = sample if sample is not None else pin
+    if value is None:
+        return None
+    kind = "sample" if sample is not None else "pin"
+    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return f"{kind}:{hashlib.sha256(encoded.encode()).hexdigest()}"
+
+
+def profile_identity_key(profile: Any) -> str | None:
+    settings = profile.browser_settings.model_dump() if profile.browser_settings else {}
+    return _identity_key(settings, profile.fpgen_sample, profile.fingerprint)
+
+
+def assert_unique(connection: Any, profile: Any) -> None:
+    """Refuse to publish a device sample or captured preset already in use."""
+    key = profile_identity_key(profile)
+    if key is None:
+        return
+    if connection.execute(
+        "SELECT 1 FROM profile_fingerprint_allocations WHERE identity_key=?", (key,)
+    ).fetchone():
+        raise DuplicateFingerprint("This device fingerprint is already assigned")
+    rows = connection.execute(
+        "SELECT id,browser_settings,fpgen_sample,fingerprint FROM profiles WHERE id<>?",
+        (profile.id,),
+    )
+    for row in rows:
+        other = _identity_key(
+            json.loads(row["browser_settings"]),
+            json.loads(row["fpgen_sample"]) if row["fpgen_sample"] else None,
+            json.loads(row["fingerprint"]) if row["fingerprint"] else None,
+        )
+        if other == key:
+            raise DuplicateFingerprint("This device fingerprint is already assigned")
+
+
+def reserve_identity(connection: Any, profile: Any) -> None:
+    """Atomically claim a new profile's identity before publishing its row."""
+    assert_unique(connection, profile)
+    key = profile_identity_key(profile)
+    if key is not None:
+        connection.execute(
+            "INSERT INTO profile_fingerprint_allocations(identity_key,profile_id) VALUES(?,?)",
+            (key, profile.id),
+        )
+
+
+def remember_identity(connection: Any, profile: Any) -> None:
+    """Retain the identity of creations and rotations that need no uniqueness check."""
+    key = profile_identity_key(profile)
+    if key is not None:
+        connection.execute(
+            "INSERT OR IGNORE INTO profile_fingerprint_allocations(identity_key,profile_id) VALUES(?,?)",
+            (key, profile.id),
+        )
+
+
+def backfill_identity_allocations(connection: Any) -> None:
+    rows = connection.execute("SELECT id,browser_settings,fpgen_sample,fingerprint FROM profiles")
+    for row in rows:
+        key = _identity_key(
+            json.loads(row["browser_settings"]),
+            json.loads(row["fpgen_sample"]) if row["fpgen_sample"] else None,
+            json.loads(row["fingerprint"]) if row["fingerprint"] else None,
+        )
+        if key is not None:
+            connection.execute(
+                "INSERT OR IGNORE INTO profile_fingerprint_allocations(identity_key,profile_id) VALUES(?,?)",
+                (key, row["id"]),
+            )
+
+
+def used_preset_ids(connection: Any) -> set[str]:
+    rows = connection.execute(
+        "SELECT browser_settings FROM profiles WHERE browser_settings IS NOT NULL"
+    )
+    used = set()
+    for row in rows:
+        settings = json.loads(row[0])
+        if settings.get("fingerprint_source") == "preset" and settings.get("fingerprint_preset_id"):
+            used.add(settings["fingerprint_preset_id"])
+    return used
 
 
 # --- Real device presets -----------------------------------------------------

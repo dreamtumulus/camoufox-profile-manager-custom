@@ -181,3 +181,43 @@ async def test_onboarding_allows_operators_but_not_viewers(monkeypatch):
     with pytest.raises(HTTPException) as error:
         await api_access.require_onboarding()
     assert error.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_claude_team_windows_receive_independent_fpgen_samples(profile_manager, monkeypatch):
+    from camoufox_pm.api.routes import onboarding
+
+    class Remote:
+        async def update_session(self, _session_id, **changes):
+            return {"id": changes.get("id", "session"), **changes}
+
+    async def launch(profile_id, **_kwargs):
+        profile_manager.browser_sessions.active_sessions[profile_id] = object()
+        return {"status": "launched"}
+
+    async def login_skipped(_browser, _email):
+        return None
+
+    monkeypatch.setattr(profile_manager, "launch_browser", launch)
+    monkeypatch.setattr(onboarding, "_open_claude_login", login_skipped)
+    remote = Remote()
+    first = await onboarding._launch_for_session(
+        profile_manager,
+        remote,
+        {"id": "session-1"},
+        None,
+        {"id": "account-1", "email": "one@example.com"},
+    )
+    second = await onboarding._launch_for_session(
+        profile_manager,
+        remote,
+        {"id": "session-2"},
+        None,
+        {"id": "account-2", "email": "two@example.com"},
+    )
+
+    one = await profile_manager.get_profile(first["profile_id"])
+    two = await profile_manager.get_profile(second["profile_id"])
+    assert one.browser_settings.fingerprint_source == "fpgen"
+    assert two.browser_settings.fingerprint_source == "fpgen"
+    assert one.fpgen_sample != two.fpgen_sample

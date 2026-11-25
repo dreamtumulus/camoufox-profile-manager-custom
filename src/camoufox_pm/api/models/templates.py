@@ -1,6 +1,6 @@
 """Reusable settings and bounded batch requests with saved-proxy references only."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     UUID4,
@@ -27,6 +27,14 @@ class TemplateCreateRequest(BaseModel):
     notes: str | None = Field(None, max_length=1000)
     tags: ProfileTags = Field(default_factory=list, max_length=20)
     extension_ids: list[str] = Field(default_factory=list, max_length=16)
+    fingerprint_source: Literal["fpgen", "preset"] = "fpgen"
+    fingerprint_preset_id: str | None = Field(None, max_length=32)
+
+    @model_validator(mode="after")
+    def valid_fingerprint_policy(self):
+        if self.fingerprint_source == "fpgen" and self.fingerprint_preset_id is not None:
+            raise ValueError("An fpgen template cannot select a real device preset")
+        return self
 
     @field_validator("name")
     @classmethod
@@ -49,16 +57,20 @@ class TemplateUpdateRequest(BaseModel):
     notes: str | None = Field(None, max_length=1000)
     tags: ProfileTags | None = Field(None, max_length=20)
     extension_ids: list[str] | None = Field(None, max_length=16)
+    fingerprint_source: Literal["fpgen", "preset"] | None = None
+    fingerprint_preset_id: str | None = Field(None, max_length=32)
 
     @model_validator(mode="after")
     def required_fields(self):
-        for field in ("name", "browser_settings", "tags", "extension_ids"):
+        for field in ("name", "browser_settings", "tags", "extension_ids", "fingerprint_source"):
             if field in self.model_fields_set and getattr(self, field) is None:
                 raise ValueError("Only template notes may be cleared with null")
         if self.name is not None:
             self.name = TemplateCreateRequest.nonempty_name(self.name)
         if self.tags is not None:
             self.tags = TemplateCreateRequest.valid_tags(self.tags)
+        if self.fingerprint_source == "fpgen" and self.fingerprint_preset_id is not None:
+            raise ValueError("An fpgen template cannot select a real device preset")
         return self
 
 

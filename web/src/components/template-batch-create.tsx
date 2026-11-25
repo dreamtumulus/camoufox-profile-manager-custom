@@ -168,7 +168,8 @@ export function TemplateBatchCreate({ template, existing = null, onClose }: {
     {preview && !submitted && <><button className="btn btn-default" disabled={busy} onClick={() => { setPreview(null); setRequest(null); setError(null) }}>{t('Edit draft')}</button><button className="btn btn-primary" disabled={busy} onClick={create}>{t('Create {count} profiles', { count: preview.names.length })}</button></>}
     {submitted && (!result || incomplete > 0) && <><button className="btn btn-default" disabled={busy} onClick={checkSaved}>{t('Check saved result')}</button><button className="btn btn-primary" disabled={busy} onClick={create}>{busy ? t('Creating…') : result ? t('Resume incomplete') : t('Retry same batch')}</button></>}
   </div>}>
-    <p className="text-ink-dim">{t('Each profile starts with fresh browser data and an independent identity. Only template settings and extension snapshots are copied. Proxies are copied only from your explicit selection.')}</p>
+    <p className="text-ink-dim">{t('Each profile starts with fresh browser data and a different device fingerprint. Duplicate fpgen samples and real-device presets are refused. Only template settings and extension snapshots are copied; proxies come only from your explicit selection.')}</p>
+    {template && <p className="mt-2 break-all font-mono text-[11px] text-ink-dim">{template.fingerprint_source === 'preset' ? `${t('Real device preset')} · ${template.fingerprint_preset_id ?? t('Automatic unused device')}` : `fpgen · ${t('Independent device per profile')}`}</p>}
     {!preview && <div className="mt-4 space-y-4">
       {loading && <p role="status">{t('Loading…')}</p>}
       {loadFailed && <p role="alert" className="text-danger">{t('Could not load groups and proxies. Close this dialog and try again.')}</p>}

@@ -414,6 +414,11 @@ export const profilesAPI = {
     return request<Profile>(`${API_PREFIX}/profiles`, { method: 'POST', body: JSON.stringify(data) })
   },
 
+  async createProfileBatch(data: Record<string, unknown>): Promise<{ created: number; items: { position: number; name: string; profile: Profile | null; error: string | null }[] }> {
+    const body = await request<{ data: { created: number; items: { position: number; name: string; profile: Profile | null; error: string | null }[] } }>(`${API_PREFIX}/profiles/batch`, { method: 'POST', body: JSON.stringify(data) })
+    return body.data
+  },
+
   updateProfile(id: string, data: Record<string, unknown>): Promise<Profile> {
     return request<Profile>(`${API_PREFIX}/profiles/${id}`, { method: 'PUT', body: JSON.stringify(data) })
   },

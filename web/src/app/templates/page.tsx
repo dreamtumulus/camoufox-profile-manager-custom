@@ -187,6 +187,11 @@ export default function TemplatesPage() {
               <p className="mt-1 font-mono text-ink-dim">
                 {item.browser_settings.os} · {item.browser_settings.screen}
               </p>
+              <p className="mt-1 break-all font-mono text-[11px] text-ink-dim">
+                {item.fingerprint_source === "preset"
+                  ? `${t("Real device preset")} · ${item.fingerprint_preset_id ?? t("Automatic unused device")}`
+                  : "fpgen · " + t("Independent device per profile")}
+              </p>
               <p className="mt-2 text-ink-dim">
                 {item.tags.join(" · ") || "—"}
               </p>

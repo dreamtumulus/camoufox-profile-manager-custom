@@ -129,6 +129,54 @@ class ProfileManager:
         profile.browser_settings.fingerprint_preset_id = fingerprint_preset
         profile.fpgen_sample = None
 
+    def _available_preset(
+        self, requested: str | None, os_name: str, allocate_unused: bool
+    ) -> str | None:
+        if not allocate_unused:
+            return requested
+        used = fingerprint_store.used_preset_ids(self.storage.db._connection)
+        if requested and requested not in used:
+            return requested
+        preset_os = requested.split(":", 1)[0] if requested else os_name
+        for preset in fingerprint_store.list_presets(preset_os):
+            if preset["id"] not in used:
+                return preset["id"]
+        raise ValueError(f"No unused real device presets remain for {preset_os}")
+
+    async def prepare_profile_identity(
+        self,
+        profile: Profile,
+        browser_settings: dict[str, Any] | BrowserSettings | None = None,
+        generate_fingerprint: bool = True,
+        fingerprint_preset: str | None = None,
+        *,
+        allocate_unused_preset: bool = False,
+        use_real_device: bool = False,
+    ) -> None:
+        if generate_fingerprint:
+            fingerprint, sample = await self.fingerprint_generator.generate_device(browser_settings)
+            profile.browser_settings = fingerprint
+            profile.fpgen_sample = sample
+
+        if browser_settings:
+            if isinstance(browser_settings, BrowserSettings):
+                profile.browser_settings = browser_settings
+            elif isinstance(browser_settings, dict):
+                merged = profile.browser_settings.model_dump()
+                merged.update(browser_settings)
+                profile.browser_settings = BrowserSettings(**merged)
+
+        if use_real_device or fingerprint_preset:
+            fingerprint_preset = self._available_preset(
+                fingerprint_preset, profile.browser_settings.os, allocate_unused_preset
+            )
+        if fingerprint_preset:
+            asked_for = set(browser_settings) if isinstance(browser_settings, dict) else set()
+            self._pin_to_preset(profile, fingerprint_preset, asked_for)
+        elif generate_fingerprint:
+            profile.browser_settings.fingerprint_source = "fpgen"
+            profile.browser_settings.fingerprint_preset_id = None
+
     async def create_profile(
         self,
         name: str,
@@ -140,75 +188,68 @@ class ProfileManager:
         fingerprint_preset: str | None = None,
         status: ProfileStatus | str | None = None,
         tags: list[str] | None = None,
+        *,
+        unique_fingerprint: bool = False,
+        allocate_unused_preset: bool = False,
+        use_real_device: bool = False,
     ) -> Profile:
-        """Create a new profile.
-
-        ``fingerprint_preset`` is an id from :func:`fingerprint_store.list_presets`.
-        When given, the profile is pinned to that captured real device instead of
-        waiting for its first launch to generate a synthetic one.
-        """
+        """Create a profile, optionally allocating a globally unused device."""
         logger.info(f"Creating new profile: {name}")
-
-        # Notes belong to the user; the creation time is already in created_at,
-        # so it is not stamped into the field the user types into.
-        profile = Profile(name=name, group=group, notes=notes, tags=tags or [])
-        if status:
-            # Raises for an unknown value rather than falling back to active: a
-            # bulk import is where a typo would otherwise reactivate a fleet of
-            # profiles their owner had deliberately parked.
-            profile.status = ProfileStatus(status)
-
-        # Generate a browser fingerprint if requested
-        if generate_fingerprint:
-            fingerprint, sample = await self.fingerprint_generator.generate_device(browser_settings)
-            profile.browser_settings = fingerprint
-            profile.fpgen_sample = sample
-
-        # Apply user-provided browser settings over the generated fingerprint.
-        if browser_settings:
-            if isinstance(browser_settings, BrowserSettings):
-                profile.browser_settings = browser_settings
-            elif isinstance(browser_settings, dict):
-                # Rebuild through the model rather than setattr, so values are
-                # validated and enums coerced (a raw "webrtc_mode" string would
-                # otherwise survive as str and trip serialization). Keys the
-                # caller omitted keep their generated value; an explicit null
-                # clears one, which is how "geolocation from the proxy IP" works.
-                merged = profile.browser_settings.model_dump()
-                merged.update(browser_settings)
-                profile.browser_settings = BrowserSettings(**merged)
-
-        # Configure the proxy if provided
-        if proxy_config:
-            from .models import ProxyConfig
-
-            profile.proxy = ProxyConfig(**proxy_config)
-            profile.proxy.validate_authentication()
-
-        # Pin a real device now, if one was chosen. Otherwise the first launch
-        # pins an explicitly generated fpgen fingerprint instead.
-        if fingerprint_preset:
-            asked_for = set(browser_settings) if isinstance(browser_settings, dict) else set()
-            self._pin_to_preset(profile, fingerprint_preset, asked_for)
-
-        # Create the profile data directory
-        profile_dir = Path(profile.get_storage_path(str(self.profiles_dir)))
-        profile_dir.mkdir(parents=True, exist_ok=True)
-
-        # Save the profile to the database
-        await self.storage.save_profile(profile)
-
-        # Log profile creation
-        await self.storage.log_usage(
-            UsageStats(
-                profile_id=profile.id,
-                action="create_profile",
-                details={"name": name, "group": group},
+        attempts = 12 if unique_fingerprint else 1
+        for attempt in range(attempts):
+            profile = Profile(name=name, group=group, notes=notes, tags=tags or [])
+            if status:
+                profile.status = ProfileStatus(status)
+            await self.prepare_profile_identity(
+                profile,
+                browser_settings,
+                generate_fingerprint,
+                fingerprint_preset,
+                allocate_unused_preset=allocate_unused_preset,
+                use_real_device=use_real_device,
             )
-        )
+            if proxy_config:
+                from .models import ProxyConfig
 
-        logger.info(f"Profile '{name}' created with ID: {profile.id}")
-        return profile
+                profile.proxy = ProxyConfig(**proxy_config)
+                profile.proxy.validate_authentication()
+
+            profile_dir = Path(profile.get_storage_path(str(self.profiles_dir)))
+            profile_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                if unique_fingerprint:
+                    with self.storage.db._connection:
+                        self.storage.db._connection.execute("BEGIN IMMEDIATE")
+                        fingerprint_store.reserve_identity(self.storage.db._connection, profile)
+                        self.storage.db._upsert_profile(profile)
+                else:
+                    await self.storage.save_profile(profile)
+                    try:
+                        fingerprint_store.remember_identity(self.storage.db._connection, profile)
+                        self.storage.db._connection.commit()
+                    except Exception as exc:
+                        logger.warning(
+                            f"Could not retain fingerprint allocation for {profile.id}: {exc}"
+                        )
+            except fingerprint_store.DuplicateFingerprint:
+                shutil.rmtree(profile_dir, ignore_errors=True)
+                if attempt + 1 < attempts:
+                    continue
+                raise ValueError("Could not generate an unused device fingerprint; retry") from None
+            except BaseException:
+                shutil.rmtree(profile_dir, ignore_errors=True)
+                raise
+
+            await self.storage.log_usage(
+                UsageStats(
+                    profile_id=profile.id,
+                    action="create_profile",
+                    details={"name": name, "group": group},
+                )
+            )
+            logger.info(f"Profile '{name}' created with ID: {profile.id}")
+            return profile
+        raise AssertionError("unreachable")
 
     async def get_profile(self, profile_id: str) -> Profile | None:
         """Get a profile by ID."""
@@ -424,9 +465,7 @@ class ProfileManager:
         return result
 
     async def bulk_update_group(self, profiles: list[dict], group: str | None) -> dict:
-        if group is not None and not any(
-            item["id"] == group for item in await self.list_groups()
-        ):
+        if group is not None and not any(item["id"] == group for item in await self.list_groups()):
             raise ValueError("Selected group no longer exists")
         result: dict[str, list] = {"updated": [], "skipped": []}
         for target in profiles:
@@ -439,7 +478,10 @@ class ProfileManager:
                     result["updated"].append(updated)
                 except StaleWriteError:
                     result["skipped"].append(
-                        {"id": profile_id, "reason": "Profile changed; reload before changing group"}
+                        {
+                            "id": profile_id,
+                            "reason": "Profile changed; reload before changing group",
+                        }
                     )
         return result
 
@@ -594,6 +636,8 @@ class ProfileManager:
         # changes it and writes it back, so a save that lands in between would
         # otherwise be reverted without a word.
         await self.storage.update_profile(profile, expected_row_version=profile.row_version)
+        fingerprint_store.remember_identity(self.storage.db._connection, profile)
+        self.storage.db._connection.commit()
 
         # Log the rotation
         await self.storage.log_usage(
@@ -1108,6 +1152,7 @@ class ProfileManager:
                 pinned = fingerprint_store.normalize_screen_origin(pinned)
                 profile.fingerprint = pinned
             if not pinned:
+                fingerprint_store.remember_identity(self.storage.db._connection, profile)
                 # resolve() can do network I/O (it fetches the uBlock addon on a
                 # fresh install). It used to have to stay synchronous, because
                 # the whole Profile was written back afterwards and an await here
@@ -1128,6 +1173,7 @@ class ProfileManager:
             # a concurrent editor is holding. Starting a browser is not an edit.
             profile.last_used = datetime.now()
             profile.updated_at = profile.last_used
+            fingerprint_store.remember_identity(self.storage.db._connection, profile)
             await self.storage.set_launch_pin(
                 profile_id, profile.fingerprint, profile.last_used, profile.fpgen_sample
             )

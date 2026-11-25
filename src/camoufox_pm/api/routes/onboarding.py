@@ -118,6 +118,7 @@ async def _launch_for_session(manager, remote: RemoteClient, session, proxy_conf
             proxy_config=proxy_config,
             notes=f"Claude Team onboarding account: {account['id']}; session: {session_id}",
             tags=["claude-team"],
+            unique_fingerprint=True,
         )
         profile_id = profile.id
         session = await remote.update_session(session_id, profile_id=profile_id, status="launching")
@@ -307,6 +308,7 @@ async def onboarding_create_session(request: SessionInput):
             proxy_config=secret_proxy.model_dump(),
             notes=f"Claude Team onboarding account: {account['id']}; session: {session_id}",
             tags=["claude-team"],
+            unique_fingerprint=True,
         )
         profile_id = profile.id
         session = await remote.update_session(session_id, profile_id=profile_id, status="launching")

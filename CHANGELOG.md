@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-11-25
+
+### Added
+- Apply the fpgen or captured real-device policy selected in a profile template.
+  Template cards and editors show that policy, and every created profile row
+  identifies the real-device preset it actually received.
+- Create 2–100 profiles directly from **New profile** with automatic numbering
+  and one saved proxy per profile from a selected IP group. Existing template
+  batches keep their preview, receipt and safe-retry workflow.
+- Allocate a different fpgen sample or unused real-device preset to every profile
+  created by a batch or template. A duplicate fpgen draw is retried before
+  publication; an exhausted real-device pool is reported instead of duplicating
+  a window's fingerprint. A preferred preset is used first when available.
+- Apply the same unique fpgen allocation to new Claude Team onboarding windows.
+  Auto onboarding keeps the independent identity of the existing profiles it
+  launches. Persistent allocation records retain a sample's reservation after
+  the first successful launch clears its temporary raw model data.
+
+### Fixed
+- Templates no longer bypass fingerprint generation: old templates default to
+  independent fpgen samples, while real-device templates pin each profile to its
+  allocated captured device. Existing profiles and pinned devices are unchanged.
+
 ## [0.7.2] - 2026-11-24
 
 This release adds direct Scrapfly fpgen generation and visible real-device
@@ -1144,7 +1167,8 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.3...HEAD
+[0.7.3]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...v0.7.1
 [0.7.0]: https://github.com/polyackiy/camoufox-profile-manager/compare/v0.6.0...v0.7.0

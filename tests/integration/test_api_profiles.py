@@ -836,3 +836,118 @@ async def test_clearing_geography_rejects_an_empty_id(client):
     refused = await client.post("/api/v1/profiles/clear-geography", json={"profile_ids": [""]})
 
     assert refused.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_batch_creation_assigns_one_group_proxy_and_a_unique_fingerprint_per_profile(
+    client,
+):
+    refs = []
+    for index in range(2):
+        saved = await client.post(
+            "/api/v1/proxies",
+            json={
+                "name": f"UK {index}",
+                "type": "http",
+                "server": f"uk{index}.example:8080",
+                "group_name": "UK",
+            },
+        )
+        assert saved.status_code == 201
+        proxy = saved.json()["data"]
+        refs.append({"id": proxy["id"], "row_version": proxy["row_version"]})
+
+    response = await client.post(
+        "/api/v1/profiles/batch",
+        json={
+            "names": ["Account 001", "Account 002"],
+            "browser_settings": {"os": "windows"},
+            "proxy_refs": refs,
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()["data"]
+    assert body["created"] == 2
+    profiles = [item["profile"] for item in body["items"]]
+    assert [profile["proxy_config"]["server"] for profile in profiles] == [
+        "uk0.example:8080",
+        "uk1.example:8080",
+    ]
+    assert len({profile["browser_settings"]["screen"] for profile in profiles}) == 2
+    stored = await get_profile_manager().storage.list_profiles()
+    assert len(stored) == 2 and stored[0].fpgen_sample != stored[1].fpgen_sample
+
+
+@pytest.mark.asyncio
+async def test_batch_creation_allocates_different_real_device_presets(client, monkeypatch):
+    manager = get_profile_manager()
+    monkeypatch.setattr(
+        "camoufox_pm.core.fingerprint_store.list_presets",
+        lambda os_name=None: [{"id": f"windows:{index}", "os": "windows"} for index in range(3)],
+    )
+
+    def pin(profile, preset_id, _asked_for):
+        profile.browser_settings.fingerprint_source = "preset"
+        profile.browser_settings.fingerprint_preset_id = preset_id
+        profile.fingerprint = {"navigator.userAgent": preset_id}
+        profile.fpgen_sample = None
+
+    monkeypatch.setattr(manager, "_pin_to_preset", pin)
+    response = await client.post(
+        "/api/v1/profiles/batch",
+        json={
+            "names": ["Real 001", "Real 002", "Real 003"],
+            "browser_settings": {"os": "windows"},
+            "fingerprint_preset": "windows:0",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    items = response.json()["data"]["items"]
+    assert [item["profile"]["browser_settings"]["fingerprint_preset_id"] for item in items] == [
+        "windows:0",
+        "windows:1",
+        "windows:2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_mixed_proxy_groups_before_creating_anything(client):
+    refs = []
+    for index, group in enumerate(("UK", "US")):
+        saved = await client.post(
+            "/api/v1/proxies",
+            json={
+                "name": group,
+                "type": "http",
+                "server": f"host{index}.example:8080",
+                "group_name": group,
+            },
+        )
+        proxy = saved.json()["data"]
+        refs.append({"id": proxy["id"], "row_version": proxy["row_version"]})
+
+    response = await client.post(
+        "/api/v1/profiles/batch",
+        json={"names": ["One", "Two"], "proxy_refs": refs},
+    )
+
+    assert response.status_code == 422
+    assert not await get_profile_manager().storage.list_profiles()
+
+
+@pytest.mark.asyncio
+async def test_batch_audit_failure_does_not_report_a_committed_profile_as_failed(
+    client, monkeypatch
+):
+    async def audit_failed(*_args):
+        raise RuntimeError("audit storage unavailable")
+
+    monkeypatch.setattr("camoufox_pm.api.routes.profiles.record_audit", audit_failed)
+    response = await client.post("/api/v1/profiles/batch", json={"names": ["One", "Two"]})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["created"] == 2
+    assert all(item["profile"] is not None for item in response.json()["data"]["items"])
+    assert len(await get_profile_manager().storage.list_profiles()) == 2

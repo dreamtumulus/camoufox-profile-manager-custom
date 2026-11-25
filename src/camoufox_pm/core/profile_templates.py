@@ -1,4 +1,4 @@
-"""Reusable settings, notes, tags and extension snapshots; never browser identity."""
+"""Reusable settings and extension snapshots with a fresh identity per profile."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import shutil
 from datetime import datetime, timezone
 
+from . import fingerprint_store
 from .database import StaleWriteError
 from .extension_library import (
     ExtensionLibrary,
@@ -23,6 +24,7 @@ def initialize_tables(connection) -> None:
     connection.execute("""CREATE TABLE IF NOT EXISTS profile_templates(
         id TEXT PRIMARY KEY, name TEXT NOT NULL, browser_settings TEXT NOT NULL,
         notes TEXT, tags TEXT NOT NULL DEFAULT '[]', row_version INTEGER NOT NULL DEFAULT 0,
+        fingerprint_source TEXT NOT NULL DEFAULT 'fpgen', fingerprint_preset_id TEXT,
         created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
     connection.execute("""CREATE TABLE IF NOT EXISTS template_extensions(
         template_id TEXT NOT NULL, position INTEGER NOT NULL, xpi BLOB NOT NULL,
@@ -70,9 +72,25 @@ class ProfileTemplates:
         ]
 
     async def create(
-        self, name, browser_settings, notes=None, tags=None, extension_ids=None, *, payloads=None
+        self,
+        name,
+        browser_settings,
+        notes=None,
+        tags=None,
+        extension_ids=None,
+        *,
+        payloads=None,
+        fingerprint_source="fpgen",
+        fingerprint_preset_id=None,
     ):
-        settings = BrowserSettings(**browser_settings).model_dump(mode="json")
+        if fingerprint_source not in ("fpgen", "preset"):
+            raise ValueError("Unknown fingerprint source")
+        parsed = BrowserSettings(**browser_settings)
+        parsed.fingerprint_source = None
+        parsed.fingerprint_preset_id = None
+        settings = parsed.model_dump(mode="json")
+        if fingerprint_source == "fpgen":
+            fingerprint_preset_id = None
         snapshots = self.extensions.payloads(extension_ids or []) if payloads is None else payloads
         # Validate the complete selection without installing files.
         metadata = [validate_xpi(payload) for payload in snapshots]
@@ -86,13 +104,15 @@ class ProfileTemplates:
         now = datetime.now(timezone.utc).isoformat()
         with self.connection:
             self.connection.execute(
-                "INSERT INTO profile_templates(id,name,browser_settings,notes,tags,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                "INSERT INTO profile_templates(id,name,browser_settings,notes,tags,fingerprint_source,fingerprint_preset_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
                 (
                     template_id,
                     name,
                     json.dumps(settings),
                     notes,
                     json.dumps(normalize_tags(tags or [])),
+                    fingerprint_source,
+                    fingerprint_preset_id,
                     now,
                     now,
                 ),
@@ -119,6 +139,8 @@ class ProfileTemplates:
                 profile.notes,
                 getattr(profile, "tags", []),
                 payloads=payloads,
+                fingerprint_source=profile.browser_settings.fingerprint_source or "fpgen",
+                fingerprint_preset_id=profile.browser_settings.fingerprint_preset_id,
             )
 
     async def update(self, template_id, row_version, changes):
@@ -127,15 +149,30 @@ class ProfileTemplates:
             raise StaleWriteError(template_id, row_version)
         fields = []
         values = []
-        for field in ("name", "browser_settings", "notes", "tags"):
+        for field in (
+            "name",
+            "browser_settings",
+            "notes",
+            "tags",
+            "fingerprint_source",
+            "fingerprint_preset_id",
+        ):
             if field in changes:
                 value = changes[field]
                 if field == "tags":
                     value = normalize_tags(value)
                 if field == "browser_settings":
-                    value = BrowserSettings(**value).model_dump(mode="json")
+                    parsed = BrowserSettings(**value)
+                    parsed.fingerprint_source = None
+                    parsed.fingerprint_preset_id = None
+                    value = parsed.model_dump(mode="json")
+                if field == "fingerprint_source" and value not in ("fpgen", "preset"):
+                    raise ValueError("Unknown fingerprint source")
                 fields.append(f"{field}=?")
                 values.append(json.dumps(value) if field in ("browser_settings", "tags") else value)
+        if changes.get("fingerprint_source") == "fpgen" and "fingerprint_preset_id" not in changes:
+            fields.append("fingerprint_preset_id=?")
+            values.append(None)
         snapshots = (
             self.extensions.payloads(changes["extension_ids"])
             if "extension_ids" in changes
@@ -192,44 +229,61 @@ class ProfileTemplates:
         if template["row_version"] != row_version:
             raise StaleWriteError(template_id, row_version)
         payloads = self._payloads(template_id)
-        profile = Profile(
-            name=name,
-            group=group,
-            browser_settings=BrowserSettings(**template["browser_settings"]),
-            notes=template["notes"],
-            tags=template["tags"],
-        )
-        directory = self.manager.profiles_dir / f"profile_{profile.id}"
-        directory.mkdir(exist_ok=False)
-        profile.storage_path = str(directory)
-        published = False
-        try:
-            task = asyncio.create_task(asyncio.to_thread(_install_snapshots, payloads, directory))
-            (profile.extensions, _), cancelled = await drain_operation(task)
-            if cancelled:
-                raise asyncio.CancelledError
-            if before_publish is not None:
-                await before_publish()
-            # Publish the complete row only after snapshot files exist. A write
-            # reservation guards the generated ID; never upsert another identity.
-            with self.connection:
-                self.connection.execute("BEGIN IMMEDIATE")
-                current = self.connection.execute(
-                    "SELECT row_version FROM profile_templates WHERE id=?", (template_id,)
-                ).fetchone()
-                if current is None:
-                    raise LookupError("Template not found")
-                if current[0] != row_version:
-                    raise StaleWriteError(template_id, row_version)
-                if self.connection.execute(
-                    "SELECT 1 FROM profiles WHERE id=?", (profile.id,)
-                ).fetchone():
-                    raise ValueError("Profile ID collision; retry creating the profile")
-                if on_publish is not None:
-                    on_publish(profile)
-                self.manager.storage.db._upsert_profile(profile)
-            published = True
-            return profile
-        finally:
-            if not published:
-                shutil.rmtree(directory, ignore_errors=True)
+        for attempt in range(12):
+            profile = Profile(
+                name=name,
+                group=group,
+                browser_settings=BrowserSettings(**template["browser_settings"]),
+                notes=template["notes"],
+                tags=template["tags"],
+            )
+            await self.manager.prepare_profile_identity(
+                profile,
+                template["browser_settings"],
+                fingerprint_preset=template["fingerprint_preset_id"],
+                allocate_unused_preset=True,
+                use_real_device=template["fingerprint_source"] == "preset",
+            )
+            directory = self.manager.profiles_dir / f"profile_{profile.id}"
+            directory.mkdir(exist_ok=False)
+            profile.storage_path = str(directory)
+            published = False
+            try:
+                task = asyncio.create_task(
+                    asyncio.to_thread(_install_snapshots, payloads, directory)
+                )
+                (profile.extensions, _), cancelled = await drain_operation(task)
+                if cancelled:
+                    raise asyncio.CancelledError
+                if before_publish is not None:
+                    await before_publish()
+                # Publish the complete row only after snapshot files exist. A write
+                # reservation guards the generated ID; never upsert another identity.
+                with self.connection:
+                    self.connection.execute("BEGIN IMMEDIATE")
+                    current = self.connection.execute(
+                        "SELECT row_version FROM profile_templates WHERE id=?", (template_id,)
+                    ).fetchone()
+                    if current is None:
+                        raise LookupError("Template not found")
+                    if current[0] != row_version:
+                        raise StaleWriteError(template_id, row_version)
+                    if self.connection.execute(
+                        "SELECT 1 FROM profiles WHERE id=?", (profile.id,)
+                    ).fetchone():
+                        raise ValueError("Profile ID collision; retry creating the profile")
+                    fingerprint_store.reserve_identity(self.connection, profile)
+                    if on_publish is not None:
+                        on_publish(profile)
+                    self.manager.storage.db._upsert_profile(profile)
+                published = True
+                return profile
+            except fingerprint_store.DuplicateFingerprint:
+                if attempt + 1 == 12:
+                    raise ValueError(
+                        "Could not generate an unused device fingerprint; retry"
+                    ) from None
+            finally:
+                if not published:
+                    shutil.rmtree(directory, ignore_errors=True)
+        raise AssertionError("unreachable")

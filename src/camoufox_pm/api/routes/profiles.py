@@ -5,6 +5,7 @@ API routes for managing profiles.
 import re
 import shutil
 import tempfile
+import unicodedata
 import uuid
 import zipfile
 from pathlib import Path
@@ -41,6 +42,7 @@ from camoufox_pm.api.models.profiles import (
     ClearGeographyResponse,
     EmailLookupRequest,
     EmailLookupResponse,
+    ProfileBatchCreateRequest,
     ProfileCloneRequest,
     ProfileCreateRequest,
     ProfileLaunchRequest,
@@ -63,6 +65,11 @@ from camoufox_pm.core.database import StaleWriteError
 from camoufox_pm.core.excel_manager import ExcelManager
 from camoufox_pm.core.leases import ProfileLocked
 from camoufox_pm.core.models import BrowserSettings, ProfileStatus, ProxyConfig, email_key
+from camoufox_pm.core.proxy_inventory import (
+    ProxyCredentialsUnavailable,
+    ProxyInventory,
+    ProxyNotFound,
+)
 
 router = APIRouter()
 
@@ -196,6 +203,102 @@ async def create_profile(request: ProfileCreateRequest):
         raise HTTPException(
             status_code=500, detail=str(e) if is_admin() else "Profile operation failed"
         ) from e
+
+
+@router.post(
+    "/profiles/batch",
+    response_model=ApiResponse[dict[str, Any]],
+    operation_id="create_profile_batch",
+)
+async def create_profile_batch(request: ProfileBatchCreateRequest):
+    await require_admin()
+    manager = get_profile_manager()
+    connection = manager.storage.db._connection
+    try:
+        if (
+            request.group is not None
+            and not connection.execute(
+                "SELECT 1 FROM profile_groups WHERE id=?", (request.group,)
+            ).fetchone()
+        ):
+            raise ValueError("Selected group no longer exists")
+        if not request.allow_duplicate_names:
+            keys = [unicodedata.normalize("NFKC", name).casefold() for name in request.names]
+            if len(set(keys)) != len(keys):
+                raise ValueError("Names repeat within this batch")
+            existing = {
+                unicodedata.normalize("NFKC", row[0]).casefold()
+                for row in connection.execute("SELECT name FROM profiles WHERE deleted_at IS NULL")
+            }
+            if any(key in existing for key in keys):
+                raise ValueError("A profile name already exists")
+
+        inventory = ProxyInventory(manager)
+        proxy_configs = []
+        proxy_groups = set()
+        for ref in request.proxy_refs:
+            config = inventory._secret_config(ref.id, ref.row_version)
+            config.validate_authentication()
+            proxy_configs.append(config.model_dump())
+            row = connection.execute(
+                "SELECT group_name FROM proxy_inventory WHERE id=?", (ref.id,)
+            ).fetchone()
+            proxy_groups.add(row[0] or None if row else None)
+        if len(proxy_groups) > 1:
+            raise ValueError(
+                "A batch cannot mix proxy groups. Select proxies from one proxy group."
+            )
+    except ProxyNotFound:
+        raise HTTPException(404, "Proxy not found") from None
+    except ProxyCredentialsUnavailable as exc:
+        raise HTTPException(409, str(exc)) from None
+    except (ValueError, StaleWriteError) as exc:
+        raise HTTPException(422, str(exc)) from None
+
+    items = []
+    for position, name in enumerate(request.names):
+        try:
+            profile = await manager.create_profile(
+                name=name,
+                group=request.group,
+                browser_settings=request.browser_settings,
+                proxy_config=proxy_configs[position] if proxy_configs else None,
+                generate_fingerprint=True,
+                notes=request.notes,
+                fingerprint_preset=request.fingerprint_preset,
+                tags=request.tags,
+                unique_fingerprint=True,
+                allocate_unused_preset=bool(request.fingerprint_preset),
+                use_real_device=bool(request.fingerprint_preset),
+            )
+            items.append(
+                {
+                    "position": position,
+                    "name": name,
+                    "profile": ProfileResponse.from_profile(profile).model_dump(mode="json"),
+                    "error": None,
+                }
+            )
+        except Exception as exc:
+            logger.error(f"Batch profile creation failed at position {position}: {exc}")
+            items.append(
+                {
+                    "position": position,
+                    "name": name,
+                    "profile": None,
+                    "error": str(exc) if isinstance(exc, ValueError) else "Creation failed",
+                }
+            )
+            continue
+        try:
+            await record_audit("create_profile_from_batch", profile.id)
+        except Exception as exc:
+            logger.error(f"Could not audit batch profile {profile.id}: {exc}")
+    return ApiResponse(
+        success=True,
+        data={"items": items, "created": sum(item["profile"] is not None for item in items)},
+        message="Profile batch processed",
+    )
 
 
 @router.post(

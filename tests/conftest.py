@@ -104,7 +104,11 @@ def synthetic_fpgen_for_offline_tests(request, monkeypatch):
         return
     import fpgen
 
+    calls = 0
+
     def generate(conditions):
+        nonlocal calls
+        calls += 1
         os_name = conditions.get("os", "Windows")
         if isinstance(os_name, tuple):
             os_name = os_name[0]
@@ -112,7 +116,7 @@ def synthetic_fpgen_for_offline_tests(request, monkeypatch):
             "browser": "Firefox",
             "os": os_name,
             "navigator": {"hardwareConcurrency": 8, "deviceMemory": 8, "maxTouchPoints": 0},
-            "screen": {"width": 1920, "height": 1080},
+            "screen": {"width": 1919 + calls, "height": 1080},
         }
 
     monkeypatch.setattr(fpgen, "generate", generate)

@@ -93,6 +93,9 @@ class DatabaseManager:
 
         await self._create_tables()
         await self._migrate()
+        from .fingerprint_store import backfill_identity_allocations
+
+        backfill_identity_allocations(self._connection)
         await self._create_indexes()
         complete_migration(self._connection)
         logger.info("Database initialized")
@@ -107,6 +110,10 @@ class DatabaseManager:
         """
         added_columns = {
             "proxy_inventory": [("group_name", "TEXT")],
+            "profile_templates": [
+                ("fingerprint_source", "TEXT NOT NULL DEFAULT 'fpgen'"),
+                ("fingerprint_preset_id", "TEXT"),
+            ],
             "profiles": [
                 ("fingerprint", "TEXT"),
                 ("fpgen_sample", "TEXT"),
@@ -204,6 +211,17 @@ class DatabaseManager:
                 email TEXT,
                 email_allowed INTEGER NOT NULL DEFAULT 0
             )
+        """)
+
+        self._connection.execute("""
+            CREATE TABLE IF NOT EXISTS profile_fingerprint_allocations (
+                identity_key TEXT PRIMARY KEY,
+                profile_id TEXT NOT NULL
+            )
+        """)
+        self._connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_fingerprint_allocations_profile
+            ON profile_fingerprint_allocations(profile_id)
         """)
 
         # Profile groups table
@@ -550,6 +568,9 @@ class DatabaseManager:
             (profile_id,),
         )
         self._connection.execute("DELETE FROM schedules WHERE profile_id = ?", (profile_id,))
+        self._connection.execute(
+            "DELETE FROM profile_fingerprint_allocations WHERE profile_id = ?", (profile_id,)
+        )
         cursor = self._connection.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
         self._connection.commit()
         deleted = cursor.rowcount > 0

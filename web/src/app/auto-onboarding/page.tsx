@@ -529,6 +529,7 @@ export default function AutoOnboardingPage() {
       <Header title={t('Auto onboarding')} />
       <div className="flex max-w-[980px] flex-col gap-4 p-5">
         <p className="text-ink-dim">{t('Keeps the onboarding parameters, runs a row’s browser, and has its account authorized by hand: you sign in and consent yourself.')}</p>
+        <p className="text-ink-dim">{t('Profiles opened here keep the independent fingerprint assigned when they were created. This page does not clone or replace their devices.')}</p>
 
         <section className="panel" aria-label={t('Onboarding parameters')}>
           <h2 className="border-b border-line px-4 py-3 text-[13px] font-semibold">{t('Onboarding parameters')}</h2>

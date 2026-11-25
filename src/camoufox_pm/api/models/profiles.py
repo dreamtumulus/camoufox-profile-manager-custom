@@ -60,6 +60,36 @@ class ProfileCreateRequest(BaseModel):
     )
 
 
+class ProfileBatchProxyReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = Field(min_length=1, max_length=255)
+    row_version: int = Field(ge=0)
+
+
+class ProfileBatchCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    names: list[
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+    ] = Field(min_length=2, max_length=100)
+    group: str | None = Field(None, max_length=255)
+    browser_settings: dict[str, Any] | None = None
+    notes: str | None = Field(None, max_length=1000)
+    tags: ProfileTags = Field(default_factory=list)
+    fingerprint_preset: str | None = Field(None, max_length=32)
+    proxy_refs: list[ProfileBatchProxyReference] = Field(default_factory=list, max_length=100)
+    allow_duplicate_names: bool = False
+
+    @model_validator(mode="after")
+    def valid_mapping(self):
+        if any(any(ord(char) < 32 or ord(char) == 127 for char in name) for name in self.names):
+            raise ValueError("Profile names cannot contain control characters")
+        if self.proxy_refs and len(self.proxy_refs) != len(self.names):
+            raise ValueError("Select one distinct proxy per profile, or no proxies")
+        if len({ref.id for ref in self.proxy_refs}) != len(self.proxy_refs):
+            raise ValueError("Select one distinct proxy per profile, or no proxies")
+        return self
+
+
 class ProfileResetFingerprintRequest(BaseModel):
     """Optional real-device selection for fingerprint regeneration."""
 

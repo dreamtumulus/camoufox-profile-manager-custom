@@ -1,5 +1,11 @@
 # Create profiles in batches
 
+For a batch without a saved template, open **New profile**, enable **Batch create
+profiles**, and choose the count, numbering and IP group there. The first saved
+proxies in that group are assigned one per profile; an insufficient group is
+rejected instead of sharing proxies. The rest of the form supplies the common
+settings and fingerprint policy.
+
 In **Templates**, choose **Create batch** on a saved template. Type the name the
 profiles share (for example `Work `); the profile number, shown as a fixed `{n}`
 beside the field, is always added after it, and the line below shows the first
@@ -46,8 +52,11 @@ connection tests.
 without creating profiles or a saved batch. Inspect the exact names and endpoints,
 then confirm creation. Each profile receives fresh browser data, its own ID and
 directory, copied template settings/tags/notes and independent extension snapshots.
-It does not copy cookies, sessions or pinned fingerprints. As with single-profile
-template creation, the fresh identity is resolved independently on first launch.
+It does not copy cookies, sessions or a pinned fingerprint. An fpgen template
+draws and checks a different sample for every profile, pinned independently on
+first launch. A real-device template allocates the selected preset first when it
+is unused, then other unused presets for the same OS; duplicate devices are
+refused and every profile row shows the preset it actually received.
 
 Template and proxy versions are checked again before each profile is published.
 If a referenced entry changes or is deleted, completed profiles remain intact;

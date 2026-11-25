@@ -8,6 +8,8 @@ export interface ProfileTemplate {
   notes: string | null;
   tags: string[];
   extensions: ExtensionMetadata[];
+  fingerprint_source: "fpgen" | "preset";
+  fingerprint_preset_id: string | null;
   row_version: number;
   created_at: string;
   updated_at: string;
@@ -18,6 +20,8 @@ export interface TemplateDraft {
   notes?: string | null;
   tags?: string[];
   extension_ids?: string[];
+  fingerprint_source?: "fpgen" | "preset";
+  fingerprint_preset_id?: string | null;
 }
 interface Envelope<T> {
   data: T;

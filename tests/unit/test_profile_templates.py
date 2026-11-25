@@ -1,6 +1,7 @@
 """Fresh identity and reusable extension snapshots, without account secrets."""
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -113,3 +114,102 @@ async def test_template_profile_is_never_published_half_prepared(
         await task
     assert not await profile_manager.storage.list_profiles()
     assert not list(profile_manager.profiles_dir.glob("profile_*"))
+
+
+@pytest.mark.asyncio
+async def test_template_draws_an_independent_fpgen_sample_for_every_profile(profile_manager):
+    templates = ProfileTemplates(profile_manager)
+    template = await templates.create("Generated", {"os": "windows"})
+
+    first = await templates.create_profile(template["id"], 0, "first")
+    second = await templates.create_profile(template["id"], 0, "second")
+
+    assert first.fpgen_sample != second.fpgen_sample
+    assert first.fingerprint is None and second.fingerprint is None
+    assert first.browser_settings.fingerprint_source == "fpgen"
+    assert second.browser_settings.fingerprint_source == "fpgen"
+    assert first.browser_settings.fingerprint_preset_id is None
+    assert second.browser_settings.fingerprint_preset_id is None
+
+
+@pytest.mark.asyncio
+async def test_template_allocates_a_different_real_device_for_every_profile(
+    profile_manager, monkeypatch
+):
+    monkeypatch.setattr(
+        "camoufox_pm.core.fingerprint_store.list_presets",
+        lambda os_name=None: [{"id": f"windows:{index}", "os": "windows"} for index in range(3)],
+    )
+
+    def pin(profile, preset_id, _asked_for):
+        profile.browser_settings.fingerprint_source = "preset"
+        profile.browser_settings.fingerprint_preset_id = preset_id
+        profile.fingerprint = {"navigator.userAgent": preset_id}
+        profile.fpgen_sample = None
+
+    monkeypatch.setattr(profile_manager, "_pin_to_preset", pin)
+    templates = ProfileTemplates(profile_manager)
+    template = await templates.create(
+        "Real devices",
+        {"os": "windows"},
+        fingerprint_source="preset",
+        fingerprint_preset_id="windows:0",
+    )
+
+    first = await templates.create_profile(template["id"], 0, "first")
+    second = await templates.create_profile(template["id"], 0, "second")
+    third = await templates.create_profile(template["id"], 0, "third")
+
+    assert [
+        first.browser_settings.fingerprint_preset_id,
+        second.browser_settings.fingerprint_preset_id,
+        third.browser_settings.fingerprint_preset_id,
+    ] == [
+        "windows:0",
+        "windows:1",
+        "windows:2",
+    ]
+    assert (
+        len(
+            {
+                first.fingerprint["navigator.userAgent"],
+                second.fingerprint["navigator.userAgent"],
+                third.fingerprint["navigator.userAgent"],
+            }
+        )
+        == 3
+    )
+    with pytest.raises(ValueError, match="No unused real device"):
+        await templates.create_profile(template["id"], 0, "fourth")
+
+
+@pytest.mark.asyncio
+async def test_template_retries_a_duplicate_fpgen_draw_instead_of_publishing_it(
+    profile_manager, monkeypatch
+):
+    import fpgen
+
+    draws = iter((1920, 1920, 2560))
+
+    def generate(_conditions):
+        width = next(draws)
+        return {
+            "browser": "Firefox",
+            "os": "Windows",
+            "navigator": {"hardwareConcurrency": 8, "deviceMemory": 8},
+            "screen": {"width": width, "height": 1080},
+        }
+
+    monkeypatch.setattr(fpgen, "generate", generate)
+    templates = ProfileTemplates(profile_manager)
+    template = await templates.create("Generated", {"os": "windows"})
+
+    first = await templates.create_profile(template["id"], 0, "first")
+    await profile_manager.storage.set_launch_pin(
+        first.id, {"navigator.hardwareConcurrency": 8}, datetime.now(timezone.utc)
+    )
+    second = await templates.create_profile(template["id"], 0, "second")
+
+    assert first.fpgen_sample["screen"]["width"] == 1920
+    assert second.fpgen_sample["screen"]["width"] == 2560
+    assert len(await profile_manager.storage.list_profiles()) == 2

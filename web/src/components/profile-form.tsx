@@ -17,12 +17,15 @@ import {
   OS_LABELS,
   presetsAPI,
   profilesAPI,
+  proxiesAPI,
   type DevicePreset,
   type FingerprintSummary,
   type Group,
+  type LibraryProxy,
   type Profile,
   type ProxyCheck,
 } from '@/lib/api'
+import { batchProfileNames, MAX_BATCH_PROFILES } from '@/lib/template-batch-preview'
 
 interface FormState {
   name: string
@@ -47,6 +50,8 @@ interface FormState {
   proxyUsername: string
   proxyPassword: string
 }
+
+const UNGROUPED_PROXIES = '__ungrouped__'
 
 const EMPTY: FormState = {
   name: '',
@@ -156,6 +161,12 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
   const [clearingGeography, setClearingGeography] = useState(false)
   const [presets, setPresets] = useState<DevicePreset[]>([])
   const [presetId, setPresetId] = useState('')
+  const [batchMode, setBatchMode] = useState(false)
+  const [batchCount, setBatchCount] = useState(5)
+  const [batchStart, setBatchStart] = useState(1)
+  const [batchDigits, setBatchDigits] = useState(3)
+  const [proxyGroup, setProxyGroup] = useState('')
+  const [proxies, setProxies] = useState<LibraryProxy[]>([])
   // The version this form was filled from. Sent with the save so that an edit
   // somebody else made in the meantime is refused instead of being overwritten,
   // and moved on after a refused save so a deliberate second Save can proceed.
@@ -174,6 +185,11 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
       setMachine(profile?.fingerprint)
       setStoredGeography(profile ? hasGeography(profile) : false)
       setPresetId(profile?.browser_settings.fingerprint_preset_id ?? '')
+      setBatchMode(false)
+      setBatchCount(5)
+      setBatchStart(1)
+      setBatchDigits(3)
+      setProxyGroup('')
     }
   }, [open, profile])
 
@@ -185,10 +201,21 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
       .catch(() => setPresets([]))
   }, [open, presets.length])
 
+  useEffect(() => {
+    if (!open || isEdit || !canManageAccess) return
+    proxiesAPI.list().then(setProxies).catch(() => setProxies([]))
+  }, [open, isEdit, canManageAccess])
+
   const presetsForOs = useMemo(
     () => presets.filter((preset) => preset.os === form.os),
     [presets, form.os],
   )
+
+  const isBatch = !isEdit && batchMode
+  const proxyGroups = [...new Set(proxies.map(proxy => proxy.group_name).filter((group): group is string => !!group))].sort()
+  const batchProxies = proxyGroup
+    ? proxies.filter(proxy => proxyGroup === UNGROUPED_PROXIES ? !proxy.group_name : proxy.group_name === proxyGroup)
+    : []
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }))
@@ -233,7 +260,7 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
     return settings
   }
 
-  const authenticationError = canManageAccess && form.proxyServer.trim() ? proxyAuthenticationError(form.proxyType, form.proxyUsername, form.proxyPassword) : null
+  const authenticationError = canManageAccess && !isBatch && form.proxyServer.trim() ? proxyAuthenticationError(form.proxyType, form.proxyUsername, form.proxyPassword) : null
 
   function buildProxy() {
     if (!form.proxyServer.trim()) return null
@@ -299,6 +326,29 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
         payload.row_version = baseVersion
         await profilesAPI.updateProfile(profile.id, payload)
         toast('ok', t('Profile updated'), form.name.trim())
+      } else if (isBatch) {
+        if (proxyGroup && batchProxies.length < batchCount) {
+          toast('error', t('Not enough proxies in this IP group'), t('This group has {available}; reduce the count from {count}.', { available: batchProxies.length, count: batchCount }))
+          return
+        }
+        const names = batchProfileNames(`${form.name.trim()}{n}`, batchCount, batchStart, batchDigits)
+        delete payload.name
+        delete payload.proxy_config
+        const result = await profilesAPI.createProfileBatch({
+          ...payload,
+          names,
+          fingerprint_preset: presetId || null,
+          proxy_refs: batchProxies.slice(0, batchCount).map(({ id, row_version }) => ({ id, row_version })),
+          allow_duplicate_names: false,
+        })
+        const failed = result.items.filter(item => item.profile === null)
+        toast(
+          failed.length ? 'error' : 'ok',
+          failed.length ? t('Batch partially created') : t('{count} profiles created', { count: result.created }),
+          failed.length
+            ? t('{created} of {total} created. Failed: {names}', { created: result.created, total: names.length, names: failed.map(item => item.name).join(', ') })
+            : t('Every window has its own fingerprint and proxy assignment.'),
+        )
       } else {
         // The backend generates a consistent fingerprint, then applies these.
         payload.generate_fingerprint = true
@@ -467,18 +517,23 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
           <button type="button" className="btn btn-default" onClick={onClose}>
             {t('Cancel')}
           </button>
-          <button type="submit" form="profile-form" className="btn btn-primary" disabled={saving || !!authenticationError}>
+          <button type="submit" form="profile-form" className="btn btn-primary" disabled={saving || !!authenticationError || (isBatch && (!Number.isInteger(batchCount) || batchCount < 2 || batchCount > MAX_BATCH_PROFILES || (!!proxyGroup && batchProxies.length < batchCount)))}>
             {saving && <LoaderCircle size={13} className="animate-spin" />}
-            {isEdit ? t('Save changes') : t('Create profile')}
+            {isEdit ? t('Save changes') : isBatch ? t('Create {count} profiles', { count: batchCount }) : t('Create profile')}
           </button>
         </>
       }
     >
       <form id="profile-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
         <Section title={t('Identity')}>
+          {!isEdit && <label className="col-span-2 flex items-center gap-2">
+            <input type="checkbox" checked={batchMode} onChange={event => setBatchMode(event.target.checked)} />
+            <span>{t('Batch create profiles')}</span>
+            <span className="text-ink-dim">{t('Independent fingerprint for every window')}</span>
+          </label>}
           <div className="col-span-2">
             <label className="field-label" htmlFor="pf-name">
-              {t('Name')}
+              {isBatch ? t('Name prefix') : t('Name')}
             </label>
             <input
               id="pf-name"
@@ -577,6 +632,39 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
           </div>
         </Section>
 
+        {isBatch && <Section
+          title={t('Batch creation')}
+          hint={t('Names are numbered automatically. Every profile gets a different fpgen sample or unused real-device preset; duplicates are refused.')}
+        >
+          <div>
+            <label className="field-label" htmlFor="pf-batch-count">{t('Count')}</label>
+            <input id="pf-batch-count" className="field" type="number" min={2} max={MAX_BATCH_PROFILES} value={batchCount} onChange={event => setBatchCount(Number(event.target.value))} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="pf-batch-start">{t('Start number')}</label>
+            <input id="pf-batch-start" className="field" type="number" min={0} max={999999} value={batchStart} onChange={event => setBatchStart(Number(event.target.value))} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="pf-batch-digits">{t('Number digits')}</label>
+            <select id="pf-batch-digits" className="field" value={batchDigits} onChange={event => setBatchDigits(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6].map(number => <option key={number} value={number}>{number}</option>)}</select>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="pf-batch-ip-group">{t('IP group')}</label>
+            <select id="pf-batch-ip-group" className="field" value={proxyGroup} onChange={event => setProxyGroup(event.target.value)}>
+              <option value="">{t('Direct connection · no saved proxy')}</option>
+              <option value={UNGROUPED_PROXIES}>{t('Ungrouped saved proxies')}</option>
+              {proxyGroups.map(group => <option key={group} value={group}>{group}</option>)}
+            </select>
+          </div>
+          <p className="col-span-2 text-ink-dim" role="status">
+            {proxyGroup
+              ? t('{available} proxies in this group; the first {count} are assigned one per profile.', { available: batchProxies.length, count: batchCount })
+              : t('No proxy is assigned. Select an IP group to assign its saved proxies one per profile.')}
+          </p>
+          {proxyGroup && batchProxies.length < batchCount && <p className="col-span-2 text-danger" role="alert">{t('Not enough proxies: this group has {available}, but {count} profiles were requested.', { available: batchProxies.length, count: batchCount })}</p>}
+          <p className="col-span-2 text-ink-dim">{t('First name: {name}', { name: `${form.name.trim()}{n}`.replaceAll('{n}', String(batchStart).padStart(batchDigits, '0')) })}</p>
+        </Section>}
+
         <Section
           title={t('Device fingerprint')}
           hint={t('Choose Scrapfly fpgen generation or a captured real-device preset. The selected machine stays pinned across launches.')}
@@ -619,6 +707,11 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
                 ? t('Used only when you click Regenerate fingerprint. Saving other changes does not replace the current device.')
                 : t('A preset is a combination captured from a real machine. Automatic mode draws a coherent Firefox identity from the fpgen traffic model.')}
             </p>
+            {isBatch && <p className="mt-1.5 text-ink-faint">
+              {presetId
+                ? t('The selected real device is used first when available; later profiles use different unused presets for this OS.')
+                : t('Each profile draws a different fpgen fingerprint. The backend checks every sample against existing profiles before saving it.')}
+            </p>}
             {presetsForOs.length > 0 && (
               <p className="mt-1.5 text-ink-faint">
                 {t('{count} real {os} devices available.', { count: presetsForOs.length, os: OS_LABELS[form.os] ?? form.os })}
@@ -627,7 +720,7 @@ export function ProfileForm({ open, profile, groups, onClose, onSaved }: Props) 
           </div>
         </Section>
 
-        {canManageAccess && <Section
+        {canManageAccess && !isBatch && <Section
           title={t('Proxy')}
           hint={t('Leave the server empty for a direct connection.')}
         >

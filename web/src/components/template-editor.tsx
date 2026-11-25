@@ -2,7 +2,13 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./modal";
 import { useI18n } from "./i18n-provider";
-import { isStaleWrite, OS_LABELS, type BrowserSettings } from "@/lib/api";
+import {
+  isStaleWrite,
+  OS_LABELS,
+  presetsAPI,
+  type BrowserSettings,
+  type DevicePreset,
+} from "@/lib/api";
 import { templatesAPI, type ProfileTemplate } from "@/lib/templates-api";
 import { extensionsAPI, type ExtensionMetadata } from "@/lib/extensions-api";
 import { detectTemplateOs, uniqueTemplateName } from "@/lib/template-defaults";
@@ -47,6 +53,11 @@ export function TemplateEditor({
     },
   );
   const [advanced, setAdvanced] = useState(JSON.stringify(settings, null, 2));
+  const [fingerprintSource, setFingerprintSource] = useState<"fpgen" | "preset">(
+    template?.fingerprint_source ?? "fpgen",
+  );
+  const [presetId, setPresetId] = useState(template?.fingerprint_preset_id ?? "");
+  const [presets, setPresets] = useState<DevicePreset[]>([]);
 
   const [library, setLibrary] = useState<ExtensionMetadata[]>([]);
   const [libraryError, setLibraryError] = useState<string | null>(null);
@@ -74,6 +85,9 @@ export function TemplateEditor({
       })
       .catch((err) => setLibraryError(String(err)));
   }, [template]);
+  useEffect(() => {
+    presetsAPI.list().then(setPresets).catch(() => setPresets([]));
+  }, []);
   function change(patch: Partial<BrowserSettings>) {
     try {
       const base = JSON.parse(advanced);
@@ -103,6 +117,8 @@ export function TemplateEditor({
           .map((value) => value.trim())
           .filter(Boolean),
         browser_settings: parsed,
+        fingerprint_source: fingerprintSource,
+        fingerprint_preset_id: fingerprintSource === "preset" ? presetId || null : null,
         ...(replaceExtensions ? { extension_ids: [...selected] } : {}),
       };
       const saved = template
@@ -167,6 +183,7 @@ export function TemplateEditor({
                 // The suggested name follows the system until the user renames it.
                 if (!template && name === suggestedName(settings.os))
                   setName(suggestedName(event.target.value));
+                setPresetId("");
                 change({ os: event.target.value });
               }}
             >
@@ -186,6 +203,36 @@ export function TemplateEditor({
             />
           </label>
         </div>
+        <label className="block">
+          {t("Real device fingerprint preset")}
+          <select
+            className="field mt-1 font-mono"
+            value={fingerprintSource === "fpgen" ? "" : presetId || "auto"}
+            onChange={(event) => {
+              const value = event.target.value;
+              setFingerprintSource(value === "" ? "fpgen" : "preset");
+              setPresetId(value === "" || value === "auto" ? "" : value);
+            }}
+          >
+            <option value="">{t("fpgen automatic generation")}</option>
+            <option value="auto">{t("Real devices · automatically choose unused devices")}</option>
+            {presetId && !presets.some((preset) => preset.id === presetId) && (
+              <option value={presetId}>{presetId} · {t("Current selection")}</option>
+            )}
+            {presets.filter((preset) => preset.os === settings.os).map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {[preset.id, preset.screen, t("{count} cores", { count: preset.hardware_concurrency }), preset.gpu]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-ink-dim">
+            {fingerprintSource === "fpgen"
+              ? t("Every profile receives a new fpgen sample; samples are checked so no two windows share one.")
+              : t("The selected device is used first when available. Every later profile receives a different unused preset for this OS; nothing is copied between windows.")}
+          </span>
+        </label>
         <label className="block">
           {t("Languages")}
           <input
@@ -253,7 +300,7 @@ export function TemplateEditor({
           </summary>
           <p className="my-2 text-ink-dim">
             {t(
-              "Edit browser settings as JSON. Cookies, proxies and fingerprints are not accepted in templates.",
+              "Edit browser settings as JSON. Cookies, proxies and pinned fingerprint data are not accepted; the generation policy above is applied independently to every profile.",
             )}
           </p>
           <textarea
@@ -317,7 +364,7 @@ export function TemplateEditor({
         </fieldset>
         <p className="text-ink-dim">
           {t(
-            "New profiles receive fresh browser data and an independently generated identity on first launch.",
+            "New profiles receive fresh browser data and different device fingerprints. Duplicate samples and duplicate real-device presets are refused.",
           )}
         </p>
         {error && (
