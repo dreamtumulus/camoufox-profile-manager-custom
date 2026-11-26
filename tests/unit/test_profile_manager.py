@@ -364,6 +364,26 @@ async def test_rotating_retries_a_duplicate_fpgen_draw(profile_manager, monkeypa
 
 
 @pytest.mark.asyncio
+async def test_rotating_rejects_a_different_sample_with_the_same_gpu(profile_manager, monkeypatch):
+    import fpgen
+
+    profile = await pin(profile_manager, await profile_manager.create_profile(name="p"))
+    original = profile.fpgen_sample
+    draws = iter(
+        (
+            original | {"gpu": {"renderer": PINNED["webGl:renderer"]}},
+            original | {"gpu": {"renderer": "AMD Radeon RX 6800"}},
+        )
+    )
+    monkeypatch.setattr(fpgen, "generate", lambda _conditions: next(draws))
+
+    rotated = await profile_manager.rotate_profile_fingerprint(profile.id)
+
+    assert rotated is not None
+    assert rotated.fpgen_sample["gpu"]["renderer"] == "AMD Radeon RX 6800"
+
+
+@pytest.mark.asyncio
 async def test_refreshing_a_browser_version_without_a_pin_says_to_launch_first(profile_manager):
     profile = await profile_manager.create_profile(name="p")
 

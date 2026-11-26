@@ -16,6 +16,7 @@ SAMPLE = {
         "maxTouchPoints": 0,
     },
     "screen": {"width": 2560, "height": 1440},
+    "gpu": {"renderer": "GPU A"},
 }
 
 
@@ -88,3 +89,22 @@ async def test_rotating_keeps_the_os_and_does_not_move_the_profile(monkeypatch):
     assert rotated.os == "macos"
     assert rotated.timezone is None
     assert rotated.geolocation is None
+
+
+@pytest.mark.asyncio
+async def test_consecutive_devices_do_not_repeat_the_gpu(monkeypatch):
+    samples = iter(
+        (
+            SAMPLE,
+            {**SAMPLE, "screen": {"width": 1920, "height": 1080}},
+            {**SAMPLE, "gpu": {"renderer": "GPU B"}},
+        )
+    )
+    monkeypatch.setattr(fpgen, "generate", lambda _conditions: next(samples))
+    generator = FingerprintGenerator()
+
+    _, first = await generator.generate_device({"os": "windows"})
+    _, second = await generator.generate_device({"os": "windows"})
+
+    assert first["gpu"]["renderer"] == "GPU A"
+    assert second["gpu"]["renderer"] == "GPU B"

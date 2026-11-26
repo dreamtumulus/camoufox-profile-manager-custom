@@ -630,12 +630,17 @@ class ProfileManager:
         if not profile:
             return None
 
+        previous_gpu = (profile.fingerprint or {}).get("webGl:renderer")
+        if previous_gpu is None and profile.fpgen_sample:
+            previous_gpu = (profile.fpgen_sample.get("gpu") or {}).get("renderer")
         if fingerprint_preset:
             self._pin_to_preset(profile, fingerprint_preset, set())
             new_fingerprint = profile.browser_settings
         else:
             for attempt in range(12):
-                new_fingerprint, sample = await self.fingerprint_generator.generate_device()
+                new_fingerprint, sample = await self.fingerprint_generator.generate_device(
+                    avoid_gpu=previous_gpu
+                )
                 profile.browser_settings = new_fingerprint
                 profile.fpgen_sample = sample
                 # Drop the pinned machine too, otherwise the profile would keep the old

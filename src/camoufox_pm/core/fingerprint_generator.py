@@ -30,6 +30,7 @@ class FingerprintGenerator:
     """Generate realistic, Camoufox-friendly browser constraints with fpgen."""
 
     def __init__(self) -> None:
+        self._last_gpu: str | None = None
         self.language_sets = {
             "us": ["en-US", "en"],
             "uk": ["en-GB", "en"],
@@ -83,14 +84,27 @@ class FingerprintGenerator:
         return settings
 
     async def generate_device(
-        self, constraints: dict[str, Any] | BrowserSettings | None = None
+        self,
+        constraints: dict[str, Any] | BrowserSettings | None = None,
+        *,
+        avoid_gpu: str | None = None,
     ) -> tuple[BrowserSettings, dict]:
-        """Return settings and the same raw sample to resolve on the first launch."""
+        """Return a new device sample, rejecting a consecutive or current GPU repeat."""
         if isinstance(constraints, BrowserSettings):
             constraints = constraints.model_dump()
 
         requested = constraints or {}
-        fingerprint = await asyncio.to_thread(generate_fpgen_fingerprint, requested.get("os"))
+        rejected_gpus = {self._last_gpu, avoid_gpu} - {None}
+        for attempt in range(12):
+            fingerprint = await asyncio.to_thread(generate_fpgen_fingerprint, requested.get("os"))
+            gpu = (fingerprint.get("gpu") or {}).get("renderer")
+            if gpu and gpu in rejected_gpus:
+                if attempt + 1 == 12:
+                    raise ValueError("Could not generate a different GPU; retry")
+                continue
+            if gpu:
+                self._last_gpu = gpu
+            break
         navigator = fingerprint.get("navigator") or {}
         screen = fingerprint.get("screen") or {}
         width, height = _integer(screen.get("width")), _integer(screen.get("height"))

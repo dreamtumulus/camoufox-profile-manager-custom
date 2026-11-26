@@ -6,6 +6,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-11-26
+
+### Fixed
+- Reject consecutive fpgen draws that repeat the previous GPU, including when the
+  rest of the device sample differs. Regenerating an existing profile also avoids
+  the GPU currently pinned to that profile, so the visible renderer must change.
+
 ## [0.7.4] - 2026-11-26
 
 ### Fixed
