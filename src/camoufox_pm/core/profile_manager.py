@@ -639,7 +639,7 @@ class ProfileManager:
         else:
             for attempt in range(12):
                 new_fingerprint, sample = await self.fingerprint_generator.generate_device(
-                    avoid_gpu=previous_gpu
+                    {"os": profile.browser_settings.os}, avoid_gpu=previous_gpu
                 )
                 profile.browser_settings = new_fingerprint
                 profile.fpgen_sample = sample

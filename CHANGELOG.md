@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-11-26
+
+### Fixed
+- Keep the profile's operating system when regenerating its fpgen device. GPU
+  rotation no longer turns a Windows profile into a macOS or Linux identity.
+- Pass supported fpgen GPU pairs through Camoufox's native `webgl_config` resolver.
+  The final pinned renderer now follows the new draw instead of being independently
+  resampled, while WebGL parameters and extensions still come from one recorded device.
+
 ## [0.7.5] - 2026-11-26
 
 ### Fixed

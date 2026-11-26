@@ -164,6 +164,22 @@ def _fill_app_version(pin: dict[str, Any]) -> None:
         pin["navigator.appVersion"] = derived
 
 
+def _use_recorded_fpgen_gpu(constraints: dict[str, Any], sample: dict[str, Any]) -> None:
+    """Keep a supported fpgen GPU through Camoufox's own recorded-device resolver."""
+    gpu = sample.get("gpu") or {}
+    vendor, renderer = gpu.get("vendor"), gpu.get("renderer")
+    target_os = {"windows": "win", "macos": "mac", "linux": "lin"}.get(
+        str(sample.get("os", "")).lower()
+    )
+    if not vendor or not renderer or target_os is None:
+        return
+    from camoufox.webgl import firefox_gpus
+
+    if (vendor, renderer) in firefox_gpus(target_os):
+        constraints.setdefault("os", str(sample["os"]).lower())
+        constraints.setdefault("webgl_config", (vendor, renderer))
+
+
 def resolve(
     launch_options: dict[str, Any],
     preset: dict[str, Any] | None = None,
@@ -219,6 +235,7 @@ def resolve(
 
             if fpgen_fingerprint is not None:
                 constraints["fingerprint"] = fpgen_fingerprint
+                _use_recorded_fpgen_gpu(constraints, fpgen_fingerprint)
             elif "fingerprint" not in constraints:
                 constraints["fingerprint"] = generate_fpgen_fingerprint(constraints.get("os"))
             cores = constraints["fingerprint"].get("navigator", {}).get("hardwareConcurrency")

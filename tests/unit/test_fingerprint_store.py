@@ -549,6 +549,54 @@ def test_resolve_does_not_replace_a_caller_supplied_fpgen_sample(monkeypatch):
     assert fingerprint_store.resolve({"fingerprint": sample})["screen.width"] == 1920
 
 
+def test_resolve_preserves_a_recorded_fpgen_gpu_through_native_webgl_config(monkeypatch):
+    import json
+
+    from camoufox import utils
+
+    pair = (
+        "Google Inc. (NVIDIA)",
+        "ANGLE (NVIDIA, NVIDIA GeForce GTX 980 Direct3D11 vs_5_0 ps_5_0), or similar",
+    )
+    sample = {
+        "browser": "Firefox",
+        "os": "Windows",
+        "navigator": {},
+        "gpu": {"vendor": pair[0], "renderer": pair[1]},
+    }
+
+    def resolve_options(**options):
+        assert options["os"] == "windows"
+        assert options["webgl_config"] == pair
+        config = {"webGl:vendor": pair[0], "webGl:renderer": pair[1]}
+        return {"env": {"CAMOU_CONFIG_1": json.dumps(config)}}
+
+    monkeypatch.setattr(utils, "launch_options", resolve_options)
+    pinned = fingerprint_store.resolve({}, fpgen_fingerprint=sample)
+
+    assert pinned["webGl:renderer"] == pair[1]
+
+
+def test_resolve_does_not_force_an_unrecorded_gpu(monkeypatch):
+    import json
+
+    from camoufox import utils
+
+    sample = {
+        "browser": "Firefox",
+        "os": "Windows",
+        "navigator": {},
+        "gpu": {"vendor": "fake", "renderer": "not a recorded device"},
+    }
+
+    def resolve_options(**options):
+        assert "webgl_config" not in options
+        return {"env": {"CAMOU_CONFIG_1": json.dumps({"screen.width": 1920})}}
+
+    monkeypatch.setattr(utils, "launch_options", resolve_options)
+    assert fingerprint_store.resolve({}, fpgen_fingerprint=sample)["screen.width"] == 1920
+
+
 def test_explicit_cpu_override_beats_the_fpgen_sample(monkeypatch):
     import json
 

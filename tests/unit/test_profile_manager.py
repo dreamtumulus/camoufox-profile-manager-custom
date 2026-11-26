@@ -381,6 +381,8 @@ async def test_rotating_rejects_a_different_sample_with_the_same_gpu(profile_man
 
     assert rotated is not None
     assert rotated.fpgen_sample["gpu"]["renderer"] == "AMD Radeon RX 6800"
+    assert rotated.fpgen_sample["os"] == "Windows"
+    assert rotated.browser_settings.os == "windows"
 
 
 @pytest.mark.asyncio
