@@ -51,10 +51,12 @@ connection tests.
 **Preview batch** validates all names, the group and proxy mapping on the server
 without creating profiles or a saved batch. Inspect the exact names and endpoints,
 then confirm creation. Each profile receives fresh browser data, its own ID and
-directory, copied template settings/tags/notes and independent extension snapshots.
+directory, copied ordinary template settings/tags/notes and independent extension snapshots.
 It does not copy cookies, sessions or a pinned fingerprint. An fpgen template
 draws and checks a different sample for every profile, pinned independently on
-first launch. A real-device template allocates the selected preset first when it
+first launch; its screen, user agent, hardware and font fields come from that new
+sample rather than fixed values saved in the template. A real-device template
+allocates the selected preset first when it
 is unused, then other unused presets for the same OS; duplicate devices are
 refused and every profile row shows the preset it actually received.
 

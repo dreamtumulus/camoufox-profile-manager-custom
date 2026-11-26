@@ -189,11 +189,11 @@ class ProfileManager:
         status: ProfileStatus | str | None = None,
         tags: list[str] | None = None,
         *,
-        unique_fingerprint: bool = False,
+        unique_fingerprint: bool = True,
         allocate_unused_preset: bool = False,
         use_real_device: bool = False,
     ) -> Profile:
-        """Create a profile, optionally allocating a globally unused device."""
+        """Create a profile with a globally unused generated device by default."""
         logger.info(f"Creating new profile: {name}")
         attempts = 12 if unique_fingerprint else 1
         for attempt in range(attempts):
@@ -562,15 +562,24 @@ class ProfileManager:
 
         # Generate a new fingerprint if requested
         if regenerate_fingerprint:
-            fingerprint, sample = await self.fingerprint_generator.generate_device()
-            new_profile.browser_settings = fingerprint
-            new_profile.fpgen_sample = sample
-            # And drop the pinned machine, which the copy above brought along.
-            # Without this the clone reported the same GPU, screen, core count
-            # and noise seeds as its source for the rest of its life: two
-            # profiles that are provably one computer. The next launch pins a new
-            # one, exactly as it does for a profile that has never run.
-            new_profile.fingerprint = None
+            for attempt in range(12):
+                fingerprint, sample = await self.fingerprint_generator.generate_device()
+                new_profile.browser_settings = fingerprint
+                new_profile.fpgen_sample = sample
+                # And drop the pinned machine, which the copy above brought along.
+                # Without this the clone reported the same GPU, screen, core count
+                # and noise seeds as its source for the rest of its life: two
+                # profiles that are provably one computer. The next launch pins a new
+                # one, exactly as it does for a profile that has never run.
+                new_profile.fingerprint = None
+                try:
+                    fingerprint_store.assert_unique(self.storage.db._connection, new_profile)
+                    break
+                except fingerprint_store.DuplicateFingerprint:
+                    if attempt + 1 == 12:
+                        raise ValueError(
+                            "Could not generate an unused device fingerprint; retry"
+                        ) from None
 
         # Create the directory for the new profile
         profile_dir = Path(new_profile.get_storage_path(str(self.profiles_dir)))
@@ -594,6 +603,9 @@ class ProfileManager:
 
         # Save the new profile
         await self.storage.save_profile(new_profile)
+        if regenerate_fingerprint:
+            fingerprint_store.remember_identity(self.storage.db._connection, new_profile)
+            self.storage.db._connection.commit()
 
         # Log the clone
         await self.storage.log_usage(
@@ -622,13 +634,22 @@ class ProfileManager:
             self._pin_to_preset(profile, fingerprint_preset, set())
             new_fingerprint = profile.browser_settings
         else:
-            new_fingerprint, sample = await self.fingerprint_generator.generate_device()
-            profile.browser_settings = new_fingerprint
-            profile.fpgen_sample = sample
-            # Drop the pinned machine too, otherwise the profile would keep the old
-            # hardware forever and only its high-level settings would change. The
-            # next launch resolves and pins a new one.
-            profile.fingerprint = None
+            for attempt in range(12):
+                new_fingerprint, sample = await self.fingerprint_generator.generate_device()
+                profile.browser_settings = new_fingerprint
+                profile.fpgen_sample = sample
+                # Drop the pinned machine too, otherwise the profile would keep the old
+                # hardware forever and only its high-level settings would change. The
+                # next launch resolves and pins a new one.
+                profile.fingerprint = None
+                try:
+                    fingerprint_store.assert_unique(self.storage.db._connection, profile)
+                    break
+                except fingerprint_store.DuplicateFingerprint:
+                    if attempt + 1 == 12:
+                        raise ValueError(
+                            "Could not generate an unused device fingerprint; retry"
+                        ) from None
         profile.updated_at = datetime.now()
 
         # Persist the change

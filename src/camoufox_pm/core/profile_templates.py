@@ -19,6 +19,17 @@ from .extension_library import (
 from .models import BrowserSettings, Profile, generate_short_id, normalize_tags
 from .profile_operations import profile_data_path, profile_operation, run_file_operation
 
+_FPGEN_DEVICE_FIELDS = frozenset(
+    {
+        "screen",
+        "user_agent",
+        "hardware_concurrency",
+        "device_memory",
+        "max_touch_points",
+        "fonts",
+    }
+)
+
 
 def initialize_tables(connection) -> None:
     connection.execute("""CREATE TABLE IF NOT EXISTS profile_templates(
@@ -229,6 +240,13 @@ class ProfileTemplates:
         if template["row_version"] != row_version:
             raise StaleWriteError(template_id, row_version)
         payloads = self._payloads(template_id)
+        generation_settings = template["browser_settings"]
+        if template["fingerprint_source"] == "fpgen":
+            generation_settings = {
+                key: value
+                for key, value in generation_settings.items()
+                if key not in _FPGEN_DEVICE_FIELDS
+            }
         for attempt in range(12):
             profile = Profile(
                 name=name,
@@ -239,7 +257,7 @@ class ProfileTemplates:
             )
             await self.manager.prepare_profile_identity(
                 profile,
-                template["browser_settings"],
+                generation_settings,
                 fingerprint_preset=template["fingerprint_preset_id"],
                 allocate_unused_preset=True,
                 use_real_device=template["fingerprint_source"] == "preset",

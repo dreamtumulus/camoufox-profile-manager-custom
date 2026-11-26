@@ -188,6 +188,7 @@ async def create_profile(request: ProfileCreateRequest):
             notes=request.notes,
             fingerprint_preset=request.fingerprint_preset,
             tags=request.tags,
+            unique_fingerprint=request.generate_fingerprint,
         )
 
         logger.info(f"Created profile: {profile.name} (ID: {profile.id})")

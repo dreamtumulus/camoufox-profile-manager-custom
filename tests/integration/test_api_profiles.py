@@ -23,6 +23,32 @@ async def test_create_and_get_profile(client):
 
 
 @pytest.mark.asyncio
+async def test_single_creation_retries_a_duplicate_fpgen_draw(client, monkeypatch):
+    import fpgen
+
+    draws = iter((1920, 1920, 1920, 2560))
+
+    def generate(_conditions):
+        return {
+            "browser": "Firefox",
+            "os": "Windows",
+            "navigator": {"hardwareConcurrency": 8, "deviceMemory": 8},
+            "screen": {"width": next(draws), "height": 1080},
+        }
+
+    monkeypatch.setattr(fpgen, "generate", generate)
+    first = await client.post("/api/profiles", json={"name": "first"})
+    second = await client.post("/api/profiles", json={"name": "second"})
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert first.json()["browser_settings"]["screen"] == "1920x1080"
+    assert second.json()["browser_settings"]["screen"] == "2560x1080"
+    stored = await get_profile_manager().storage.list_profiles()
+    assert len(stored) == 2 and stored[0].fpgen_sample != stored[1].fpgen_sample
+
+
+@pytest.mark.asyncio
 async def test_list_profiles_paginated(client):
     for i in range(3):
         await client.post("/api/profiles", json={"name": f"p{i}"})
@@ -875,6 +901,33 @@ async def test_batch_creation_assigns_one_group_proxy_and_a_unique_fingerprint_p
         "uk1.example:8080",
     ]
     assert len({profile["browser_settings"]["screen"] for profile in profiles}) == 2
+    stored = await get_profile_manager().storage.list_profiles()
+    assert len(stored) == 2 and stored[0].fpgen_sample != stored[1].fpgen_sample
+
+
+@pytest.mark.asyncio
+async def test_batch_creation_retries_a_duplicate_fpgen_draw(client, monkeypatch):
+    import fpgen
+
+    draws = iter((1920, 1920, 2560))
+
+    def generate(_conditions):
+        return {
+            "browser": "Firefox",
+            "os": "Windows",
+            "navigator": {"hardwareConcurrency": 8, "deviceMemory": 8},
+            "screen": {"width": next(draws), "height": 1080},
+        }
+
+    monkeypatch.setattr(fpgen, "generate", generate)
+    response = await client.post("/api/v1/profiles/batch", json={"names": ["One", "Two"]})
+
+    assert response.status_code == 200, response.text
+    items = response.json()["data"]["items"]
+    assert [item["profile"]["browser_settings"]["screen"] for item in items] == [
+        "1920x1080",
+        "2560x1080",
+    ]
     stored = await get_profile_manager().storage.list_profiles()
     assert len(stored) == 2 and stored[0].fpgen_sample != stored[1].fpgen_sample
 

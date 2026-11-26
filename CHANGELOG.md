@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-11-26
+
+### Fixed
+- Draw a fresh fpgen device for every single, batch and template profile creation.
+  Single creation now uses the same duplicate rejection and retry as batches and
+  templates instead of accepting a repeated sample. Template defaults no longer
+  overwrite the new sample's screen, CPU, memory, touch points, user agent or fonts.
+- Apply the same duplicate rejection to fingerprint regeneration and clones that
+  request a new device. Existing pinned profiles are unchanged.
+
 ## [0.7.3] - 2026-11-25
 
 ### Added

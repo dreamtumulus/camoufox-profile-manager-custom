@@ -68,6 +68,21 @@ async def test_a_clone_is_a_different_machine(profile_manager):
 
 
 @pytest.mark.asyncio
+async def test_cloning_retries_a_duplicate_fpgen_draw(profile_manager, monkeypatch):
+    import fpgen
+
+    source = await profile_manager.create_profile(name="source")
+    original = source.fpgen_sample
+    draws = iter((original, original | {"screen": {"width": 2560, "height": 1080}}))
+    monkeypatch.setattr(fpgen, "generate", lambda _conditions: next(draws))
+    clone = await profile_manager.clone_profile(source.id, "copy")
+
+    assert clone is not None
+    assert clone.fpgen_sample != original
+    assert clone.browser_settings.screen == "2560x1080"
+
+
+@pytest.mark.asyncio
 async def test_a_clone_can_be_asked_to_keep_the_machine(profile_manager):
     """Deliberately the same computer — moving a profile between installs, say."""
     source = await pin(profile_manager, await profile_manager.create_profile(name="source"))
@@ -330,6 +345,22 @@ async def test_rotating_the_fingerprint_drops_the_pinned_machine(profile_manager
     rotated = await profile_manager.rotate_profile_fingerprint(profile.id)
 
     assert rotated is not None and rotated.fingerprint is None
+
+
+@pytest.mark.asyncio
+async def test_rotating_retries_a_duplicate_fpgen_draw(profile_manager, monkeypatch):
+    import fpgen
+
+    profile = await profile_manager.create_profile(name="p")
+    original = profile.fpgen_sample
+    draws = iter((original, original | {"screen": {"width": 2560, "height": 1080}}))
+    monkeypatch.setattr(fpgen, "generate", lambda _conditions: next(draws))
+
+    rotated = await profile_manager.rotate_profile_fingerprint(profile.id)
+
+    assert rotated is not None
+    assert rotated.fpgen_sample != original
+    assert rotated.browser_settings.screen == "2560x1080"
 
 
 @pytest.mark.asyncio

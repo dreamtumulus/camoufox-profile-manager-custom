@@ -125,6 +125,13 @@ async def test_template_draws_an_independent_fpgen_sample_for_every_profile(prof
     second = await templates.create_profile(template["id"], 0, "second")
 
     assert first.fpgen_sample != second.fpgen_sample
+    assert first.browser_settings.screen == (
+        f"{first.fpgen_sample['screen']['width']}x{first.fpgen_sample['screen']['height']}"
+    )
+    assert (
+        first.browser_settings.hardware_concurrency
+        == (first.fpgen_sample["navigator"]["hardwareConcurrency"])
+    )
     assert first.fingerprint is None and second.fingerprint is None
     assert first.browser_settings.fingerprint_source == "fpgen"
     assert second.browser_settings.fingerprint_source == "fpgen"
