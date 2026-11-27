@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-28
+
 ### Removed
 - Profile backups. The manager no longer copies profiles on its own: not once a
   day, not before an update is prepared, not before a cookie replacement, and not
@@ -1225,7 +1227,11 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.6...v0.8.0
+[0.7.6]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.5...v0.7.6
+[0.7.5]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.4...v0.7.5
+[0.7.4]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/7f6c868...v0.7.1
