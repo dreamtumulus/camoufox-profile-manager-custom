@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from camoufox_pm.core import profile_archive
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.cleanup import ProfileCleanupManager
 from camoufox_pm.core.database import StorageManager
 from camoufox_pm.core.leases import ProfileLocked
@@ -99,7 +98,7 @@ async def test_permanent_delete_requires_trash_and_rejects_remote_lease(profile_
 
 
 @pytest.mark.asyncio
-async def test_leased_profile_cannot_be_deleted_cloned_exported_or_backed_up(profile_manager):
+async def test_leased_profile_cannot_be_deleted_cloned_or_exported(profile_manager):
     profile, path = await seeded(profile_manager)
     await profile_manager.storage.acquire_lease(profile.id, "remote", 300)
     with pytest.raises(ProfileLocked):
@@ -108,8 +107,6 @@ async def test_leased_profile_cannot_be_deleted_cloned_exported_or_backed_up(pro
         await profile_manager.clone_profile(profile.id, "clone")
     with pytest.raises(ProfileLocked):
         await profile_manager.export_profile(profile.id, profile_manager.data_dir / "export.zip")
-    result = await ProfileBackupManager(profile_manager).create_backups()
-    assert not result["backups"] and result["skipped"][0]["profile_id"] == profile.id
     assert path.exists()
 
 
@@ -127,122 +124,11 @@ async def test_operation_lock_blocks_other_instance_launch_and_releases(profile_
 
 
 @pytest.mark.asyncio
-async def test_backup_restore_creates_new_identity_and_survives_source_deletion(profile_manager):
-    profile, path = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
-    result = await backups.create_backups()
-    backup = result["backups"][0]
-    assert backup["size_bytes"] > 0
-    (path / "cookies.sqlite").write_bytes(b"newer")
-    restored = await backups.restore_backup(backup["id"], name="Recovered account")
-    assert restored.id != profile.id and restored.name == "Recovered account"
-    assert restored.fingerprint == profile.fingerprint
-    assert restored.proxy.password == "secret"
-    assert Path(restored.storage_path, "cookies.sqlite").read_bytes() == b"identity"
-    assert (path / "cookies.sqlite").read_bytes() == b"newer"
-    await profile_manager.delete_profile(profile.id)
-    await profile_manager.permanently_delete_profile(profile.id)
-    again = await backups.restore_backup(backup["id"])
-    assert Path(again.storage_path, "cookies.sqlite").read_bytes() == b"identity"
-
-
-@pytest.mark.asyncio
-async def test_retention_keeps_update_checkpoints_separate_and_backs_up_trash(profile_manager):
-    profile, _ = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager, retention=1)
-    for _ in range(3):
-        await backups.create_backups(reason="before_update")
-    for _ in range(2):
-        await backups.create_backups()
-    assert sorted(item["reason"] for item in backups.list_backups()) == [
-        "before_update",
-        "before_update",
-        "manual",
-    ]
-    assert (await backups.create_due_backups()) == {"backups": [], "skipped": []}
-    await profile_manager.delete_profile(profile.id)
-    result = await backups.create_backups(reason="before_update")
-    assert result["backups"][0]["profile_id"] == profile.id
-    restored = await backups.restore_backup(result["backups"][0]["id"])
-    assert restored.deleted_at is None
-
-
-@pytest.mark.asyncio
-async def test_failed_archive_does_not_publish_partial_backup(profile_manager, monkeypatch):
-    profile, _ = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
-
-    def broken(profile, data, destination, **kwargs):
-        destination.write_bytes(b"incomplete")
-        raise OSError("disk full")
-
-    monkeypatch.setattr(profile_archive, "export_profile", broken)
-    result = await backups.create_backups()
-    assert result["skipped"] and backups.list_backups() == []
-    assert list(backups.directory.iterdir()) == []
-    assert (await profile_manager.storage.get_lease(profile.id))[0] is None
-
-
-@pytest.mark.asyncio
-async def test_backup_paths_and_symbolic_links_cannot_escape_storage(profile_manager, tmp_path):
-    profile, path = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
-    with pytest.raises(ValueError):
-        await backups.restore_backup("../../some-file")
-    secret = tmp_path / "outside"
-    secret.write_text("private")
-    (path / "secret").symlink_to(secret)
-    result = await backups.create_backups()
-    assert result["skipped"] and backups.list_backups() == []
-    assert secret.read_text() == "private"
-
-
-@pytest.mark.asyncio
-async def test_backup_delete_preserves_profiles_and_serializes_with_restore(profile_manager):
-    profile, path = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
-    first = (await backups.create_backups())["backups"][0]
-    second = (await backups.create_backups())["backups"][0]
-    async with backups._exclusive():
-        with pytest.raises(ProfileLocked):
-            await ProfileBackupManager(profile_manager).delete_backup(first["id"])
-    assert len(backups.list_backups()) == 2
-    await backups.delete_backup(first["id"])
-    assert not (backups.directory / f"{first['id']}.zip").exists()
-    assert not (backups.directory / f"{first['id']}.json").exists()
-    assert [item["id"] for item in backups.list_backups()] == [second["id"]]
-    assert (path / "cookies.sqlite").read_bytes() == b"identity"
-    assert await profile_manager.storage.get_profile(profile.id) is not None
-    with pytest.raises(FileNotFoundError):
-        await backups.delete_backup(first["id"])
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("suffix", [".zip", ".json"])
-async def test_backup_delete_rejects_traversal_and_symlinks(profile_manager, tmp_path, suffix):
-    await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
-    backup_id = (await backups.create_backups())["backups"][0]["id"]
-    with pytest.raises(ValueError):
-        await backups.delete_backup("../outside")
-    outside = tmp_path / "outside"
-    outside.write_bytes(b"private")
-    link = backups.directory / (backup_id + suffix)
-    link.unlink()
-    link.symlink_to(outside)
-    with pytest.raises(ValueError):
-        await backups.delete_backup(backup_id)
-    assert outside.read_bytes() == b"private"
-    assert link.is_symlink()
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("cancellations", [1, 3])
-async def test_cancelled_backup_keeps_lease_until_io_finishes(
-    profile_manager, monkeypatch, cancellations
+async def test_cancelled_export_keeps_lease_until_io_finishes(
+    profile_manager, monkeypatch, tmp_path, cancellations
 ):
     profile, _ = await seeded(profile_manager)
-    backups = ProfileBackupManager(profile_manager)
     started, finish = threading.Event(), threading.Event()
     original = profile_archive.export_profile
 
@@ -252,7 +138,9 @@ async def test_cancelled_backup_keeps_lease_until_io_finishes(
         return original(*args, **kwargs)
 
     monkeypatch.setattr(profile_archive, "export_profile", slow)
-    task = asyncio.create_task(backups.create_backups())
+    task = asyncio.create_task(
+        profile_manager.export_profile(profile.id, tmp_path / "cancelled.zip")
+    )
     while not started.is_set():
         await asyncio.sleep(0.005)
     for _ in range(cancellations):
@@ -263,7 +151,6 @@ async def test_cancelled_backup_keeps_lease_until_io_finishes(
     with pytest.raises(asyncio.CancelledError):
         await task
     assert (await profile_manager.storage.get_lease(profile.id))[0] is None
-    assert list(backups.directory.iterdir()) == []
 
 
 @pytest.mark.asyncio
@@ -278,10 +165,8 @@ async def test_legacy_relative_profile_path_survives_changed_working_directory(
     monkeypatch.chdir(new_cwd)
     loaded = await profile_manager.get_profile(profile.id)
     assert Path(loaded.storage_path) == path.resolve()
-    backups = ProfileBackupManager(profile_manager)
-    result = await backups.create_backups()
-    assert result["skipped"] == []
-    fresh = await backups.restore_backup(result["backups"][0]["id"])
+    exported = await profile_manager.export_profile(profile.id, tmp_path / "relative.zip")
+    fresh = await profile_manager.import_profile(exported)
     assert Path(fresh.storage_path, "cookies.sqlite").read_bytes() == b"identity"
     await profile_manager.delete_profile(profile.id)
     assert await profile_manager.permanently_delete_profile(profile.id)
@@ -289,32 +174,8 @@ async def test_legacy_relative_profile_path_survives_changed_working_directory(
 
 
 @pytest.mark.asyncio
-async def test_backup_refuses_unreadable_credentials_and_keeps_previous_checkpoint(
-    profile_manager, monkeypatch
-):
-    from cryptography.fernet import Fernet
-
-    from camoufox_pm.config import get_settings
-
-    monkeypatch.setenv("CPM_SECRET_KEY", Fernet.generate_key().decode())
-    get_settings.cache_clear()
-    try:
-        profile, _ = await seeded(profile_manager)
-        backups = ProfileBackupManager(profile_manager)
-        good = (await backups.create_backups())["backups"][0]
-        monkeypatch.delenv("CPM_SECRET_KEY")
-        get_settings.cache_clear()
-        result = await backups.create_backups(reason="before_update")
-        assert result["backups"] == []
-        assert "could not be decrypted" in result["skipped"][0]["reason"]
-        assert [backup["id"] for backup in backups.list_backups()] == [good["id"]]
-    finally:
-        get_settings.cache_clear()
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("legacy_kind", ["password_without_username", "socks4_credentials"])
-async def test_legacy_unsupported_proxy_still_exports_backs_up_and_restores(
+async def test_legacy_unsupported_proxy_still_exports_and_imports(
     profile_manager, tmp_path, legacy_kind
 ):
     from camoufox_pm.core.models import ProxyType
@@ -329,10 +190,7 @@ async def test_legacy_unsupported_proxy_still_exports_backs_up_and_restores(
     await profile_manager.storage.save_profile(profile)
     exported = await profile_manager.export_profile(profile.id, tmp_path / "legacy.camoufox.zip")
     assert exported.is_file() and exported.stat().st_size > 0
-    backups = ProfileBackupManager(profile_manager)
-    result = await backups.create_backups([profile.id])
-    assert not result["skipped"] and len(result["backups"]) == 1
-    restored = await backups.restore_backup(result["backups"][0]["id"])
+    restored = await profile_manager.import_profile(exported)
     assert restored.id != profile.id and restored.proxy == profile.proxy
     assert Path(restored.storage_path, "cookies.sqlite").read_bytes() == b"identity"
     assert (path / "cookies.sqlite").read_bytes() == b"identity"

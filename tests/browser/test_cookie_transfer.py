@@ -8,7 +8,6 @@ from threading import Thread
 
 import pytest
 
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.cookie_transfer import CookieTransfer, parse_cookies
 
 
@@ -59,7 +58,7 @@ async def launch_page(manager, profile_id, url):
 @pytest.mark.asyncio
 async def test_cookie_import_is_sent_with_scope_flags_and_sessions_end_on_close(profile_manager):
     manager = profile_manager
-    transfer = CookieTransfer(manager, ProfileBackupManager(manager))
+    transfer = CookieTransfer(manager)
     profile = await manager.create_profile("Cookie wire proof", generate_fingerprint=False)
     expiry = int(time.time()) + 7200
     base = {
@@ -148,7 +147,7 @@ async def test_cookie_import_is_sent_with_scope_flags_and_sessions_end_on_close(
 @pytest.mark.asyncio
 async def test_netscape_portable_cookie_import_and_confirmed_replace(profile_manager):
     manager = profile_manager
-    transfer = CookieTransfer(manager, ProfileBackupManager(manager))
+    transfer = CookieTransfer(manager)
     profile = await manager.create_profile("Netscape proof", generate_fingerprint=False)
     expiry = int(time.time()) + 7200
     text = f"# Netscape HTTP Cookie File\n#HttpOnly_localhost\tFALSE\t/\tFALSE\t{expiry}\tprivate-proof\tsynthetic\n"
@@ -156,14 +155,10 @@ async def test_netscape_portable_cookie_import_and_confirmed_replace(profile_man
     exported = await transfer.export_cookies(profile.id, "netscape", imported["row_version"])
     roundtrip = parse_cookies(exported, "netscape").cookies
     assert roundtrip[0]["name"] == "private-proof" and roundtrip[0]["httpOnly"]
-    replaced = await transfer.import_cookies(profile.id, "[]", "json", "replace", 1, True)
-    assert replaced["backup_id"]
+    await transfer.import_cookies(profile.id, "[]", "json", "replace", 1, True)
     with cookie_site() as (port, _):
         context, _ = await launch_page(manager, profile.id, f"http://localhost:{port}/")
         try:
             assert await context.cookies() == []
         finally:
             await manager.close_browser(profile.id)
-    recovered = await transfer.backups.restore_backup(replaced["backup_id"])
-    exported = await transfer.export_cookies(recovered.id, "json", recovered.row_version)
-    assert json.loads(exported)[0]["name"] == "private-proof"

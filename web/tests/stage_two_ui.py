@@ -258,7 +258,6 @@ class StageTwoUI(DesktopUI):
                     "session_count": 1,
                     "skipped": [],
                     "row_version": 4,
-                    "backup_id": "cookie-backup",
                 }
             else:
                 raise AssertionError(f"Unexpected cookie request {path}")
@@ -530,12 +529,13 @@ class StageTwoUI(DesktopUI):
         expect(dialog.get_by_role("button", name="Import cookies", exact=True)).to_be_disabled()
         dialog.get_by_role(
             "checkbox",
-            name="I understand replacement removes existing cookies and creates a recovery backup.",
+            name="I understand replacement removes existing cookies and cannot be undone.",
             exact=True,
         ).check()
         dialog.get_by_role("button", name="Import cookies", exact=True).click()
         expect(dialog.get_by_label("Paste cookies or choose a file", exact=True)).to_have_value("")
-        expect(dialog).to_contain_text("A recovery backup is available")
+        expect(dialog).to_contain_text("Imported 1 cookies; 0 skipped.")
+        expect(dialog).not_to_contain_text("backup")
         self.capture("cookies")
         body = next(
             json.loads(body) for _, path, body in self.calls if path.endswith("/cookies/import")

@@ -1,6 +1,6 @@
 # Safe operation diagnostics
 
-Synchronization runtime failures and skipped administrator backups can carry a
+Synchronization runtime failures can carry a
 versioned `diagnostic` object. It describes an operation stage and failure family
 without exporting exception text or private application state. It does not prove
 the underlying cause of an intermittent failure.
@@ -20,11 +20,8 @@ A synchronization error retains its existing HTTP 409 status, generic message an
 }
 ```
 
-Backup skips add an optional `diagnostic` alongside the existing `profile_id` and
-`reason`. A missing profile uses `profile_lookup` / `missing_profile`; failures
-while creating an archive use `backup_profile`. Existing backup reasons remain
-local administrator messages and can include private paths. When reporting a
-problem, copy the **diagnostic object**, not the complete response or private log.
+When reporting a problem, copy the **diagnostic object**, not the complete
+response or private log.
 
 ## Contract and privacy
 
@@ -55,14 +52,9 @@ problem, copy the **diagnostic object**, not the complete response or private lo
 ## Installed acceptance
 
 The synchronization harness exercises a missing-profile operation using the real
-installed manager and verifies that existing profiles are unchanged. The proxy
-harness verifies a missing-profile backup skip, then still requires normal
-backups before every accepted browser scenario. Synchronization observations also
-finish an additive public backup before their one-shot browser launch, keeping
-the normal due-backup scheduler enabled without racing fresh/imported profiles.
-The same shared preparation code permits only explicit additive-backup busy
-retries; launch and handoff requests are never replayed. Reports include fixed
-`backup_checks` stages and a `profile_busy` classification without holder identities.
+installed manager and verifies that existing profiles are unchanged. Launch and
+handoff requests are never replayed, and a refused launch is reported with a
+`profile_busy` classification without holder identities.
 The synthetic CI relay retains at most eight HTTP 409 diagnostics from its
 allowlisted `sync.relay` frames in `relay_refusals`. Its actual API response is
 unchanged; request bodies, URLs, identifiers and private exception details are
@@ -93,12 +85,11 @@ replace successful round-trip, browser-session, TLS, workflow or cleanup checks.
 
 CI consumers accept only plain JSON objects matching the closed schema and the
 expected area. Unknown versions, fields, sites and malformed line numbers are
-rejected. Legacy errors remain supported without metadata. Backup retry rules
-are unchanged even if a diagnostic says `profile_busy` or `resource_busy`.
+rejected. Legacy errors remain supported without metadata. A diagnostic
+that says `profile_busy` or `resource_busy` never authorizes a retry.
 
 Include the manager version when reporting a diagnostic; CI reports also record
-the exact Actions revision. Reports may include `diagnostic_check`, `operation_diagnostic`, or
-`backup_preparation.operation_diagnostic`; arbitrary API bodies and private
+the exact Actions revision. Reports may include `diagnostic_check` or `operation_diagnostic`; arbitrary API bodies and private
 installed-process logs are not exported. Same-host/same-account CI remains
 distinct from physical/enterprise acceptance and external protocol review.
 Experimental synchronization stays explicitly opt-in.

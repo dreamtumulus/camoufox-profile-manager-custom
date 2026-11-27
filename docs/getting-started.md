@@ -89,34 +89,34 @@ may finish and save their results to the library.
 
 ## Protect and recover your data
 
-**Settings → Profile backups → Back up profiles** creates a recovery archive.
-Stop your profiles first; running or leased profiles are skipped and retried later.
-Keep a copy outside this computer. Restore a backup with **Restore as new
-profile**; it creates a separate profile so the current one is preserved.
+To keep a copy of a profile, open its menu in the profile list and choose
+**Export…**. The archive holds the profile's settings, pinned fingerprint and
+browser data. Stop the profile first, and keep the file outside this computer.
+**Import a profile archive** in the profile list brings it back as a separate
+profile, so the current one is preserved.
 
-Administrators can delete an individual archive with its **Delete** button in
-**Settings → Profile backups**. Confirm the profile name and backup date in the
-dialog before deleting permanently. Current profiles and other backups are kept.
+The manager makes no copies on its own. Earlier versions backed up every profile
+once a day into the data folder's `backups` directory; that feature was removed
+to save disk space, and the archives it left are deleted the next time the app
+starts. Export the profiles you want a copy of.
 
 Deleting a profile moves it to **Trash**. Use **Restore** there to bring it back.
 **Delete permanently** asks you to type its name and removes its browser data;
-recovery then requires an earlier backup. Protect backup archives as carefully
-as the profiles: archives are unencrypted and can contain signed-in sessions,
-cookies, history and proxy passwords. Profile archives do not back up login
-accounts, sessions for this manager, or global application settings. Restoring a
-profile archive does not require the original encryption key; imported proxy
-passwords are encrypted with the current key. Keep the original database and key
-when preserving the whole installation. Automatic backups default to every 24 hours,
-retaining seven routine archives and two update checkpoints per profile.
+recovery then requires an archive you exported earlier. Protect archives as
+carefully as the profiles: they are unencrypted and can contain signed-in
+sessions, cookies, history and proxy passwords. Profile archives do not carry
+login accounts, sessions for this manager, or global application settings.
+Importing a profile archive does not require the original encryption key;
+imported proxy passwords are encrypted with the current key. Keep the original
+database and key when preserving the whole installation.
 Trash has no automatic expiry; restoring keeps profile schedules paused.
 
 **Settings → App updates → Check for updates** checks GitHub for a newer release.
 Stop running profiles before preparing an update.
-**Back up and prepare update** creates a backup before offering the release
-downloads. Choose the installer for your computer. The release link is checked to belong to this project; this is not
+**Prepare update** offers the release downloads; it copies no profile data.
+Choose the installer for your computer. The release link is checked to belong to this project; this is not
 a cryptographic verification of the installer. Download it, close the manager, and install
 it over the existing app. The app does not replace its executable automatically.
-A backup must succeed before update preparation continues.
 
 ## Where data lives
 
@@ -128,17 +128,25 @@ The desktop app uses the same folder regardless of where you launch it:
 | Windows | `%LOCALAPPDATA%\Camoufox Profile Manager\` |
 | Linux | `$XDG_DATA_HOME/camoufox-profile-manager/` or `~/.local/share/camoufox-profile-manager/` |
 
-Keep the whole folder, including `profiles.db`, browser data, backups and
+Keep the whole folder, including `profiles.db`, browser data and
 `secret.key`. A fresh desktop install generates this encryption key; losing it
 can make encrypted proxy passwords unreadable. Reinstalling the app or uninstalling
 the Windows program keeps the separate data folder. CLI/source installations
 continue to use `data/profiles.db` unless configured otherwise; their existing
 data is not silently moved into the desktop folder.
 
+Most of a used profile's folder is cache the browser can rebuild, so the manager
+keeps it bounded. Each browser may keep at most 50 MB of cached pages
+(`CPM_BROWSER_CACHE_MB`; `0` removes the limit), and its startup cache is deleted
+when it closes, which makes the next start slightly slower. The first start
+after upgrading also trims closed profiles that grew before there was a limit.
+Cookies, logins, site storage and history are not part of any cache and are
+never touched by this.
+
 The manager's server listens on this computer only and chooses an available
 local port. If it says **already open**, switch to its existing window. For a
 startup failure, `desktop.log` in the data folder records output from packaged
-windowed builds. Do not share logs or backups publicly without checking for
+windowed builds. Do not share logs or profile archives publicly without checking for
 private information.
 
 ## From source (developers)

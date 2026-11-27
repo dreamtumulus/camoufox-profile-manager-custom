@@ -1,19 +1,15 @@
-"""Browser/update API safety: explicit installs and complete backups before links."""
+"""Browser/update API safety: explicit installs and links only for a confirmed release."""
 
-import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
-import httpx
 import pytest
 
 from camoufox_pm.api.dependencies import get_profile_manager
-from camoufox_pm.api.routes import recovery, runtime
+from camoufox_pm.api.routes import runtime
 from camoufox_pm.config import get_settings
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.browser_install import BrowserStatus
 from camoufox_pm.core.updates import RELEASES, UpdateStatus
-from camoufox_pm.main import app
 
 
 @pytest.fixture(autouse=True)
@@ -24,14 +20,6 @@ def isolate_auth(tmp_path, monkeypatch):
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
-
-
-@pytest.fixture
-async def runtime_client(client):
-    backups = ProfileBackupManager(get_profile_manager())
-    recovery.set_backup_manager(backups)
-    yield client, backups
-    recovery.set_backup_manager(None)
 
 
 @pytest.fixture
@@ -156,17 +144,11 @@ async def test_update_check_failure_is_a_status_result_not_an_available_update(c
     ("update", "status"),
     [(UpdateStatus(error="Network unavailable"), 503), (UpdateStatus(available=False), 409)],
 )
-async def test_prepare_requires_a_successful_available_release_before_backing_up(
-    runtime_client, monkeypatch, update, status
-):
-    client, backups = runtime_client
-    create = AsyncMock()
-    monkeypatch.setattr(backups, "create_backups", create)
+async def test_prepare_requires_a_successful_available_release(client, monkeypatch, update, status):
     monkeypatch.setattr(runtime, "check_update", AsyncMock(return_value=update))
     response = await client.post("/api/v1/system/updates/prepare")
     assert response.status_code == status
     assert "release_url" not in response.text
-    create.assert_not_called()
 
 
 async def create_profile(client, name):
@@ -179,74 +161,30 @@ async def create_profile(client, name):
     return profile
 
 
-async def test_prepare_publishes_official_link_only_after_active_and_trash_backups(
-    runtime_client, available_update
+async def test_prepare_returns_the_official_link_without_copying_any_profile(
+    client, available_update
 ):
-    client, backups = runtime_client
+    """Profile backups were retired: preparing an update must not write archives.
+
+    A profile another instance holds no longer stands in the way either, since
+    nothing reads its data.
+    """
     active = await create_profile(client, "Active profile")
     trashed = await create_profile(client, "Trashed profile")
+    leased = await create_profile(client, "Leased profile")
     assert (await client.delete(f"/api/v1/profiles/{trashed['id']}")).status_code == 200
+    manager = get_profile_manager()
+    assert await manager.storage.acquire_lease(leased["id"], "another-instance", 300)
     response = await client.post("/api/v1/system/updates/prepare")
     assert response.status_code == 200
-    data = response.json()["data"]
-    assert data["release_url"] == f"{RELEASES}/tag/v999.0.0"
-    assert data["backup_count"] == 2
-    saved = backups.list_backups()
-    assert {item["profile_id"] for item in saved} == {active["id"], trashed["id"]}
-    assert {item["reason"] for item in saved} == {"before_update"}
-    for item in saved:
-        with zipfile.ZipFile(backups.directory / f"{item['id']}.zip") as archive:
-            assert (
-                archive.read("data/cookies.sqlite")
-                == f"cookies for {item['profile_name']}".encode()
-            )
-    assert (await client.get(f"/api/v1/profiles/{active['id']}")).status_code == 200
+    assert response.json()["data"] == {
+        "release_url": f"{RELEASES}/tag/v999.0.0",
+        "message": "Close the application before installing the update.",
+    }
+    assert not (manager.data_dir / "backups").exists()
+    for profile in (active, trashed, leased):
+        assert (
+            Path(profile["storage_path"], "cookies.sqlite").read_bytes()
+            == f"cookies for {profile['name']}".encode()
+        )
     assert len((await client.get("/api/v1/trash/profiles")).json()["data"]["profiles"]) == 1
-
-
-async def test_partial_backup_with_a_live_lease_never_returns_release_link(
-    runtime_client, available_update
-):
-    client, backups = runtime_client
-    closed = await create_profile(client, "Closed")
-    leased = await create_profile(client, "Leased")
-    storage = get_profile_manager().storage
-    assert await storage.acquire_lease(leased["id"], "another-instance", 300)
-    response = await client.post("/api/v1/system/updates/prepare")
-    assert response.status_code == 409
-    assert leased["id"] in response.json()["error"]["message"]
-    assert "release_url" not in response.text
-    assert {item["profile_id"] for item in backups.list_backups()} == {closed["id"]}
-    assert Path(leased["storage_path"], "cookies.sqlite").read_bytes() == b"cookies for Leased"
-
-
-async def test_missing_profile_data_is_reported_as_backup_failure_without_download(
-    runtime_client, available_update
-):
-    client, backups = runtime_client
-    profile = await create_profile(client, "Missing data")
-    directory = Path(profile["storage_path"])
-    (directory / "cookies.sqlite").unlink()
-    directory.rmdir()
-    response = await client.post("/api/v1/system/updates/prepare")
-    assert response.status_code == 409
-    assert "missing" in response.json()["error"]["message"].lower()
-    assert "release_url" not in response.text
-    assert backups.list_backups() == []
-
-
-async def test_unexpected_backup_error_returns_no_update_link(
-    runtime_client, available_update, monkeypatch
-):
-    _, backups = runtime_client
-    monkeypatch.setattr(
-        backups, "create_backups", AsyncMock(side_effect=OSError("disk unavailable"))
-    )
-    # Exercise the server's real failure response rather than ASGITransport's default re-raise.
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
-    ) as client:
-        response = await client.post("/api/v1/system/updates/prepare")
-    assert response.status_code == 500
-    assert "release_url" not in response.text
-    assert f"{RELEASES}/tag/" not in response.text

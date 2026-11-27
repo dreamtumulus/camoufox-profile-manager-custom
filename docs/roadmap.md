@@ -59,7 +59,7 @@ roles and activity records are the baseline, not missing future features.
 ## Desktop adoption — current implementation
 
 Stage one now has native installers/build automation, in-app browser setup,
-short RU/EN onboarding, profile backups, Trash and backup-gated release checks.
+short RU/EN onboarding, profile archives, Trash and release checks.
 See [accessibility-roadmap.md](accessibility-roadmap.md) and the
 [desktop evidence](desktop-acceptance.md) for installation coverage and follow-ups.
 Releases remain unsigned under the [release policy](signing.md); certificates

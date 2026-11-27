@@ -733,20 +733,6 @@ export interface UpdateRecovery {
   installed_version?: string
 }
 
-export interface BackupInfo {
-  id: string
-  profile_id: string
-  profile_name: string
-  created_at: string
-  reason: string
-  size_bytes: number
-}
-
-export interface BackupResult {
-  backups: BackupInfo[]
-  skipped: { profile_id: string; reason: string }[]
-}
-
 export const recoveryAPI = {
   async trash(): Promise<(Profile & { deleted_at: string })[]> {
     const body = await request<{ data: { profiles: (Profile & { deleted_at: string })[] } }>(`${API_PREFIX}/trash/profiles`)
@@ -758,21 +744,6 @@ export const recoveryAPI = {
   },
   permanentlyDelete(id: string): Promise<unknown> {
     return request(`${API_PREFIX}/trash/profiles/${id}?confirm=true`, { method: 'DELETE' })
-  },
-  async backups(): Promise<BackupInfo[]> {
-    const body = await request<{ data: { backups: BackupInfo[] } }>(`${API_PREFIX}/system/backups`)
-    return body.data.backups
-  },
-  async createBackup(): Promise<BackupResult> {
-    const body = await request<{ data: BackupResult }>(`${API_PREFIX}/system/backups`, { method: 'POST', body: JSON.stringify({ reason: 'manual' }) })
-    return body.data
-  },
-  async restoreBackup(id: string): Promise<Profile> {
-    const body = await request<{ data: Profile }>(`${API_PREFIX}/system/backups/${id}/restore`, { method: 'POST', body: JSON.stringify({}) })
-    return body.data
-  },
-  deleteBackup(id: string): Promise<unknown> {
-    return request(`${API_PREFIX}/system/backups/${encodeURIComponent(id)}?confirm=true`, { method: 'DELETE' })
   },
 }
 
@@ -838,8 +809,8 @@ export const systemAPI = {
     const body = await request<{ data: AppUpdate }>(`${API_PREFIX}/system/updates${preview ? '?channel=preview' : ''}`)
     return body.data
   },
-  async prepareUpdate(preview = false): Promise<{ release_url: string; backup_count: number; message: string }> {
-    const body = await request<{ data: { release_url: string; backup_count: number; message: string } }>(`${API_PREFIX}/system/updates/prepare${preview ? '?channel=preview' : ''}`, { method: 'POST' })
+  async prepareUpdate(preview = false): Promise<{ release_url: string; message: string }> {
+    const body = await request<{ data: { release_url: string; message: string } }>(`${API_PREFIX}/system/updates/prepare${preview ? '?channel=preview' : ''}`, { method: 'POST' })
     return body.data
   },
   downloadVerifiedUpdate(preview = false): Promise<UpdateRecovery> {

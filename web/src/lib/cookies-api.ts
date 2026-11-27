@@ -13,7 +13,6 @@ export interface CookieImportResult {
   session_count: number
   skipped: CookieSkip[]
   row_version: number
-  backup_id: string | null
 }
 interface Envelope<T> { success: boolean; message: string; data: T }
 const root = (id: string) => `/api/v1/profiles/${encodeURIComponent(id)}/cookies`

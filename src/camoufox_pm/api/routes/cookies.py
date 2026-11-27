@@ -13,7 +13,6 @@ from camoufox_pm.api.models.cookies import (
     CookiePreviewRequest,
 )
 from camoufox_pm.api.models.system import ApiResponse
-from camoufox_pm.api.routes.recovery import get_backup_manager
 from camoufox_pm.core.browser_session import BrowserLaunchError
 from camoufox_pm.core.cookie_transfer import CookieTransfer, CookieTransferError
 
@@ -24,7 +23,7 @@ async def service(profile_id: str) -> CookieTransfer:
     manager = get_profile_manager()
     if await manager.get_profile(profile_id) is None:
         raise HTTPException(404, "Profile not found")
-    return CookieTransfer(manager, get_backup_manager())
+    return CookieTransfer(manager)
 
 
 async def _perform(operation):

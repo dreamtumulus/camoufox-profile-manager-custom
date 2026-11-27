@@ -7,7 +7,6 @@ import zipfile
 
 import pytest
 
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.cookie_transfer import CookieTransfer
 from camoufox_pm.core.extension_library import ExtensionLibrary
 from camoufox_pm.core.profile_templates import ProfileTemplates
@@ -58,7 +57,7 @@ async def test_template_extension_cookie_archive_and_saved_view(
     # The template owns its add-on snapshot even after the library entry disappears.
     await library.delete(extension["id"], extension["row_version"])
     first = await templates.create_profile(template["id"], template["row_version"], "First")
-    cookies = CookieTransfer(manager, ProfileBackupManager(manager))
+    cookies = CookieTransfer(manager)
     imported = await cookies.import_cookies(
         first.id,
         json.dumps(

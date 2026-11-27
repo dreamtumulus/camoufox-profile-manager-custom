@@ -36,7 +36,6 @@ from fastapi.exception_handlers import http_exception_handler
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import expect, sync_playwright
 from pydantic import SecretStr
-from scripts.installed_backup_preparation import prepare_profile_backup as _prepare_profile_backup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from camoufox_pm.core.operation_diagnostics import operation_diagnostic, validated_diagnostic
@@ -809,20 +808,7 @@ await fetch('/report?stage='+stage,{method:'POST',body:JSON.stringify({state,can
         self.end_headers()
 
 
-def prepare_profile_backup(device, profile_id, report=None):
-    return _prepare_profile_backup(
-        device, profile_id, report, wait=wait_for, api_error=InstalledAPIError
-    )
-
-
 def observe(device, profile_id, site, stage, report=None):
-    # Keep the ordinary automatic scheduler enabled. An accepted additive backup
-    # finishes and releases admission before a one-shot browser launch; fresh or
-    # newly imported profiles would otherwise race the next minute's due scan.
-    preparation = {}
-    if report is not None:
-        report.setdefault("backup_checks", {})[stage] = preparation
-    prepare_profile_backup(device, profile_id, preparation)
     launched = device.call(
         f"/profiles/{profile_id}/launch",
         {

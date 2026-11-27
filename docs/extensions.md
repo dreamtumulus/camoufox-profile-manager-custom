@@ -12,9 +12,9 @@ Validation checks packaging, not the trustworthiness of executable extension cod
 
 ## Portability and persistence
 
-Profile archives, clones and Settings profile backups include assigned extension snapshot files and relative references. Imports validate those paths and files again before launching, so an archive cannot point the browser at arbitrary host directories. Template snapshots are independent of library entries.
+Profile archives and clones include assigned extension snapshot files and relative references. Imports validate those paths and files again before launching, so an archive cannot point the browser at arbitrary host directories. Template snapshots are independent of library entries.
 
-The reusable library and templates live in SQLite; Settings profile backups do not back up those unassigned records. Preserve the database when transferring the complete library.
+The reusable library and templates live in SQLite; profile archives do not carry those unassigned records. Preserve the database when transferring the complete library.
 
 ## API
 

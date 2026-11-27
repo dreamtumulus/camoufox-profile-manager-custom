@@ -12,9 +12,9 @@ before the profile's cookie store changes.
 
 **Merge with existing cookies** updates cookies with the same name, domain, and
 path while preserving other cookies. **Replace existing cookies** removes the
-existing cookie jar. Replacement requires an explicit confirmation and a
-successful complete profile backup. Recover that backup through
-**Settings → Profile backups → Restore as new profile**.
+existing cookie jar. Replacement requires an explicit confirmation and cannot be
+undone: nothing keeps a copy of the cookies it removes. Export the current
+cookies first if you may need them.
 
 Imported session cookies are applied at the next successful profile launch. They
 remain session cookies and disappear when that browser session closes. A failed

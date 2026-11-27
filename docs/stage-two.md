@@ -24,7 +24,7 @@ tags and a saved view. Separate browser cases check cookie lifetime and flags,
 extension removal/upgrades, authenticated SOCKS5, desktop chrome and pinned
 identity. Fixtures and screenshots contain synthetic local data only.
 
-Offline tests cover validation, concurrent edits, cancellation, backup recovery,
+Offline tests cover validation, concurrent edits, cancellation,
 archive paths and imported-extension integrity. UI acceptance covers cookie
 transfer, templates, extensions, tags and saved views in English and Chinese.
 Regular CI runs the backend on Python 3.10–3.13, frontend checks and builds;

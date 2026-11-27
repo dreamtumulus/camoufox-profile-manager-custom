@@ -7,7 +7,7 @@ import { useI18n } from '@/components/i18n-provider'
 import type { Translator } from '@/lib/i18n'
 import { SyncSettings } from '@/components/sync-settings'
 import { BrowserSetup } from '@/components/browser-setup'
-import { BackupSettings, UpdateSettings } from '@/components/recovery-settings'
+import { UpdateSettings } from '@/components/recovery-settings'
 import { EmptyState } from '@/components/empty-state'
 import { useToast } from '@/components/toast'
 import {
@@ -88,7 +88,6 @@ export default function SettingsPage() {
         <div className="mx-auto flex max-w-[760px] flex-col gap-6 px-5 py-6">
           <BrowserSetup />
           <UpdateSettings />
-          <BackupSettings />
           <SyncSettings />
 
           <Group

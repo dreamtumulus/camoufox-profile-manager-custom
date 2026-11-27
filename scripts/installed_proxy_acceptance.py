@@ -33,12 +33,6 @@ from uuid import uuid4
 
 import psutil
 from playwright.sync_api import sync_playwright
-from scripts.installed_backup_preparation import (
-    backup_skip_code as backup_skip_code,
-)
-from scripts.installed_backup_preparation import (
-    prepare_profile_backup as _prepare_profile_backup,
-)
 from scripts.installed_sync_acceptance import (
     _PROCESSES,
     Device,
@@ -48,8 +42,6 @@ from scripts.installed_sync_acceptance import (
     wait_for,
 )
 from tests.support.proxy_protocols import ProxyFixture, certificates
-
-from camoufox_pm.core.operation_diagnostics import validated_diagnostic
 
 HEALTH_NAMES = ("api.ipify.org", "checkip.amazonaws.com", "icanhazip.com")
 DNS_NAMES = ("cpm-origin.invalid", *HEALTH_NAMES)
@@ -309,10 +301,6 @@ def profile_for(device, fixture, ca, report=None):
         },
     )
     trust_profile(profile["storage_path"], ca, device.work / "data")
-    # Every synthetic profile is backed up before any browser mutation. This
-    # keeps the normal automatic scheduler enabled without a timing race at
-    # an arbitrary minute boundary during protocol/refusal acceptance.
-    prepare_profile_backup(device, profile["id"], report)
     return profile["id"]
 
 
@@ -378,11 +366,6 @@ def positive_case(device, protocol, auth, certs, *, restart=False, report=None):
                 assert len(listeners) == 1, "Expected one session-owned relay"
         pinned = device.call(f"/profiles/{profile_id}")
         if restart:
-            print(
-                "Installed proxy acceptance: completing backup before restart",
-                flush=True,
-            )
-            prepare_profile_backup(device, profile_id, report)
             device.close()
             device.start()
             device.login()
@@ -450,12 +433,6 @@ def positive_case(device, protocol, auth, certs, *, restart=False, report=None):
             "passed": True,
             "same_profile_restart": restart,
         }
-
-
-def prepare_profile_backup(device, profile_id, report=None):
-    return _prepare_profile_backup(
-        device, profile_id, report, wait=wait_for, api_error=InstalledAPIError
-    )
 
 
 def workflow_diagnostics(run):
@@ -670,18 +647,6 @@ def main():
                     result["browser_version"] = public_version(browser_status["version"])
                     # Assert this is the packaged UI, not a dev server.
                     device.page.get_by_role("button", name="New profile", exact=True).wait_for()
-                    phase = "backup-diagnostic"
-                    skipped = device.call(
-                        "/system/backups", {"profile_ids": ["diagnostic-missing-profile"]}
-                    )["data"]
-                    assert not skipped["backups"] and len(skipped["skipped"]) == 1
-                    diagnostic = validated_diagnostic(
-                        skipped["skipped"][0].get("diagnostic"), area="backup"
-                    )
-                    assert diagnostic is not None
-                    assert diagnostic["stage"] == "profile_lookup"
-                    assert diagnostic["category"] == "missing_profile"
-                    result["diagnostic_check"] = diagnostic
                     for protocol, auth in CASES:
                         phase = protocol + ("-password" if auth else "-none")
                         print(f"Installed proxy acceptance: {phase}", flush=True)

@@ -62,8 +62,6 @@ class DesktopUI(unittest.TestCase):
         self.assignment_skips = []
         self.browser_state = {"installed": False, "version": None, "state": "idle", "progress": None, "message": "Browser not installed", "error": None}
         self.profiles = []
-        self.backups = []
-        self.backup_delete_failure = False
         self.update_recovery = {"state": "idle", "maintenance_active": False, "automatic_install_available": False, "can_cancel": False}
         self.update_action_failure = False
         self.trash = []
@@ -140,21 +138,11 @@ class DesktopUI(unittest.TestCase):
         elif path == "/system/updates?channel=preview":
             data, envelope = {"current_version": "0.6.0rc1", "latest_version": "0.6.0-rc.2", "available": True, "release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0-rc.2", "assets": []}, True
         elif path == "/system/updates/prepare?channel=preview":
-            data, envelope = {"release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0-rc.2", "backup_count": 1, "message": "Ready"}, True
+            data, envelope = {"release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0-rc.2", "message": "Ready"}, True
         elif path == "/system/updates":
             data, envelope = {"current_version": "0.5.0", "latest_version": "0.6.0", "available": True, "release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0", "assets": []}, True
         elif path == "/system/updates/prepare":
-            data, envelope = {"release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0", "backup_count": 1, "message": "1 backup created. Release ready."}, True
-        elif path == "/system/backups":
-            data, envelope = {"backups": self.backups}, True
-        elif path.startswith("/system/backups/") and path.endswith("/restore"):
-            data, envelope = {"id": "restored-copy", "name": "Recovered profile"}, True
-        elif path.startswith("/system/backups/") and request.method == "DELETE":
-            if self.backup_delete_failure:
-                return route.fulfill(status=500, json={"detail": "Could not delete the backup. Check file permissions and try again."})
-            backup_id = path.split("/system/backups/", 1)[1].split("?", 1)[0]
-            self.backups = [item for item in self.backups if item["id"] != backup_id]
-            data, envelope = None, True
+            data, envelope = {"release_url": "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0", "message": "Close the application before installing the update."}, True
         elif path == "/proxies" and request.method == "GET":
             data, envelope = {"proxies": self.library}, True
         elif path == "/proxies" and request.method == "POST":
@@ -274,56 +262,25 @@ class DesktopUI(unittest.TestCase):
         expect(switch).to_have_attribute("aria-checked", "false")
         expect(switch).to_be_enabled()
 
-    def test_release_download_requires_backup_preparation(self):
+    def test_release_download_requires_preparation(self):
         self.page.goto(f"{self.origin}/settings/")
         self.page.get_by_role("button", name="Check for updates", exact=True).click()
         expect(self.page.get_by_text("Version 0.6.0 is available. You have 0.5.0.")).to_be_visible()
         expect(self.page.get_by_role("link", name="Open release downloads")).not_to_be_visible()
-        self.page.get_by_role("button", name="Back up and prepare update").click()
+        self.page.get_by_role("button", name="Prepare update", exact=True).click()
         expect(self.page.get_by_role("link", name="Open release downloads")).to_have_attribute("href", "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0")
         self.assertEqual(sum(path == "/system/updates/prepare" for _, path, _ in self.calls), 1)
 
-    def test_backup_restore_creates_a_separate_profile(self):
-        self.backups = [{"id": "saved", "profile_id": "original", "profile_name": "Original profile", "created_at": "2026-01-01T00:00:00Z", "reason": "manual", "size_bytes": 1024}]
+    def test_settings_offer_no_profile_backups_and_never_ask_for_them(self):
         self.page.goto(f"{self.origin}/settings/")
-        self.page.get_by_role("button", name="Restore backup of Original profile", exact=False).click()
-        expect(self.page.get_by_role("dialog")).to_contain_text("Your current profiles and this backup are preserved.")
-        self.page.get_by_role("button", name="Restore as new profile", exact=True).click()
-        expect(self.page.get_by_text("Backup restored as a new profile", exact=True)).to_be_visible()
-        self.assertTrue(any(method == "POST" and path == "/system/backups/saved/restore" for method, path, _ in self.calls))
-        self.assertFalse(any(method in {"PUT", "DELETE"} for method, _, _ in self.calls))
-
-    def test_backup_delete_confirmation_cancel_and_error_retry(self):
-        self.backups = [{"id": identifier, "profile_id": "original", "profile_name": name, "created_at": "2026-01-01T00:00:00Z", "reason": "manual", "size_bytes": 1024} for identifier, name in [("saved", "Selected profile"), ("kept", "Other profile")]]
-        self.page.goto(f"{self.origin}/settings/")
-        remove = self.page.get_by_role("button", name="Delete backup of Selected profile", exact=False)
-        remove.click()
-        dialog = self.page.get_by_role("dialog", name="Delete backup", exact=True)
-        expect(dialog).to_contain_text("Your current profiles and other backups are preserved.")
-        dialog.get_by_role("button", name="Cancel", exact=True).click()
-        self.assertFalse(any(method == "DELETE" for method, _, _ in self.calls))
-        remove.click()
-        self.backup_delete_failure = True
-        dialog.get_by_role("button", name="Delete permanently", exact=True).click()
-        expect(dialog.get_by_role("alert")).to_contain_text("Could not delete the backup")
-        expect(remove).to_be_visible()
-        self.backup_delete_failure = False
-        dialog.get_by_role("button", name="Delete permanently", exact=True).click()
-        expect(dialog).not_to_be_visible()
-        expect(remove).to_have_count(0)
-        expect(self.page.get_by_role("button", name="Delete backup of Other profile", exact=False)).to_be_visible()
-        self.assertEqual([(method, path) for method, path, _ in self.calls if method == "DELETE"], [("DELETE", "/system/backups/saved?confirm=true")] * 2)
-
-    def test_backup_delete_chinese_last_backup(self):
-        self.backups = [{"id": "saved", "profile_id": "original", "profile_name": "测试配置", "created_at": "2026-01-01T00:00:00Z", "reason": "manual", "size_bytes": 1024}]
-        self.page.goto(f"{self.origin}/settings/")
-        self.page.get_by_label("Language", exact=True).select_option("zh-CN")
-        self.page.get_by_role("button", name="删除 测试配置 于", exact=False).click()
-        dialog = self.page.get_by_role("dialog", name="删除备份", exact=True)
-        expect(dialog).to_contain_text("当前配置和其他备份将保留")
-        dialog.get_by_role("button", name="永久删除", exact=True).click()
-        expect(self.page.get_by_text("备份已删除", exact=True)).to_be_visible()
-        expect(self.page.get_by_text("暂无备份。", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("heading", name="App updates", exact=True)).to_be_visible()
+        expect(self.page.get_by_role("heading", name="Profile backups", exact=True)).to_have_count(0)
+        expect(self.page.get_by_role("button", name="Back up profiles", exact=True)).to_have_count(0)
+        self.page.get_by_role("button", name="Check for updates", exact=True).click()
+        self.page.get_by_role("button", name="Prepare update", exact=True).click()
+        status = self.page.get_by_text("Your release is ready to download.", exact=True)
+        expect(status).to_be_visible()
+        self.assertFalse(any("/system/backups" in path for _, path, _ in self.calls))
 
     def test_preview_channel_is_opt_in_and_preserved_during_preparation(self):
         self.page.goto(f"{self.origin}/settings/")
@@ -332,7 +289,7 @@ class DesktopUI(unittest.TestCase):
         choice.check()
         self.page.get_by_role("button", name="Check for updates", exact=True).click()
         expect(self.page.get_by_text("Version 0.6.0-rc.2 is available. You have 0.6.0rc1.")).to_be_visible()
-        self.page.get_by_role("button", name="Back up and prepare update").click()
+        self.page.get_by_role("button", name="Prepare update", exact=True).click()
         expect(self.page.get_by_role("link", name="Open release downloads")).to_have_attribute("href", "https://github.com/polyackiy/camoufox-profile-manager/releases/tag/v0.6.0-rc.2")
         choice.uncheck()
         expect(self.page.get_by_role("link", name="Open release downloads")).not_to_be_visible()
@@ -359,7 +316,7 @@ class DesktopUI(unittest.TestCase):
         expect(self.page.get_by_text("No trusted TUF root is configured", exact=False)).to_be_visible()
         expect(self.page.get_by_role("button", name="Download verified update", exact=True)).not_to_be_visible()
         self.page.get_by_role("button", name="Check for updates", exact=True).click()
-        self.page.get_by_role("button", name="Back up and prepare update", exact=True).click()
+        self.page.get_by_role("button", name="Prepare update", exact=True).click()
         expect(self.page.get_by_role("link", name="Open release downloads")).to_be_visible()
         self.assertFalse(any(path.endswith("/download") for _, path, _ in self.calls))
 

@@ -144,7 +144,7 @@ of plausible parts.
 Older releases may only offer Python packages. Desktop installers are unsigned
 under the [release policy](docs/signing.md); macOS/Windows can show a security warning.
 Read the [short beginner guide](docs/getting-started.md) for installation,
-backups, Trash, updates, and where your data lives.
+profile archives, Trash, updates, and where your data lives.
 
 ### From source (developers)
 
@@ -189,9 +189,9 @@ the UI work as-is.
 4. Press **Run**. The profile stays running until you click **Stop** or close its
    browser window.
 
-Settings includes browser download retry, profile backups, and an update check. Deleted
-profiles go to **Trash** for recovery. Updates prepare a backup before offering
-an installer; replacing the app remains a manual installation step.
+Settings includes browser download retry and an update check. Deleted
+profiles go to **Trash** for recovery. An update check offers the release
+download; replacing the app remains a manual installation step.
 [Getting started](docs/getting-started.md) explains these controls.
 The manager also provides [complete offline data/browser recovery](docs/update-recovery.md)
 and explicit preview-release discovery. These additions are included in the `v0.6.0-rc.4`
@@ -222,6 +222,7 @@ Advanced/source configuration uses environment variables (prefix `CPM_`); copy
 | `CPM_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins                 |
 | `CPM_WEBUI_DIR`    | *(auto)*                | Override where the bundled web UI is served from |
 | `CPM_START_URL`    | `https://claude.ai`     | Page a browser opened with **Run** shows first; empty opens none. Scheduled and workflow launches are not affected |
+| `CPM_BROWSER_CACHE_MB` | `50`                | Most disk a profile's browser may use for cached pages, in megabytes. `0` leaves the browser's own default, which grows up to a gigabyte per profile |
 | `CPM_AUTOMATION_ENABLED` | *(unset)*         | Overrides **Settings → Automation**, the master switch for what the program does inside a profile's browser on its own (off by default). On, the start page gets the profile's [email address](docs/profile-emails.md#run-enters-the-address-on-the-start-page) in its sign-in form and its SSO button is pressed. Leave unset to use the switch on the Settings screen |
 
 Generate an encryption key with:

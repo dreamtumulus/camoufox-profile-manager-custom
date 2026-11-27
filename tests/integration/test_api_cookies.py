@@ -111,7 +111,7 @@ async def test_running_stale_trashed_missing_and_replace_confirmation(cookie_cli
     assert (await client.get(root + "/export?row_version=0")).status_code == 409
     await manager.storage.release_lease(identifier, "remote")
     replaced = await client.post(root + "/import", json={**body, "confirm_replace": True})
-    assert replaced.status_code == 200 and replaced.json()["data"]["backup_id"]
+    assert replaced.status_code == 200 and "backup_id" not in replaced.json()["data"]
     await manager.delete_profile(identifier)
     assert (await client.get(root + "/export?row_version=1")).status_code == 404
     assert (

@@ -10,7 +10,7 @@ from loguru import logger
 
 from camoufox_pm.config import get_settings
 
-from . import fingerprint_store, profile_archive, proxy_check
+from . import fingerprint_store, profile_archive, profile_cache, proxy_check
 from .browser_session import BrowserSessionManager
 from .database import EmailTaken, StaleWriteError, StorageManager
 from .extension_library import managed_default_exclusions, resolve_profile_addons
@@ -1153,6 +1153,7 @@ class ProfileManager:
                 except ValueError:
                     logger.warning(f"Ignoring invalid window_size {window_size!r} (expected WxH)")
             options.update(kwargs)
+            profile_cache.limit_disk_cache(options, get_settings().browser_cache_mb)
 
             if profile.extensions:
                 options["addons"] = await run_file_operation(
@@ -1245,6 +1246,18 @@ class ProfileManager:
 
     async def _on_browser_stopped(self, profile_id: str) -> None:
         from .sync_queue import queue_closed_profile
+
+        # Runs after the browser's processes are gone and before its lease is
+        # handed back, so nothing else can be using the folder. A failure here
+        # must not keep the lease from being released.
+        try:
+            profile = await self.storage.get_profile(profile_id, include_deleted=True)
+            if profile is not None:
+                await run_file_operation(
+                    profile_cache.remove_startup_cache, profile_data_path(self, profile)
+                )
+        except Exception as exc:  # noqa: BLE001 - housekeeping must never break teardown
+            logger.warning(f"Could not clear the startup cache of {profile_id}: {exc}")
 
         if await queue_closed_profile(self, profile_id):
             self.sync_queue_event.set()

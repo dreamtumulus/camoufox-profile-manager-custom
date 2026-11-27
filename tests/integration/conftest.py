@@ -22,10 +22,6 @@ async def client(tmp_path, monkeypatch):
     dependencies.set_storage_manager(storage)
     dependencies.set_profile_manager(manager)
     monkeypatch.setattr("camoufox_pm.core.browser_install.ensure_browser_ready", lambda: None)
-    from camoufox_pm.api.routes.recovery import set_backup_manager
-    from camoufox_pm.core.backups import ProfileBackupManager
-
-    set_backup_manager(ProfileBackupManager(manager))
     # Not started: the routes only need it to plan and to run-now; the loop
     # would poll on a real clock, which tests must not depend on.
     dependencies.set_scheduler(TaskScheduler(storage, manager))
@@ -36,4 +32,3 @@ async def client(tmp_path, monkeypatch):
 
     await dependencies.get_scheduler().stop()
     await storage.close()
-    set_backup_manager(None)

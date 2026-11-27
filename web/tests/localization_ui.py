@@ -289,7 +289,7 @@ class AccessLocaleUI(Localized, StageThreeUI):
         self.assertEqual(self.grants, [{"profile_id": "profile-1", "can_export": False}])
         self.page.goto(self.origin + "/settings/")
         self.button("Check for updates").click()
-        self.button("Back up and prepare update").click()
+        self.button("Prepare update").click()
         expect(
             self.page.get_by_role("link", name=self.tr("Open release downloads"), exact=True)
         ).to_be_visible()

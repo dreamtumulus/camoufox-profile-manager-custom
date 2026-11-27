@@ -2,7 +2,7 @@
 
 Tags are labels for organization. Creating or editing a profile accepts `tags: []`; an empty list clears the labels. Tags are trimmed, repeated whitespace is collapsed, Unicode is normalized, and spelling is case-folded (`Work` and `work` become the same label). Duplicates are removed. Each profile can have at most 20 tags, each 1–32 characters. Commas and control characters are not accepted.
 
-The profile editor has a comma-separated Tags field. The profile list displays tag chips, offers group and tag filters, and can add or remove tags for a selection using **Edit tags**. Tag changes affect metadata only, so running profiles may be labeled safely. They preserve fingerprints, proxies, cookies, extension selections and running-browser leases. A batch accepts at most 1000 profiles and sends each selected row version. Changed, missing or trashed profiles are reported separately; successful profiles are kept. Removals happen before additions. Tags follow profile clones, profile archives and profile backups.
+The profile editor has a comma-separated Tags field. The profile list displays tag chips, offers group and tag filters, and can add or remove tags for a selection using **Edit tags**. Tag changes affect metadata only, so running profiles may be labeled safely. They preserve fingerprints, proxies, cookies, extension selections and running-browser leases. A batch accepts at most 1000 profiles and sends each selected row version. Changed, missing or trashed profiles are reported separately; successful profiles are kept. Removals happen before additions. Tags follow profile clones and profile archives.
 
 ## Filters and pagination
 
@@ -26,4 +26,4 @@ The list starts with the most recently created profile first. Clicking a column 
 
 `GET/POST /api/v1/saved-filters` lists or creates views. `PATCH /api/v1/saved-filters/{id}` requires `row_version`, and deletion requires `?row_version=N`. Names are trimmed and limited to 100 characters. Configurations accept only the documented filter/sort fields; unknown fields and out-of-range values are rejected. Concurrent edits return `409 stale_write`; reload the saved view before making a deliberate new change.
 
-A view that names a deleted group or unused tag can match zero profiles. Its filters remain visible and can be cleared or changed. Saved views do not copy profile data and are outside per-profile archive/backup scope.
+A view that names a deleted group or unused tag can match zero profiles. Its filters remain visible and can be cleared or changed. Saved views do not copy profile data and are outside per-profile archive scope.

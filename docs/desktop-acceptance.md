@@ -111,12 +111,12 @@ Default storage locations are in [getting started](getting-started.md#where-data
 | D03 | First launch, interrupt browser download, retry | Clear error and successful retry; no partial browser treated as ready |
 | D04 | Create, launch, close and reopen a synthetic profile | Cookies/storage and pinned machine persist |
 | D05 | Create/close native browser tabs | Normal tab controls work without changing profile identity |
-| D06 | Back up a closed profile, restore as new profile | New ID; source data and backup preserved; restored session usable |
+| D06 | Export a closed profile, import the archive | New ID; source data and archive preserved; imported session usable |
 | D07 | Restore from Trash, then test permanent deletion | Restore works; wrong-name confirmation cannot delete |
 | D08 | Close the manager with a profile running | Manager server and its launched browser terminate |
 | D09 | Start a second manager on the same data directory | Second instance rejected; first remains usable |
-| D10 | Attempt update preparation with a running/unbackable profile | Preparation refuses, explains the failure; no download offered as ready |
-| D11 | Prepare update with all profiles closed, including Trash | All required profile archives present and readable |
+| D10 | Start the app over a data folder holding archives of the retired profile backups | The `backups` directory is gone after startup; profiles, Trash, database and key unchanged |
+| D11 | Prepare update with profiles present, including Trash | Release download offered; no profile archive written |
 | D12 | Install a later compatible package over the stopped app | Database, groups, users, schedules, Trash, profiles and key preserved |
 | D13 | Reinstall the same package | Data/key unchanged; existing identity and proxy credentials readable |
 | D14 | Uninstall/remove only the app, then reinstall | Separate data folder and key survive; app reuses them |

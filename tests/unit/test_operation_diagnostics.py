@@ -53,7 +53,7 @@ def test_unknown_exception_names_str_repr_and_attributes_are_not_exported():
     NoisyError.__name__ = "private_password_and_profile"
     error = NoisyError("private-credential")
     error.request = "private-url"
-    result = operation_diagnostic(error, area="backup", stage="backup_profile")
+    result = operation_diagnostic(error, area="sync", stage="execute")
     assert result.category == "internal"
     assert "private" not in result.model_dump_json()
 
@@ -63,7 +63,7 @@ def test_allowlisted_site_and_line_do_not_export_source_or_data_paths(tmp_path):
     try:
         zipfile.ZipFile(private)
     except OSError as error:
-        result = operation_diagnostic(error, area="backup", stage="backup_profile")
+        result = operation_diagnostic(error, area="sync", stage="execute")
     assert result.site == "stdlib.zipfile"
     assert 1 <= result.line <= 10000
     assert result.category == "missing_file"
@@ -73,12 +73,12 @@ def test_allowlisted_site_and_line_do_not_export_source_or_data_paths(tmp_path):
 
 
 def test_user_code_cannot_claim_an_allowlisted_module_name():
-    namespace = {"__name__": "camoufox_pm.core.backups"}
+    namespace = {"__name__": "camoufox_pm.core.database"}
     code = compile("raise ValueError('private-credential')", "/private/user-script.py", "exec")
     try:
         exec(code, namespace)
     except ValueError as error:
-        result = operation_diagnostic(error, area="backup", stage="backup_profile")
+        result = operation_diagnostic(error, area="sync", stage="execute")
     assert result.site is None and result.line is None
     assert "private" not in result.model_dump_json()
 

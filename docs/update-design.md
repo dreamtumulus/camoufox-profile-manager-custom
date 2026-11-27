@@ -34,7 +34,7 @@ must not silently cancel an almost-finished update or discard its progress.
 4. Take a complete installation checkpoint: consistent application database,
    profile archives, templates, extension library, saved views, schedules,
    settings and the encryption key. Protect the key and credentials with the
-   same access controls as live data. Today's Settings profile backups alone
+   same access controls as live data. Profile archives alone
    are insufficient for whole-application rollback.
 5. Install the manager using an OS-appropriate verified updater/helper and stage
    the paired browser through upstream's versioned installer. Never overwrite a

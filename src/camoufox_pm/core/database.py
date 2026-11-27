@@ -159,6 +159,8 @@ class DatabaseManager:
 
     async def _create_tables(self):
         """Create the database tables."""
+        # Unused since profile backups were retired. Still created, because an
+        # older build opening this database expects to find it.
         self._connection.execute("""
             CREATE TABLE IF NOT EXISTS recovery_lock (
                 id INTEGER PRIMARY KEY CHECK(id = 1), holder TEXT, expires TIMESTAMP
@@ -1293,23 +1295,6 @@ class DatabaseManager:
             for row in cursor.fetchall()
         ]
 
-    async def acquire_recovery_lock(self, holder: str, ttl_seconds: int) -> bool:
-        cursor = self._connection.execute(
-            "UPDATE recovery_lock SET holder = ?, expires = datetime('now', '+' || ? || ' seconds') "
-            "WHERE id = 1 AND (holder IS NULL OR holder = ? "
-            "OR julianday(expires) < julianday('now'))",
-            (holder, ttl_seconds, holder),
-        )
-        self._connection.commit()
-        return cursor.rowcount > 0
-
-    async def release_recovery_lock(self, holder: str) -> None:
-        self._connection.execute(
-            "UPDATE recovery_lock SET holder = NULL, expires = NULL WHERE id = 1 AND holder = ?",
-            (holder,),
-        )
-        self._connection.commit()
-
     # --- Utilities ---
 
     def _row_to_schedule(self, row) -> Schedule:
@@ -1570,12 +1555,6 @@ class StorageManager:
 
     async def get_lease_holders(self) -> list[dict]:
         return await self.db.get_lease_holders()
-
-    async def acquire_recovery_lock(self, holder: str, ttl_seconds: int) -> bool:
-        return await self.db.acquire_recovery_lock(holder, ttl_seconds)
-
-    async def release_recovery_lock(self, holder: str) -> None:
-        await self.db.release_recovery_lock(holder)
 
     async def close(self):
         """Close the database."""

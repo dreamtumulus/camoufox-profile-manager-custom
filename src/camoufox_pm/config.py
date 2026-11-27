@@ -59,8 +59,11 @@ class Settings(BaseSettings):
     # saved in the database. Set here, either way, it overrides that one. Ask
     # core.app_settings.automation_enabled rather than reading this field.
     automation_enabled: bool = False
-    backup_interval_hours: int = Field(default=24, ge=1)
-    backup_retention: int = Field(default=7, ge=1)
+    # The most disk a profile's browser may use for cached pages, in megabytes.
+    # The browser's own default grows with free disk space, up to a gigabyte per
+    # profile, which is what fills the disk on an installation with hundreds of
+    # them. Zero leaves the browser's default in place.
+    browser_cache_mb: int = Field(default=50, ge=0)
 
     @field_validator("lease_ttl")
     @classmethod

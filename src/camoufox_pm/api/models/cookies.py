@@ -34,4 +34,3 @@ class CookieImportData(BaseModel):
     session_count: int
     skipped: list[CookieSkip]
     row_version: int
-    backup_id: str | None

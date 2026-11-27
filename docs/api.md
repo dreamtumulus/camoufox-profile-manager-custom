@@ -434,10 +434,10 @@ the newest-first order the list starts in), `name`, `id`, `group`, `os`,
 These views are shared by authorized users of the instance, not private per-user
 records. See [profile organization](profile-organization.md).
 
-Settings recovery archives contain profile data, including assigned extensions
-and tags. They do not back up the application's template, extension-library or
-saved-view tables; preserving those requires the application database and its
-encryption key as part of an offline installation backup.
+Profile archives contain profile data, including assigned extensions and tags.
+They do not carry the application's template, extension-library or saved-view
+tables; preserving those requires the application database and its encryption
+key as part of an offline copy of the installation.
 
 ## Running browsers
 
@@ -472,9 +472,6 @@ instance's lease needs `camoufox-pm unlock` on the host.
 GET    /api/v1/trash/profiles
 POST   /api/v1/trash/profiles/{id}/restore
 DELETE /api/v1/trash/profiles/{id}?confirm=true
-GET    /api/v1/system/backups
-POST   /api/v1/system/backups             {"profile_ids": ["id"], "reason": "manual"}
-POST   /api/v1/system/backups/{id}/restore {"name": "Recovered profile"}
 GET    /api/v1/system/browser
 POST   /api/v1/system/browser/install
 GET    /api/v1/system/updates            ?channel=stable|preview
@@ -488,17 +485,15 @@ These endpoints use the same authentication as the rest of the API and return
 the original profile but leaves schedules paused. Permanent deletion requires
 `confirm=true` and only accepts already-trashed, closed profiles.
 
-Backups carry settings, the pinned fingerprint and browser data. Restore creates
-a **new** ID/directory, leaving existing profiles unchanged. Archives contain
-session cookies and decrypted proxy credentials: keep them private. They do not
-include app login users, app settings or schedules. Backup creation returns
-`data.backups` and `data.skipped` (profile ID/reason); live profiles, missing
-directories and unreadable credentials are not reported as successful backups.
-Omit `profile_ids` to back up all profiles, including Trash. The running app
-retries due backups every minute, defaulting to one snapshot per 24 hours and
-seven routine snapshots per profile; `CPM_BACKUP_INTERVAL_HOURS` and
-`CPM_BACKUP_RETENTION` configure this. Two latest before-update checkpoints are
-retained separately.
+Profile backups have been removed. The `/system/backups` endpoints no longer
+exist, nothing copies a profile on a schedule, before an update or before a
+cookie replacement, and `CPM_BACKUP_INTERVAL_HOURS` and `CPM_BACKUP_RETENTION`
+are ignored. The archives an earlier version left in the data folder's `backups`
+directory are deleted when the application next starts. To keep a copy of a
+profile, export it with `GET /api/v1/profiles/{id}/export` and bring it back
+with `POST /api/v1/profiles/import`, which creates a **new** ID/directory.
+Archives contain session cookies and decrypted proxy credentials: keep them
+private.
 
 Browser status is `{installed, version, state, progress, message, error}`, where
 `state` is `idle`, `downloading`, `ready` or `error`, and progress is 0–100 or null.
@@ -512,9 +507,8 @@ Update check queries the project's official GitHub releases, returning
 The channel defaults to `stable`; `preview` must be selected explicitly and
 accepts published stable/RC tags, never drafts or downgrade offers. Use the same
 channel for preparation as the check.
-Prepare creates before-update backups and returns
-`{release_url, backup_count, message}` only if every profile was backed up.
-It fails with `409` for incomplete backups or no newer release, and `503` when
+Prepare returns `{release_url, message}` for a newer release. It copies no
+profile data. It fails with `409` when there is no newer release, and `503` when
 the release check failed. It does not replace the running application: close it
 and install the chosen release with the operating system installer.
 

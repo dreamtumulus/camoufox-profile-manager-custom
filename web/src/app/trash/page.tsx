@@ -92,7 +92,7 @@ export default function TrashPage() {
       <button className="btn btn-default" disabled={!!busy} onClick={() => setDeleting(null)}>{t('Cancel')}</button>
       <button className="btn btn-danger" disabled={!!busy || confirmation !== deleting?.name} onClick={remove}>{busy ? t('Deleting…') : t('Delete permanently')}</button>
     </>}>
-      <p className="text-ink-dim">{t('This permanently removes {name} and its browser data from this instance. This action cannot be undone. Existing backups are kept separately.', { name: deleting?.name })}</p>
+      <p className="text-ink-dim">{t('This permanently removes {name} and its browser data from this instance. This action cannot be undone.', { name: deleting?.name })}</p>
       <label htmlFor="delete-name" className="mb-1 mt-4 block">{t('Type {name} to confirm', { name: deleting?.name })}</label>
       <input id="delete-name" className="field" value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="off" data-modal-autofocus />
     </Modal>

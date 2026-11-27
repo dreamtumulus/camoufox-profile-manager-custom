@@ -7,8 +7,8 @@ matches it along with the name and ID.
 An address is written in one way only: **Import emails**, which checks each
 profile's proxy first. Editing a profile never sets one, and a profile made from
 another starts without one: a clone, a profile created from a template or a
-spreadsheet, one imported from an archive or restored from a backup, and one
-received through device synchronization. An exported archive or backup does
+spreadsheet, one imported from an archive, and one
+received through device synchronization. An exported archive does
 contain the source profile's address in its record, so treat those files as you
 would the list itself.
 
@@ -19,8 +19,8 @@ with email addresses never receive one. The upgrade marks every row it finds,
 once, and nothing changes that mark afterwards: not an edit, a new proxy or a
 fresh proxy check. Profiles created from then on can receive an address,
 whichever way they are created (the form, a template or a batch, a spreadsheet,
-a clone, an archive or backup, device synchronization). A clone or a restored
-backup of an older profile is a new profile, so it can.
+a clone, an archive, device synchronization). A clone or an imported
+archive of an older profile is a new profile, so it can.
 
 The import does not offer older profiles as targets and says how many it left
 out; the server refuses them as well. The API reports the mark as

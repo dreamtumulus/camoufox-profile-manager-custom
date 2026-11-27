@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from camoufox_pm.core import cookie_transfer as ct
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.database import StaleWriteError
 from camoufox_pm.core.leases import ProfileLocked
 
@@ -193,32 +192,24 @@ async def transfer(profile_manager, monkeypatch):
         return cookies, candidate
 
     monkeypatch.setattr(ct, "_stage_store", stage)
-    return ct.CookieTransfer(profile_manager, ProfileBackupManager(profile_manager))
+    return ct.CookieTransfer(profile_manager)
 
 
 @pytest.mark.asyncio
-async def test_merge_replace_snapshot_backup_and_portable_export(transfer):
+async def test_merge_replace_and_portable_export(transfer):
     profile = await transfer.manager.create_profile("cookies", generate_fingerprint=False)
     first = await transfer.import_cookies(profile.id, json.dumps([COOKIE]), "json", "merge", 0)
-    assert first["imported"] == 1 and first["row_version"] == 1 and first["backup_id"] is None
+    assert first["imported"] == 1 and first["row_version"] == 1
     updated = {**COOKIE, "name": "new", "value": "new-value"}
     merged = await transfer.import_cookies(profile.id, json.dumps([updated]), "json", "merge", 1)
     assert merged["row_version"] == 2
     text = await transfer.export_cookies(profile.id, "json", 2)
     assert {cookie["name"] for cookie in json.loads(text)} == {"token", "new"}
     replaced = await transfer.import_cookies(profile.id, "[]", "json", "replace", 2, True)
-    assert replaced["backup_id"] and replaced["row_version"] == 3
+    assert replaced["row_version"] == 3 and "backup_id" not in replaced
     assert await transfer.export_cookies(profile.id, "json", 3) == "[]"
-    assert transfer.backups.list_backups()[0]["reason"] == "before_cookie_replace"
-    restored = await transfer.backups.restore_backup(replaced["backup_id"])
-    with (
-        closing(sqlite3.connect(Path(restored.storage_path) / "cookies.sqlite")) as connection,
-        connection,
-    ):
-        assert {
-            cookie["name"]
-            for cookie in json.loads(connection.execute("SELECT value FROM proof").fetchone()[0])
-        } == {"token", "new"}
+    # Replacement copies nothing aside: profile backups were retired.
+    assert not (transfer.manager.data_dir / "backups").exists()
 
 
 @pytest.mark.asyncio
@@ -241,19 +232,7 @@ async def test_stale_version_live_lease_and_confirmation_leave_cookie_store_unch
 
 
 @pytest.mark.asyncio
-async def test_failed_backup_prevents_replace_before_staging(transfer, monkeypatch):
-    profile = await transfer.manager.create_profile("safe", generate_fingerprint=False)
-    stage = AsyncMock()
-    monkeypatch.setattr(ct, "_stage_store", stage)
-    transfer.backups.create_locked_backup = AsyncMock(side_effect=OSError("backup failed"))
-    with pytest.raises(ct.CookieTransferError):
-        await transfer.import_cookies(profile.id, "[]", "json", "replace", 0, True)
-    stage.assert_not_called()
-    assert (await transfer.manager.get_profile(profile.id)).row_version == 0
-
-
-@pytest.mark.asyncio
-async def test_parser_failure_has_no_browser_or_backup_side_effect(transfer, monkeypatch):
+async def test_parser_failure_has_no_browser_side_effect(transfer, monkeypatch):
     profile = await transfer.manager.create_profile("safe", generate_fingerprint=False)
     stage = AsyncMock()
     monkeypatch.setattr(ct, "_stage_store", stage)
@@ -262,7 +241,7 @@ async def test_parser_failure_has_no_browser_or_backup_side_effect(transfer, mon
             profile.id, json.dumps([COOKIE, {"value": SECRET}]), "json", "replace", 0, True
         )
     stage.assert_not_called()
-    assert transfer.backups.list_backups() == []
+    assert (await transfer.manager.get_profile(profile.id)).row_version == 0
 
 
 def test_pending_handoff_survives_interruption_until_durable_ack(tmp_path):

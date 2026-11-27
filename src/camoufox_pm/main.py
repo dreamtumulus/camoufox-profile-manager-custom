@@ -42,11 +42,12 @@ from camoufox_pm.api.routes import (
     workflows,
 )
 from camoufox_pm.config import get_settings
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.bootstrap import apply_configured_admin
 from camoufox_pm.core.database import StorageManager
+from camoufox_pm.core.legacy_backups import remove_legacy_backups
 from camoufox_pm.core.maintenance import MaintenanceBlocked, MaintenanceGate
 from camoufox_pm.core.onboarding import OnboardingError
+from camoufox_pm.core.profile_cache import trim_existing_profiles
 from camoufox_pm.core.profile_manager import ProfileManager
 from camoufox_pm.core.scheduler import TaskScheduler
 
@@ -68,8 +69,8 @@ async def lifespan(app: FastAPI):
     storage_manager = StorageManager(settings.db_path)
     profile_manager = None
     scheduler = None
-    backup_task = None
     sync_task = None
+    cache_task = None
     try:
         with maintenance_gate.operation():
             maintenance_gate.register_manager()
@@ -94,32 +95,42 @@ async def lifespan(app: FastAPI):
 
             sync.set_sync_runtime_factory(sync_runtime)
 
-            backup_manager = ProfileBackupManager(
-                profile_manager,
-                retention=settings.backup_retention,
-                interval_hours=settings.backup_interval_hours,
-            )
-            recovery.set_backup_manager(backup_manager)
-
-            async def back_up_idle_profiles():
-                while True:
-                    try:
-                        with maintenance_gate.operation():
-                            await backup_manager.create_due_backups()
-                    except Exception as exc:
-                        logger.warning(f"Automatic profile backup failed: {exc}")
-                    await asyncio.sleep(60)
+            # Profile backups were retired: nothing makes, lists or prunes them
+            # any more, so the archives an earlier version left are removed here.
+            removed, freed = await asyncio.to_thread(remove_legacy_backups, Path(data_dir))
+            if removed:
+                logger.info(
+                    f"Removed {removed} profile backups left by an earlier version "
+                    f"({freed / 1024 / 1024:.0f} MB freed)"
+                )
 
             scheduler = TaskScheduler(storage_manager, profile_manager)
             scheduler.maintenance_gate = maintenance_gate
             await scheduler.start()
             set_scheduler(scheduler)
-            backup_task = asyncio.create_task(back_up_idle_profiles(), name="profile-backups")
             from camoufox_pm.core.sync_background import sync_queue_worker
 
             sync_task = asyncio.create_task(
                 sync_queue_worker(profile_manager, maintenance_gate), name="profile-sync"
             )
+
+            async def trim_profile_caches():
+                # Profiles filled before the browser had a cache limit stay large
+                # until something trims them: a closed browser evicts nothing.
+                try:
+                    result = await trim_existing_profiles(
+                        profile_manager, settings.browser_cache_mb, maintenance_gate
+                    )
+                except Exception as exc:
+                    logger.warning(f"Trimming profile caches failed: {exc}")
+                    return
+                if result and result[0]:
+                    logger.info(
+                        f"Trimmed the browser caches of {result[0]} profiles "
+                        f"({result[1] / 1024 / 1024:.0f} MB freed)"
+                    )
+
+            cache_task = asyncio.create_task(trim_profile_caches(), name="profile-cache-trim")
         logger.info("API ready")
         yield
     finally:
@@ -127,14 +138,14 @@ async def lifespan(app: FastAPI):
         # neither a heartbeat nor a recovery task holding the database open.
         logger.info("Shutting down API...")
         try:
+            if cache_task is not None:
+                cache_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await cache_task
             if sync_task is not None:
                 sync_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await sync_task
-            if backup_task is not None:
-                backup_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await backup_task
             if scheduler is not None:
                 await scheduler.stop()
             if profile_manager is not None:
@@ -148,7 +159,6 @@ async def lifespan(app: FastAPI):
         finally:
             sync.set_sync_runtime_factory(None)
             sync.set_sync_directory(None)
-            recovery.set_backup_manager(None)
             await storage_manager.close()
             maintenance_gate.unregister_manager()
 

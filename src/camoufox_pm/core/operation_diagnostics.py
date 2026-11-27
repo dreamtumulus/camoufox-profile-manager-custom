@@ -16,15 +16,13 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-DiagnosticArea = Literal["sync", "backup"]
+DiagnosticArea = Literal["sync"]
 DiagnosticStage = Literal[
     "authorization",
     "runtime_setup",
     "service_setup",
     "execute",
     "final_authorization",
-    "profile_lookup",
-    "backup_profile",
 ]
 DiagnosticCategory = Literal[
     "profile_busy",
@@ -56,7 +54,6 @@ DiagnosticCategory = Literal[
 ]
 DiagnosticSite = Literal[
     "api.sync",
-    "core.backups",
     "core.database",
     "core.profile_archive",
     "core.profile_operations",
@@ -103,7 +100,6 @@ _SITES: dict[str, DiagnosticSite] = {
     **{
         "camoufox_pm." + name: name
         for name in (
-            "core.backups",
             "core.database",
             "core.profile_archive",
             "core.profile_operations",

@@ -316,7 +316,7 @@ def _read_pending(
         if not row:
             return None
         if not isinstance(row[0], str):
-            raise CookieTransferError("Pending cookie data is invalid; restore a profile backup")
+            raise CookieTransferError("Pending cookie data is invalid; import the cookies again")
         if len(row[0].encode()) > MAX_BYTES:
             raise CookieTransferError("Pending cookie data exceeds the transfer limit")
         try:
@@ -333,7 +333,7 @@ def _read_pending(
             parse_cookies(json.dumps(payload["cookies"]), "json")
         except (ValueError, TypeError, UnicodeError, RecursionError):
             raise CookieTransferError(
-                "Pending cookie data is invalid; restore a profile backup"
+                "Pending cookie data is invalid; import the cookies again"
             ) from None
         ack = acknowledgment or database.parent / _ACK_NAME
         if honor_ack and _read_ack(ack) == payload["nonce"]:
@@ -532,9 +532,8 @@ async def _stage_store(
 
 
 class CookieTransfer:
-    def __init__(self, manager, backups):
+    def __init__(self, manager):
         self.manager = manager
-        self.backups = backups
 
     async def preview(self, profile_id: str, text: str, format: CookieFormat) -> dict:
         if await self.manager.get_profile(profile_id) is None:
@@ -560,16 +559,6 @@ class CookieTransfer:
         async with profile_operation(self.manager, profile_id, holder=holder) as profile:
             if profile.row_version != row_version:
                 raise StaleWriteError(profile_id, row_version)
-            backup = None
-            if mode == "replace":
-                try:
-                    backup = await self.backups.create_locked_backup(
-                        profile, holder, "before_cookie_replace"
-                    )
-                except (OSError, ValueError):
-                    raise CookieTransferError(
-                        "Could not create a profile backup; no cookies were changed"
-                    ) from None
             source = profile_data_path(self.manager, profile) / "cookies.sqlite"
             with tempfile.TemporaryDirectory(
                 prefix=".cookie-transfer-", dir=self.manager.profiles_dir
@@ -589,7 +578,6 @@ class CookieTransfer:
                 "skipped": batch.skipped,
                 "session_count": batch.preview()["session_count"],
                 "row_version": row_version + 1,
-                "backup_id": backup["id"] if backup else None,
             }
 
     async def export_cookies(self, profile_id: str, format: CookieFormat, row_version: int) -> str:

@@ -52,7 +52,7 @@ async def test_profile_lists_details_and_credentials(client, monkeypatch, prefix
         missing = await client.get(prefix + "/profiles/missing" + suffix)
         assert inaccessible.status_code == missing.status_code == 404
     assert (await client.get(prefix + "/profiles/" + own.id + "/export")).status_code == 404
-    for route in ["/proxies", "/templates", "/extensions", "/saved-filters", "/system/backups"]:
+    for route in ["/proxies", "/templates", "/extensions", "/saved-filters"]:
         assert (await client.get(prefix + route)).status_code == 403
 
 

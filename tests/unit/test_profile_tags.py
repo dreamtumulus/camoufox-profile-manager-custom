@@ -7,7 +7,6 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from camoufox_pm.core.backups import ProfileBackupManager
 from camoufox_pm.core.database import StaleWriteError, StorageManager
 from camoufox_pm.core.models import Profile
 from camoufox_pm.core.saved_filters import SavedFilterStore, ViewConfig
@@ -151,7 +150,7 @@ async def test_bulk_tags_refuse_stale_targets_without_losing_successes(profile_m
     assert not profile_manager.storage.db._connection.in_transaction
 
 
-async def test_tags_survive_clone_archive_and_backup_restore(profile_manager, tmp_path):
+async def test_tags_survive_clone_and_archive(profile_manager, tmp_path):
     profile = await profile_manager.create_profile(
         name="Tagged", generate_fingerprint=False, tags=["Work", "client-a"]
     )
@@ -161,10 +160,6 @@ async def test_tags_survive_clone_archive_and_backup_restore(profile_manager, tm
     await profile_manager.export_profile(profile.id, archive)
     imported = await profile_manager.import_profile(archive)
     assert imported.tags == profile.tags and imported.id != profile.id
-    backups = ProfileBackupManager(profile_manager)
-    result = await backups.create_backups([profile.id])
-    restored = await backups.restore_backup(result["backups"][0]["id"])
-    assert restored.tags == profile.tags and restored.id != profile.id
 
 
 async def test_saved_views_persist_and_compare_versions_across_connections(storage):

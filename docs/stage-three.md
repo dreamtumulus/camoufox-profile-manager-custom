@@ -36,7 +36,7 @@ old executable against the upgraded database.
 | Create/import/duplicate profiles | Yes | No | No |
 | Proxy credentials/configuration, group assignment | Yes | No | No |
 | Shared proxy/template/extension libraries, saved views, groups | Yes | No | No |
-| Backup, system/browser/update settings, user/grant administration | Yes | No | No |
+| System/browser/update settings, user/grant administration | Yes | No | No |
 | Activity view/export | Yes | No | No |
 
 A profile grant supplies view access. The account's role adds edit/launch for an

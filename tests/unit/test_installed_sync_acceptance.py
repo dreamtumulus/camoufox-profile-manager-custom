@@ -356,13 +356,11 @@ def test_keychain_command_timeout_never_exposes_password(monkeypatch):
 
 
 @pytest.mark.parametrize("busy", [False, True])
-def test_sync_observation_finishes_backup_before_one_shot_launch(monkeypatch, busy):
+def test_sync_observation_launches_once_and_never_replays_a_busy_launch(monkeypatch, busy):
     calls = []
 
     def call(path, body):
         calls.append(path)
-        if path == "/system/backups":
-            return {"data": {"backups": [{"profile_id": "target"}]}}
         if path.endswith("/launch"):
             if busy:
                 raise harness.InstalledAPIError(409, "profile_busy")
@@ -380,9 +378,9 @@ def test_sync_observation_finishes_backup_before_one_shot_launch(monkeypatch, bu
             harness.observe(device, "target", "http://local", "first", report)
     else:
         harness.observe(device, "target", "http://local", "first", report)
-    assert calls[:2] == ["/system/backups", "/profiles/target/launch"]
+    assert calls[0] == "/profiles/target/launch"
     assert calls.count("/profiles/target/launch") == 1
-    assert report["backup_checks"]["first"]["backup_preparation"]["prepared"] is True
+    assert "backup_checks" not in report
     assert ("/browsers/close-all" in calls) is (not busy)
 
 
@@ -819,7 +817,6 @@ def test_installed_observation_rejects_missing_driver_identity_without_replay(
         calls.append(path)
         return {"process_id": identity}
 
-    monkeypatch.setattr(harness, "prepare_profile_backup", lambda *args: None)
     with pytest.raises(AssertionError):
         harness.observe(SimpleNamespace(call=call), "target", "http://local", "first")
     assert calls == ["/profiles/target/launch", "/browsers/close-all"]

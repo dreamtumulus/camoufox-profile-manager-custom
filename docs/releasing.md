@@ -109,8 +109,8 @@ test checks the installed library for the required sequencer API as well.
    package metadata so its version is available to update checks.
 4. Download workflow artifacts and install them on real target systems. Verify
    first launch without Python/Node, browser installation progress/retry, create
-   and run a profile, restart from a different working directory, backups and
-   restore, Trash, closing running browsers with the manager, and reinstalling
+   and run a profile, restart from a different working directory, profile export
+   and import, Trash, closing running browsers with the manager, and reinstalling
    without data loss. Confirm a second launch gives a clear already-open message.
 5. Record the expected unsigned status and normal Gatekeeper/SmartScreen behavior
    of downloaded packages. No publisher certificate, Authenticode signature,
@@ -168,7 +168,7 @@ assets before packaging and compute checksums from the final files.
 ## Update boundaries
 
 Settings checks only the configured project's GitHub releases. Unsigned preview
-and stable releases prepare a backup and offer the project release URL; users
+and stable releases offer the project release URL; users
 close the manager and install manually. Keep complete pre-upgrade checkpoints and matching
 installers: older managers must not open a newer database schema.
 

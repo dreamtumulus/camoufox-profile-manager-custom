@@ -105,7 +105,7 @@ requires configured key authority; full-access API keys retain the existing
 installation-wide trust boundary.
 
 Profile admission is held across the sequence, with the existing browser lease
-and sync fences. Other launches, edits, backups and sync transitions cannot race
+and sync fences. Other launches, edits, exports and sync transitions cannot race
 that admission. Update maintenance waits for executions to drain. Cleanup can
 close only the exact session created by the run, including after access revocation.
 

@@ -256,8 +256,8 @@ async def test_wrapped_control_failure_retains_only_closed_origin(guarded, monke
     monkeypatch.setattr(ControlStore, "_connect", refuse)
     with pytest.raises(SyncBlocked) as captured:
         await guard_profile(manager, profile.id)
-    evidence = operation_diagnostic(captured.value, area="backup", stage="backup_profile")
+    evidence = operation_diagnostic(captured.value, area="sync", stage="authorization")
     assert evidence.category == "permission_denied" and evidence.site == "sync.control"
-    assert evidence.area == "backup" and evidence.stage == "backup_profile"
+    assert evidence.area == "sync" and evidence.stage == "authorization"
     assert "private-password" not in json.dumps(evidence.model_dump(mode="json"))
     assert "private-password" not in str(captured.value)

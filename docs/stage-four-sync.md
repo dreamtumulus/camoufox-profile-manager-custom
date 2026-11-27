@@ -192,7 +192,7 @@ No client wall-clock timestamp selects a winner.
 
 `core/profile_operations.py` and existing profile leases provide the local
 exclusive operation boundary; extend it with sync checkout and an operation
-journal. Reuse the *strict* archive path in `core/backups.py`, not a best-effort
+journal. Reuse the *strict* archive path in `core/profile_archive.py`, not a best-effort
 export that skips unreadable files. The current general import allocates a fresh
 local profile ID and clears local associations; sync needs its own explicit
 identity mapping and validated metadata reconciliation rather than blindly calling

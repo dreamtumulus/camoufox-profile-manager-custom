@@ -45,7 +45,7 @@ installation and its active configuration, the adjacent local encryption key and
 the current directory's `.env` if present. Extension library and templates live in
 the database. No remote storage or key service is contacted. Externally configured
 keys must remain available; only their hash reference is recorded. Checkpoints are
-private and retained outside app bundles, and are not routine profile backups.
+private and retained outside app bundles.
 
 To restore, close every manager instance and browser, keep the compatible manager
 installer available and acknowledge the loss of changes since the checkpoint:
@@ -105,7 +105,7 @@ rollback shows the checkpoint timestamp and explains that later changes will no
 longer be active. The newer files are retained for recovery. Checkpoints and retained installation
 trees are not automatically pruned; keep them until recovery acceptance is complete. With no trusted
 policy or publisher credentials, Settings explains why automatic installation is
-unavailable and keeps the manual backup/download flow.
+unavailable and keeps the manual download flow.
 
 The desktop closes profiles and the API before a helper proceeds. A private copy
 of the current installation runs the helper outside the directory being replaced,

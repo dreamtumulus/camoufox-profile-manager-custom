@@ -6,6 +6,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+- Profile backups. The manager no longer copies profiles on its own: not once a
+  day, not before an update is prepared, not before a cookie replacement, and not
+  from Settings. Every copy was a complete archive, seven were kept per profile,
+  and nearly all of an archive was data the browser downloads again by itself
+  (uBlock filter lists and the Widevine module), so the copies took about as much
+  disk space as the profiles themselves. **Settings → Profile backups**, the
+  `/system/backups` endpoints and the `CPM_BACKUP_INTERVAL_HOURS` and
+  `CPM_BACKUP_RETENTION` settings are gone. To keep a copy of a profile, use
+  **Export…** in its menu and **Import a profile archive** to bring it back.
+- **The archives an earlier version left in the data folder's `backups`
+  directory are deleted the first time this version starts, and cannot be
+  recovered.** Before upgrading, restore any backup you still need (**Settings →
+  Profile backups → Restore as new profile**) or copy that folder elsewhere.
+
+### Changed
+- A profile's browser cache is now bounded. Most of a used profile's folder was
+  cache the browser can rebuild, and the page cache had no limit short of the
+  browser's own, up to a gigabyte per profile. Each browser is now started with a
+  50 MB limit on cached pages (`CPM_BROWSER_CACHE_MB`; `0` restores the browser's
+  default) and evicts down to it by itself. Its startup cache is deleted when it
+  closes, so the next start is slightly slower. The first start of this version
+  also trims closed profiles once: the startup cache is removed, and a page cache
+  over the limit is removed whole. Cookies, logins, site storage and history are
+  not touched.
+- Replacing a profile's cookies no longer makes a recovery copy first and cannot
+  be undone. The confirmation says so; export the current cookies beforehand if
+  you may need them. The import response no longer has `backup_id`.
+- Preparing an update only confirms the newer release and returns its download
+  link. It no longer waits for every profile to be closed, and its response no
+  longer has `backup_count`.
+
 ## [0.7.6] - 2026-11-26
 
 ### Fixed

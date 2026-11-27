@@ -15,7 +15,7 @@ The editor exposes common browser settings and an optional **All browser setting
 
 Extension snapshots belong to the template, so deleting a library extension does not break it. Upload a newer version explicitly, then replace the template's snapshots if wanted. Updates never occur automatically.
 
-Templates and the unassigned extension library live in the app's SQLite database. Profile exports and Settings profile backups preserve assigned profile snapshots, not the reusable template/library records. Preserve the database separately when moving the entire library. Profile archives retain their normal sensitive-data handling.
+Templates and the unassigned extension library live in the app's SQLite database. Profile exports preserve assigned profile snapshots, not the reusable template/library records. Preserve the database separately when moving the entire library. Profile archives retain their normal sensitive-data handling.
 
 ## API
 

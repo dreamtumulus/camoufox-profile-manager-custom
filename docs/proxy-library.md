@@ -76,8 +76,8 @@ Reload before retrying stale entries.
 
 Assignment copies the proxy configuration into each profile. Editing or deleting
 a library entry does not change profiles that already received it. Assign again
-when you want to apply a changed configuration. Existing profile exports and
-backups therefore keep their proxy configuration independently of the library.
+when you want to apply a changed configuration. Existing profile exports
+therefore keep their proxy configuration independently of the library.
 
 Library health describes the connection itself. Run a profile's proxy check
 after assignment to check its timezone and other geography settings too.
@@ -97,7 +97,7 @@ Library passwords are encrypted in the instance database. List and edit response
 contain only `has_password`, never the password. Users with manager access can
 assign or use these proxies; this library does not introduce per-user ownership.
 
-Profile backups cover the assigned copies, **not the proxy library**. Preserve
+Profile archives cover the assigned copies, **not the proxy library**. Preserve
 the instance database and its encryption key to recover unassigned entries.
 Imported lists contain credentials: do not commit them or include them in bug
 reports. Reports should use fictional hosts and passwords.

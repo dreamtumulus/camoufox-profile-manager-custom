@@ -18,9 +18,9 @@ and [Russian guide](getting-started.ru.md) are the default entry points.
   with visible status, progress, errors and retry; Settings offers **Retry download** for missing browser resources.
 - Empty states guide users to create their first profile. Fingerprint regeneration
   and permanent deletion explain their consequences and ask for confirmation.
-- Profiles move to Trash before permanent deletion. Backups and restoration are
-  available in Settings; restoration creates a separate profile.
-- Update checks prepare a backup before linking to the official release downloads.
+- Profiles move to Trash before permanent deletion. A profile can be exported as
+  an archive; importing it creates a separate profile.
+- Update checks link to the official release downloads.
   Users still download and install the package themselves.
 - Tag releases build macOS Apple Silicon/Intel DMGs, Windows x64 NSIS installers
   and Linux x64 Debian/portable packages automatically. Manual builds remain
@@ -44,7 +44,7 @@ distributions, AppImage, Windows ARM and Linux ARM are not currently packaged.
 
 ## Next work
 
-1. Verify fresh install, update, reinstall, backup restore and browser launch on
+1. Verify fresh install, update, reinstall, archive import and browser launch on
    real macOS Intel/ARM, Windows and Linux machines, including downloaded/quarantined
    artifacts. Capture current beginner screenshots after that verification.
 2. Publish the unsigned package status, supported OS versions and actual
