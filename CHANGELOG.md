@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-28
+
 ### Added
 - The profile list folds by group. **By group**, now the default layout, shows one
   line per group with its profile count and how many of them are running, blocked
@@ -1237,7 +1239,8 @@ First public release after a comprehensive revamp.
   Camoufox owns fingerprint generation for consistency.
 - Committed profile data, leaked proxy credentials, and duplicate/backup files.
 
-[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.6...v0.8.0
 [0.7.6]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.5...v0.7.6
 [0.7.5]: https://github.com/dreamtumulus/camoufox-profile-manager-custom/compare/v0.7.4...v0.7.5
