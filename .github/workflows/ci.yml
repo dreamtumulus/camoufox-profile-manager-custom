@@ -104,6 +104,10 @@ jobs:
         working-directory: .
         run: uv run python web/tests/stage_two_ui.py
 
+      - name: Grouped profile list UI contracts
+        working-directory: .
+        run: uv run python web/tests/profile_groups_ui.py
+
       - name: Stage three access UI contracts
         working-directory: .
         run: uv run python web/tests/stage_three_ui.py

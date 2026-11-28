@@ -20,6 +20,20 @@ The desktop list loads the complete collection before applying its local sort an
 
 The list starts with the most recently created profile first. Clicking a column header sorts by that column, a second click reverses it, and a third returns to newest first. Profiles created in the same instant, as a batch creates them, stay in name order among themselves. A link carries `sort` and `direction` only when the order differs from newest first; a link made before this was the default, with `direction=desc` alone, still means names descending.
 
+## Grouped list
+
+The profile list has two layouts, chosen with **List** and **By group** next to the filters. **By group** is the default: every group folds into one line, and a click on the line opens or closes it. The line shows how many profiles the group holds, how many are running or blocked, how many have a proxy check that needs attention, and when one was last used. These numbers describe the whole group, whatever the filters hide. A group with a running profile carries the same orange marker as a running row, so it is visible while folded. Profiles without a group form the last section, **Ungrouped**.
+
+Groups are ordered by name the way their numbers count, so `Homes 9` comes before `Homes 10`. Inside a group the rows follow the list's sort order. The Group column is left out, as every row would repeat the line above it. `sort=group` with `direction=desc` reverses the order of the groups.
+
+The grouped layout has no pages, since a page boundary would cut a group in two. A folded group draws no rows, and an open one shows 50 at a time with **Show more**. The footer counts the groups and profiles that match.
+
+A search, status filter or tag filter hides the groups without a match and shows `matched of total` on the others. While at most 200 profiles match, the matching groups open by themselves; folding one of them then holds only until the filters change. A list that comes down to a single section is always open. Otherwise the list starts folded, and **Expand all** and **Collapse all** act on every section at once.
+
+The checkbox on a group line selects every matching profile of that group, folded or not, and shows a dash when only some are selected. The checkbox in the table header selects every matching profile in the list, where the flat list selects its page.
+
+The layout and the open groups are remembered in the browser's local storage, per browser. They are not part of a saved view or of the URL, because saved views are shared by every user of the instance.
+
 ## Saved views
 
 **Save view** stores search, status, group, tag filters and sort order in the manager's SQLite database. Saved views are instance-wide and shared by authorized users, like other manager resources; they are not personal browser-only preferences. Applying one starts on page one. Saved views can be renamed, updated to the current filters, or deleted without changing any profiles.

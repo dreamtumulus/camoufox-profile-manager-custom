@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- The profile list folds by group. **By group**, now the default layout, shows one
+  line per group with its profile count and how many of them are running, blocked
+  or have a proxy that needs attention; a click opens the group. A group's
+  checkbox selects all of its profiles at once, a search opens the groups it
+  matched, and the Group column is gone from this layout, which leaves room for
+  the row actions. **List** brings back the flat, paginated table. The choice and
+  the open groups are remembered per browser. See
+  [docs/profile-organization.md](docs/profile-organization.md#grouped-list).
+
 ## [0.8.0] - 2026-11-28
 
 ### Removed

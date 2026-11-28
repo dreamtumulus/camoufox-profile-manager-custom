@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原型 · 浏览器配置按分组折叠</title>
+<style>
+:root{
+  --canvas:#0b0c0e;--surface:#121316;--raised:#191a1f;--line:#232529;--line-strong:#313540;
+  --ink:#e8e9eb;--ink-dim:#9195a0;--ink-faint:#6a6e78;
+  --signal:#ff6b35;--signal-soft:#ff8a5c;--signal-shade:#3a1c10;
+  --danger:#f2555a;--danger-shade:#3a1418;--warn:#d8a13a;--ok:#3fb950;
+  --sans:"IBM Plex Sans","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--canvas);color:var(--ink);font:13px/1.45 var(--sans);display:flex;flex-direction:column}
+button,select,input{font:inherit;color:inherit}
+.mono{font-family:var(--mono)}
+.dim{color:var(--ink-dim)}.faint{color:var(--ink-faint)}
+
+/* 原型说明条：不属于产品界面 */
+.proto{display:flex;align-items:center;gap:14px;padding:7px 16px;background:#1d1a10;border-bottom:1px solid #4a3d14;color:#e2c26a;font-size:12px}
+.proto b{color:#f4d98a}
+.proto label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;margin-left:auto}
+
+.app{flex:1;display:flex;min-height:0}
+aside{width:208px;flex:none;border-right:1px solid var(--line);background:var(--surface);padding:12px 8px}
+.brand{display:flex;align-items:center;gap:9px;padding:6px 8px 16px;font-weight:600}
+.brand i{width:16px;height:12px;border-top:3px solid var(--signal);border-bottom:3px solid var(--signal);display:block}
+nav a{display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:6px;color:var(--ink-dim);text-decoration:none}
+nav a.on{background:var(--raised);color:var(--ink)}
+nav a.on svg{color:var(--signal)}
+main{flex:1;min-width:0;overflow:auto}
+
+.btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;border:1px solid transparent;background:none;cursor:pointer;white-space:nowrap}
+.btn.h7{height:28px}
+.btn-default{background:var(--raised);border-color:var(--line-strong)}
+.btn-default:hover{border-color:#454a58}
+.btn-ghost{color:var(--ink-dim)}
+.btn-ghost:hover{background:var(--raised);color:var(--ink)}
+.btn-primary{background:var(--signal);color:#190a04;font-weight:600}
+.btn-danger{background:var(--danger-shade);border-color:#5a2026;color:var(--danger)}
+.btn.icon{width:28px;padding:0;justify-content:center}
+.field{height:30px;border-radius:6px;border:1px solid var(--line-strong);background:var(--canvas);padding:0 9px;outline:none}
+.field:focus{border-color:var(--signal)}
+select.field{padding-right:22px}
+input[type=checkbox]{accent-color:var(--signal);margin:0;width:13px;height:13px;cursor:pointer}
+
+header.bar{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:1px solid var(--line)}
+header.bar h1{font-size:15px;margin:0;font-weight:600}
+.search{position:relative}.search svg{position:absolute;left:9px;top:8px;color:var(--ink-faint)}
+.search input{width:270px;padding-left:28px}
+.right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+section.filters{border-bottom:1px solid var(--line);background:var(--surface);padding:12px 20px}
+.frow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.frow+.frow{margin-top:12px}
+
+/* 新增：视图切换 */
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;background:var(--canvas)}
+.seg button{height:28px;padding:0 10px;border:0;background:none;color:var(--ink-dim);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button.on{background:var(--signal-shade);color:var(--signal-soft)}
+
+.batch{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 20px;border-bottom:1px solid var(--line);background:var(--raised)}
+
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;font-size:11px;font-weight:500;letter-spacing:.05em;color:var(--ink-faint);padding:8px 16px 8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{padding-left:20px;width:36px}
+td{padding:9px 16px 9px 0;vertical-align:middle}
+tr.row{border-bottom:1px solid rgba(35,37,41,.6)}
+tr.row:hover{background:var(--surface)}
+tr.row td:first-child{position:relative}
+.hair{position:absolute;left:0;top:0;height:100%;width:2px;background:var(--signal)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ink-faint);flex:none}
+.dot.ok{background:var(--ok)}.dot.bad{background:var(--danger)}.dot.run{background:var(--signal)}
+.status{display:inline-flex;align-items:center;gap:6px;color:var(--ink-dim)}
+.status.run{color:var(--signal)}
+.sub{margin-top:2px;font-size:11px;color:var(--ink-faint);display:flex;align-items:center;gap:6px}
+.trunc{max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 新增：分组标题行 */
+tr.grp{cursor:pointer;user-select:none}
+tr.grp td{background:var(--surface);border-bottom:1px solid var(--line);padding-top:8px;padding-bottom:8px;position:sticky;top:0;z-index:2}
+tr.grp:hover td{background:#16171b}
+tr.grp.open td{border-bottom-color:var(--line-strong)}
+tr.grp td:first-child{position:sticky}
+.ghead{display:flex;align-items:center;gap:10px;min-height:28px}
+.chev{color:var(--ink-faint);transition:transform .12s;flex:none}
+tr.grp.open .chev{transform:rotate(90deg);color:var(--ink-dim)}
+.gname{font-weight:600;font-size:13px}
+.count{font-family:var(--mono);font-size:11px;color:var(--ink-dim);background:var(--raised);border:1px solid var(--line-strong);border-radius:10px;padding:0 7px;line-height:17px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-dim)}
+.chip.run{color:var(--signal)}.chip.bad{color:var(--danger)}
+.gright{margin-left:auto;display:flex;align-items:center;gap:12px}
+tr.row.in td:nth-child(2){padding-left:26px}
+tr.more td{padding:8px 0 8px 82px;border-bottom:1px solid rgba(35,37,41,.6)}
+
+.foot{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;color:var(--ink-dim)}
+
+/* 标注 */
+.n{display:none;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;background:#f4d98a;color:#221a02;font:700 11px/1 var(--sans);flex:none}
+body.notes .n{display:inline-flex}
+.legend{display:none;margin:4px 20px 24px;padding:12px 16px;border:1px dashed #4a3d14;border-radius:8px;background:#141209;color:#cfc08f}
+body.notes .legend{display:block}
+.legend h3{margin:0 0 8px;font-size:12px;color:#f4d98a}
+.legend ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 28px}
+.legend li{display:flex;gap:8px;align-items:flex-start}
+.legend li .n{display:inline-flex;margin-top:1px}
+</style>
+</head>
+<body class="notes">
+<div class="proto">
+  <span><b>原型</b> · 浏览器配置按分组折叠 · 数据为示例，可点击操作：展开/折叠、搜索、勾选、切换视图</span>
+  <label><input type="checkbox" id="notes" checked> 显示标注</label>
+</div>
+<div class="app">
+  <aside>
+    <div class="brand"><i></i>赵露思 上号系统</div>
+    <nav id="nav"></nav>
+  </aside>
+  <main>
+    <header class="bar">
+      <h1>浏览器配置</h1><span class="mono faint" id="total"></span>
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input class="field" id="q" placeholder="搜索名称、ID 或邮箱">
+      </div>
+      <select class="field" id="status" style="width:132px">
+        <option value="all">所有状态</option><option value="active">活跃</option><option value="inactive">未激活</option><option value="blocked">封禁</option>
+      </select>
+      <div class="right">
+        <button class="btn btn-default">受信任设备上的配置文件</button>
+        <button class="btn btn-default">导入邮箱</button>
+        <button class="btn btn-primary">＋ 新建配置</button>
+      </div>
+    </header>
+
+    <section class="filters">
+      <div class="frow">
+        <select class="field" style="width:190px"><option>当前视图</option></select>
+        <button class="btn btn-default">保存视图</button>
+        <span class="faint" style="font-size:12px">已保存视图由此实例的用户共享。</span>
+      </div>
+      <div class="frow">
+        <span class="dim">分组</span>
+        <select class="field" id="gfilter" style="width:170px"></select>
+        <span class="dim">标签</span>
+        <select class="field" style="width:170px"><option>添加标签筛选</option></select>
+        <div class="right">
+          <span class="n">1</span>
+          <div class="seg" role="group" aria-label="列表显示方式">
+            <button data-mode="flat">列表</button>
+            <button data-mode="group">按分组</button>
+          </div>
+          <span id="bulk" style="display:inline-flex;gap:4px;align-items:center">
+            <span class="n">2</span>
+            <button class="btn btn-ghost h7" data-act="expand-all">全部展开</button>
+            <button class="btn btn-ghost h7" data-act="collapse-all">全部折叠</button>
+          </span>
+          <button class="btn btn-ghost h7" data-act="clear">清除筛选</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="batch"></div>
+    <div id="list"></div>
+    <div class="foot" id="foot"></div>
+
+    <div class="legend">
+      <h3>标注说明</h3>
+      <ol>
+        <li><span class="n">1</span><span>显示方式切换：「列表」是现在的平铺分页表格，「按分组」是新的折叠视图。选择记在本机浏览器里。</span></li>
+        <li><span class="n">2</span><span>全部展开 / 全部折叠，只在「按分组」下出现。</span></li>
+        <li><span class="n">3</span><span>分组标题行：点整行展开或折叠。显示本组数量、运行中数量、封禁和代理异常数量、最近使用时间。有运行中的组左侧带橙色细线。</span></li>
+        <li><span class="n">4</span><span>分组复选框：一次选中本组全部配置，折叠状态下也生效；只选了一部分时显示半选。</span></li>
+        <li><span class="n">5</span><span>组内的行和现在完全一样，只是去掉了重复的「分组」列，表格变窄，右侧「运行」按钮不再被挤出屏幕。</span></li>
+        <li><span class="n">6</span><span>底部改为「分组数 · 配置数」。按分组显示时不分页，折叠的组不渲染行；单组超过 50 行时组内「显示更多」。</span></li>
+        <li><span class="n">7</span><span>搜索或筛选时：没有匹配的组隐藏，有匹配的组自动展开，数量显示为「匹配 3 / 9」。清空搜索后恢复原来的折叠状态。</span></li>
+        <li><span class="n">8</span><span>「运行本组」（可选，建议二期）：复用现有的批量启动对话框，一次启动整组。</span></li>
+      </ol>
+    </div>
+  </main>
+</div>
+
+<script>
+const ICON = {
+  chev:'<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m9 18 6-6-6-6"/></svg>',
+  play:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>',
+  stop:'<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="1"/></svg>',
+  more:'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+  rows:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+  layers:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+  navdot:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>',
+}
+document.getElementById('nav').innerHTML = ['浏览器配置','自动上号','Claude Team 上号','代理库','模板','扩展','分组','定时任务','回收站','访问权限与活动','设置']
+  .map((label, i) => `<a href="#" class="${i === 0 ? 'on' : ''}">${ICON.navdot}${label}</a>`).join('')
+
+// ---------- 示例数据：12 个分组，109 个配置 ----------
+let seed = 7
+const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff
+const pick = list => list[Math.floor(rnd() * list.length)]
+const FIRST = ['samuel','tabitha','ulysses','violet','warren','xenia','yasmin','zachary','amelia','bertram','cordelia','dexter','eloise','fabian','greta','harlan']
+const LAST = ['thornhill','upchurch','vanderlyn','whitlock','ambrose','bellamy','cartwright','davenport','easton','fairchild','garrick','holloway','ives','jessup']
+const GROUP_DEFS = [['德国住宅9',9,'DE'],['德国住宅8',10,'DE'],['德国住宅7',10,'DE'],['德国住宅10',10,'DE'],['美国住宅1',10,'US'],['美国住宅2',10,'US'],['美国住宅3',10,'US'],['英国住宅1',10,'GB'],['英国住宅2',10,'GB'],['日本住宅1',8,'JP'],['法国住宅1',8,'FR'],[null,4,'DE']]
+const AGES = ['5 小时前','1 天前','2 天前','4 天前','4 天前','4 天前','6 天前']
+const profiles = []
+GROUP_DEFS.forEach(([group, size, country], g) => {
+  for (let i = size; i >= 1; i -= 1) {
+    const ip = `203.0.${113 + g}.${10 + Math.floor(rnd() * 240)}`
+    const id = Array.from({ length: 8 }, () => '0123456789abcdefghijklmnopqrstuvwxyz'[Math.floor(rnd() * 36)]).join('')
+    profiles.push({
+      id, group, order: g * 100 + (size - i),
+      name: group ? `${group.replace(/(\d+)$/, '-$1')} ${String(i).padStart(3, '0')}` : `临时测试 ${String(i).padStart(2, '0')}`,
+      email: `${pick(FIRST)}.${pick(LAST)}@mail.example`,
+      status: 'active', used: i === size && g === 0 ? AGES[0] : pick(AGES.slice(1)),
+      proxy: `http://${ip}:${41000 + Math.floor(rnd() * 8000)}`, ip, country, ms: 1600 + Math.floor(rnd() * 260), proxyOk: true,
+    })
+  }
+})
+const at = (group, n) => profiles.filter(p => p.group === group)[n]
+at('德国住宅8', 3).status = 'blocked'; at('德国住宅8', 6).proxyOk = false
+at('美国住宅2', 1).status = 'inactive'; at('英国住宅1', 4).proxyOk = false; at('英国住宅1', 5).proxyOk = false
+const running = new Set([at('德国住宅9', 0).id, at('德国住宅9', 2).id, at('美国住宅1', 4).id])
+
+// ---------- 状态 ----------
+const UNGROUPED = '__ungrouped__'
+const hash = new URLSearchParams(location.hash.slice(1))
+const state = {
+  mode: hash.get('mode') || 'group',
+  expanded: new Set((hash.get('open') ?? '德国住宅9').split(',').filter(Boolean)),
+  selected: new Set(), q: hash.get('q') || '', status: 'all', group: '', page: 1,
+}
+if (hash.get('sel')) profiles.filter(p => p.group === hash.get('sel')).slice(0, 4).forEach(p => state.selected.add(p.id))
+const keyOf = p => p.group ?? UNGROUPED
+const labelOf = key => key === UNGROUPED ? '未分组' : key
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function matches() {
+  const needle = state.q.trim().toLowerCase()
+  return profiles.filter(p => {
+    if (state.status !== 'all' && p.status !== state.status) return false
+    if (state.group && keyOf(p) !== state.group) return false
+    return !needle || p.name.toLowerCase().includes(needle) || p.id.includes(needle) || p.email.includes(needle)
+  })
+}
+/** 分组按名称自然排序（住宅9 在 住宅10 前），未分组排最后。 */
+function sections(rows) {
+  const map = new Map()
+  rows.forEach(p => { const key = keyOf(p); if (!map.has(key)) map.set(key, []); map.get(key).push(p) })
+  return [...map.entries()].sort(([a], [b]) => a === UNGROUPED ? 1 : b === UNGROUPED ? -1 : a.localeCompare(b, 'zh-CN', { numeric: true }))
+}
+const filtering = () => state.q.trim() !== '' || state.status !== 'all'
+
+function rowHtml(p, grouped) {
+  const run = running.has(p.id)
+  const statusLabel = { active: '活跃', inactive: '未激活', blocked: '封禁' }[p.status]
+  return `<tr class="row ${grouped ? 'in' : ''}">
+    <td>${run ? '<span class="hair"></span>' : ''}<input type="checkbox" data-sel="${p.id}" ${state.selected.has(p.id) ? 'checked' : ''}></td>
+    <td style="font-weight:500">${esc(p.name)}</td>
+    <td class="mono dim"><div class="trunc">${esc(p.email)}</div></td>
+    <td class="mono faint">${p.id}</td>
+    ${grouped ? '' : `<td class="dim">${p.group ?? '—'}</td>`}
+    <td class="dim">macOS<div class="sub mono">自动生成（旧配置）</div></td>
+    <td>${run ? '<span class="status run"><span class="dot run"></span>运行中</span>' : `<span class="status"><span class="dot ${p.status === 'blocked' ? 'bad' : ''}"></span>${statusLabel}</span>`}</td>
+    <td class="dim">${p.used}</td>
+    <td><div class="mono faint trunc">${p.proxy}</div><div class="sub"><span class="dot ${p.proxyOk ? 'ok' : 'bad'}"></span><span class="mono">${p.proxyOk ? `${p.ip} · ${p.country} · ${p.ms} ms` : '连接超时'}</span><span>· 4 天前</span></div></td>
+    <td style="padding-right:20px"><div style="display:flex;justify-content:flex-end;gap:4px">
+      <button class="btn btn-default h7" data-run="${p.id}">${run ? ICON.stop + '停止' : ICON.play + '运行'}</button>
+      <button class="btn btn-ghost h7 icon">${ICON.more}</button></div></td>
+  </tr>`
+}
+
+function headHtml(grouped) {
+  const cols = ['名称', '邮箱', 'ID', ...(grouped ? [] : ['分组']), '系统', '状态', '上次使用', '代理']
+  return `<thead><tr><th><input type="checkbox" data-sel-all title="${grouped ? '选中全部筛选结果' : '选中本页'}"></th>${cols.map(c => `<th>${c}</th>`).join('')}<th></th></tr></thead>`
+}
+
+function render() {
+  const rows = matches()
+  const grouped = state.mode === 'group'
+  document.getElementById('total').textContent = profiles.length
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === state.mode))
+  document.querySelector('[data-mode=flat]').innerHTML = ICON.rows + '列表'
+  document.querySelector('[data-mode=group]').innerHTML = ICON.layers + '按分组'
+  document.getElementById('bulk').style.display = grouped ? 'inline-flex' : 'none'
+
+  const count = state.selected.size
+  document.getElementById('batch').innerHTML = count === 0 ? '' : `<div class="batch"><span>已选择 ${count} 个</span>
+    <button class="btn btn-default h7">${ICON.play}运行所选</button><button class="btn btn-default h7">${ICON.stop}停止所选</button>
+    <button class="btn btn-default h7">更改分组</button><button class="btn btn-default h7">编辑标签</button>
+    <button class="btn btn-danger h7">移到回收站</button><button class="btn btn-ghost h7" data-act="unselect">清除</button></div>`
+
+  let body = ''
+  let visibleIds = rows.map(p => p.id)
+  if (grouped) {
+    const list = sections(rows)
+    let first = true
+    list.forEach(([key, members]) => {
+      const all = profiles.filter(p => keyOf(p) === key)
+      const open = filtering() || state.expanded.has(key)
+      const picked = members.filter(p => state.selected.has(p.id)).length
+      const run = all.filter(p => running.has(p.id)).length
+      const blocked = all.filter(p => p.status === 'blocked').length
+      const badProxy = all.filter(p => !p.proxyOk).length
+      const annotated = first; first = false
+      body += `<tr class="grp ${open ? 'open' : ''}" data-grp="${esc(key)}">
+        <td style="position:sticky">${run ? '<span class="hair"></span>' : ''}<span style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-sel-grp="${esc(key)}" data-picked="${picked}" data-of="${members.length}" ${picked === members.length ? 'checked' : ''}>${annotated ? '<span class="n">4</span>' : ''}</span></td>
+        <td colspan="8"><div class="ghead">${ICON.chev}<span class="gname">${esc(labelOf(key))}</span>
+          <span class="count">${members.length === all.length ? `${all.length} 个配置` : `匹配 ${members.length} / ${all.length}`}</span>
+          ${annotated ? `<span class="n">${filtering() ? 7 : 3}</span>` : ''}
+          ${run ? `<span class="chip run"><span class="dot run"></span>${run} 运行中</span>` : ''}
+          ${blocked ? `<span class="chip bad"><span class="dot bad"></span>${blocked} 封禁</span>` : ''}
+          ${badProxy ? `<span class="chip bad"><span class="dot bad"></span>代理异常 ${badProxy}</span>` : ''}
+          <span class="gright"><span class="faint" style="font-size:12px">最近使用 ${all[0].used}</span>
+            ${annotated ? '<span class="n">8</span>' : ''}
+            <button class="btn btn-default h7" data-run-grp="${esc(key)}">${run === all.length ? ICON.stop + '停止本组' : ICON.play + '运行本组'}</button>
+            <button class="btn btn-ghost h7 icon">${ICON.more}</button></span></div></td>
+      </tr>`
+      if (open) body += members.map((p, i) => rowHtml(p, true) + (annotated && i === 0 ? '' : '')).join('')
+    })
+    document.getElementById('foot').innerHTML = `<span><span class="n" style="margin-right:6px;vertical-align:-3px">6</span>${list.length} 个分组 · ${rows.length} 个配置${rows.length !== profiles.length ? `（共 ${profiles.length} 个）` : ''}</span><span class="faint">按分组显示时不分页</span>`
+  } else {
+    const per = 25
+    const pages = Math.max(1, Math.ceil(rows.length / per))
+    state.page = Math.min(state.page, pages)
+    const pageRows = rows.slice((state.page - 1) * per, state.page * per)
+    visibleIds = pageRows.map(p => p.id)
+    body = pageRows.map(p => rowHtml(p, false)).join('')
+    document.getElementById('foot').innerHTML = `<span>${(state.page - 1) * per + 1}–${Math.min(state.page * per, rows.length)} / 共 ${rows.length}</span>
+      <span><button class="btn btn-ghost h7 icon" data-page="-1">‹</button><span class="mono" style="padding:0 8px">${state.page} / ${pages}</span><button class="btn btn-ghost h7 icon" data-page="1">›</button></span>`
+  }
+  document.getElementById('list').innerHTML = rows.length === 0
+    ? '<p class="faint" style="padding:40px 20px;text-align:center">没有配置符合当前搜索和筛选条件。</p>'
+    : `<table>${headHtml(grouped)}<tbody>${body}</tbody></table>`
+
+  // 第 5 条标注放在第一条展开的行上
+  const firstRow = document.querySelector('tr.row.in td:nth-child(2)')
+  if (firstRow) firstRow.insertAdjacentHTML('beforeend', ' <span class="n" style="vertical-align:-3px;margin-left:6px">5</span>')
+
+  document.querySelectorAll('[data-sel-grp]').forEach(box => { const picked = Number(box.dataset.picked); box.indeterminate = picked > 0 && picked < Number(box.dataset.of) })
+  const all = document.querySelector('[data-sel-all]')
+  if (all) { const picked = visibleIds.filter(id => state.selected.has(id)).length; all.checked = picked > 0 && picked === visibleIds.length; all.indeterminate = picked > 0 && picked < visibleIds.length; all.dataset.ids = visibleIds.join(',') }
+}
+
+// ---------- 交互 ----------
+document.getElementById('gfilter').innerHTML = '<option value="">所有分组</option><option value="__ungrouped__">未分组</option>' +
+  GROUP_DEFS.filter(([name]) => name).map(([name]) => `<option>${name}</option>`).join('')
+document.getElementById('q').value = state.q
+document.getElementById('q').addEventListener('input', e => { state.q = e.target.value; state.page = 1; render() })
+document.getElementById('status').addEventListener('change', e => { state.status = e.target.value; state.page = 1; render() })
+document.getElementById('gfilter').addEventListener('change', e => { state.group = e.target.value; state.page = 1; if (state.group) state.expanded.add(state.group); render() })
+document.getElementById('notes').addEventListener('change', e => document.body.classList.toggle('notes', e.target.checked))
+
+document.addEventListener('click', event => {
+  const target = event.target
+  const el = selector => target.closest(selector)
+  if (el('[data-mode]')) { state.mode = el('[data-mode]').dataset.mode; return render() }
+  if (el('[data-act]')) {
+    const act = el('[data-act]').dataset.act
+    if (act === 'expand-all') state.expanded = new Set(profiles.map(keyOf))
+    if (act === 'collapse-all') state.expanded = new Set()
+    if (act === 'unselect') state.selected = new Set()
+    if (act === 'clear') { state.q = ''; state.status = 'all'; state.group = ''; document.getElementById('q').value = ''; document.getElementById('status').value = 'all'; document.getElementById('gfilter').value = '' }
+    return render()
+  }
+  if (el('[data-page]')) { state.page = Math.max(1, state.page + Number(el('[data-page]').dataset.page)); return render() }
+  if (el('[data-run]')) { const id = el('[data-run]').dataset.run; running.has(id) ? running.delete(id) : running.add(id); return render() }
+  if (el('[data-run-grp]')) {
+    const members = profiles.filter(p => keyOf(p) === el('[data-run-grp]').dataset.runGrp)
+    const allRunning = members.every(p => running.has(p.id))
+    members.forEach(p => allRunning ? running.delete(p.id) : running.add(p.id))
+    return render()
+  }
+  if (target.matches('[data-sel]')) { const id = target.dataset.sel; state.selected.has(id) ? state.selected.delete(id) : state.selected.add(id); return render() }
+  if (target.matches('[data-sel-grp]')) {
+    const members = matches().filter(p => keyOf(p) === target.dataset.selGrp)
+    const every = members.every(p => state.selected.has(p.id))
+    members.forEach(p => every ? state.selected.delete(p.id) : state.selected.add(p.id))
+    return render()
+  }
+  if (target.matches('[data-sel-all]')) {
+    const ids = target.dataset.ids.split(',').filter(Boolean)
+    const every = ids.every(id => state.selected.has(id))
+    ids.forEach(id => every ? state.selected.delete(id) : state.selected.add(id))
+    return render()
+  }
+  if (el('tr.grp') && !el('button') && !target.matches('input')) {
+    const key = el('tr.grp').dataset.grp
+    if (filtering()) return  // 搜索时由匹配结果决定展开，不改写记住的折叠状态
+    state.expanded.has(key) ? state.expanded.delete(key) : state.expanded.add(key)
+    render()
+  }
+})
+render()
+</script>
+</body>
+</html>

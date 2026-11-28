@@ -29,6 +29,7 @@ class WorkflowsUI(StageThreeUI):
         self.context = self.browser.new_context(
             locale=self.ui_locale, viewport={"width": 1280, "height": 900}
         )
+        self.pin_profile_layout()
         self.page = self.context.new_page()
         self.page.set_default_timeout(8000)
         self.page.route("**/api/v1/**", self.route)

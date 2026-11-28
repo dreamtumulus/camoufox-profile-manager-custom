@@ -854,6 +854,13 @@ export function formatProxyString(proxy?: ProxyConfig | null): string {
   return `${scheme}${proxy.server}`
 }
 
+/** The colour alone, for counting many checks without wording each one. */
+export function proxyCheckTone(check: ProxyCheckRecord): 'ok' | 'warn' | 'danger' {
+  const notes = check.findings.filter((finding) => finding.level !== 'info')
+  const worst = notes.find((finding) => finding.level === 'error') ?? notes[0]
+  return !check.reachable || worst?.level === 'error' ? 'danger' : worst ? 'warn' : 'ok'
+}
+
 /** How a checked proxy reads: what colour it is, and why.
  *
  * Derived rather than stored, so a row written by an older version cannot
@@ -868,8 +875,6 @@ export function readProxyCheck(check: ProxyCheckRecord, locale: Locale = 'en'): 
   detail: string
 } {
   const t: Translator = (message, values) => translate(locale, message, values)
-  const notes = check.findings.filter((finding) => finding.level !== 'info')
-  const worst = notes.find((finding) => finding.level === 'error') ?? notes[0]
   // Repeats what the row shows on purpose: the line truncates, and an IPv6 exit
   // address is long enough to be cut off mid-address, taking the country and the
   // latency with it. The tooltip is the only place left to read them.
@@ -883,7 +888,7 @@ export function readProxyCheck(check: ProxyCheckRecord, locale: Locale = 'en'): 
     t('Checked {time}', { time: formatLastUsed(check.checked_at, locale).toLowerCase() }),
   ].filter(Boolean)
 
-  const tone = !check.reachable || worst?.level === 'error' ? 'danger' : worst ? 'warn' : 'ok'
+  const tone = proxyCheckTone(check)
 
   return {
     tone,

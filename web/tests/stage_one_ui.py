@@ -46,8 +46,20 @@ class DesktopUI(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
 
+    #: These suites describe the flat profile list they were written against. The
+    #: grouped layout, the default since, has its own suite, which clears this.
+    profile_layout = "list"
+
+    def pin_profile_layout(self):
+        # Chosen the way a browser remembers it; storage is out of reach on a blank page.
+        if self.profile_layout:
+            self.context.add_init_script(
+                f"try {{ localStorage.setItem('camoufox-pm.profile-layout', '{self.profile_layout}') }} catch {{}}"
+            )
+
     def setUp(self):
         self.context = self.browser.new_context(viewport={"width": 1280, "height": 900}, locale="en-US")
+        self.pin_profile_layout()
         self.page = self.context.new_page()
         self.page.set_default_timeout(8000)
         self.calls = []
@@ -471,6 +483,7 @@ class DesktopUI(unittest.TestCase):
     def test_chinese_ui_preserves_profile_settings_and_survives_reload(self):
         self.context.close()
         self.context = self.browser.new_context(locale="zh-CN", viewport={"width": 1280, "height": 900})
+        self.pin_profile_layout()
         self.page = self.context.new_page()
         self.page.set_default_timeout(8000)
         self.page.route("**/api/v1/**", self.route)

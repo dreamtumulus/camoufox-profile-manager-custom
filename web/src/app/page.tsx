@@ -10,6 +10,8 @@ import {
   Download,
   Ellipsis,
   Globe,
+  Layers,
+  List,
   Mail,
   PackageOpen,
   Pencil,
@@ -45,6 +47,7 @@ import { ProfileEmailImport } from '@/components/profile-email-import'
 import { copyEmailOnClick, launchBrowser, stopBrowser, syncBlocksLaunch } from '@/lib/browser-runs'
 import { MAX_BATCH_SIZE, type BatchTarget } from '@/lib/batch-queue'
 import { DEFAULT_VIEW, profileViewQuery, readProfileView } from '@/lib/profile-views'
+import { EXPANDED_KEY, LAYOUT_KEY, SECTION_ROW_STEP, buildSections, opensByItself, parseExpanded, parseLayout, type ProfileLayout, type ProfileSection } from '@/lib/profile-grouping'
 import { useToast } from '@/components/toast'
 import {
   browsersAPI,
@@ -73,6 +76,12 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
   { key: 'last_used', label: 'Last used' },
 ]
 
+/** What the table body draws, in order: a flat list is rows only. */
+type ListItem =
+  | { kind: 'row'; profile: Profile }
+  | { kind: 'section'; section: ProfileSection<Profile>; open: boolean }
+  | { kind: 'more'; section: ProfileSection<Profile>; hidden: number }
+
 export default function ProfilesPage() {
   const { t, locale } = useI18n()
   const { canManageAccess, role } = useAuth()
@@ -95,6 +104,13 @@ export default function ProfilesPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(DEFAULT_VIEW.sort_direction)
   const [page, setPage] = useState(1)
   const perPage = 25
+  const [layout, setLayout] = useState<ProfileLayout>('grouped')
+  /** The sections this browser left open. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  /** Sections folded again while a search or filter holds its matches open. Never stored. */
+  const [foldedInResults, setFoldedInResults] = useState<Set<string>>(new Set())
+  /** How many rows a long section shows, once "Show more" was used. */
+  const [sectionRows, setSectionRows] = useState<Record<string, number>>({})
 
   const [checkingProxies, setCheckingProxies] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -202,6 +218,8 @@ export default function ProfilesPage() {
     setFilterForPage({ search, statusFilter, groupFilter, tagFilters: tagFilters.join('\0') })
     setPage(1)
     setSelected(new Set())
+    setFoldedInResults(new Set())
+    setSectionRows({})
   }
 
   const viewConfig = useMemo<ProfileViewConfig>(() => ({ search, status: statusFilter, group: groupFilter, tags: tagFilters, sort_key: sortKey, sort_direction: sortDir }), [search, statusFilter, groupFilter, tagFilters, sortKey, sortDir])
@@ -219,6 +237,15 @@ export default function ProfilesPage() {
     return () => window.removeEventListener('popstate', read)
   }, [])
 
+  useEffect(() => {
+    // Read only after mount, like the URL above. The layout is this browser's
+    // preference, not part of a view: saved views are shared by every user.
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLayout(parseLayout(window.localStorage.getItem(LAYOUT_KEY)))
+      setExpanded(new Set(parseExpanded(window.localStorage.getItem(EXPANDED_KEY))))
+    } catch { /* Storage can be disabled in embedded browsers. */ }
+  }, [])
 
   const groupNames = useMemo(
     () => new Map(groups.map((group) => [group.id, group.name])),
@@ -293,7 +320,70 @@ export default function ProfilesPage() {
     const target = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
     window.history.replaceState(null, '', target)
   }, [viewConfig, currentPage, urlReady, loading])
-  const allOnPageSelected = pageRows.length > 0 && pageRows.every((row) => selected.has(row.id))
+
+  const grouped = layout === 'grouped'
+  const sections = useMemo(
+    () => grouped ? buildSections(visible, profiles, groupNames, running, { descending: sortKey === 'group' && sortDir === 'desc', locale }) : [],
+    [grouped, visible, profiles, groupNames, running, sortKey, sortDir, locale],
+  )
+  // The group filter is not counted: it leaves one section, which is open anyway.
+  const narrowed = search.trim() !== '' || statusFilter !== 'all' || tagFilters.length > 0
+  const selfOpening = opensByItself(sections.length, visible.length, narrowed)
+  const isOpen = (key: string) => (selfOpening ? !foldedInResults.has(key) : expanded.has(key))
+  const listItems: ListItem[] = grouped
+    ? sections.flatMap((section): ListItem[] => {
+        const open = isOpen(section.key)
+        const shown = sectionRows[section.key] ?? SECTION_ROW_STEP
+        return [
+          { kind: 'section', section, open },
+          ...(open ? section.rows.slice(0, shown).map((profile): ListItem => ({ kind: 'row', profile })) : []),
+          ...(open && section.rows.length > shown ? [{ kind: 'more' as const, section, hidden: section.rows.length - shown }] : []),
+        ]
+      })
+    : pageRows.map((profile) => ({ kind: 'row', profile }))
+  // Folded rows are still part of the list, so the header box answers for all of
+  // them; the flat list keeps answering for its page.
+  const headerRows = grouped ? visible : pageRows
+  const headerSelected = headerRows.filter((row) => selected.has(row.id)).length
+  const allHeaderSelected = headerRows.length > 0 && headerSelected === headerRows.length
+  const columns = grouped ? COLUMNS.filter((column) => column.key !== 'group') : COLUMNS
+
+  function remember(key: string, value: string) {
+    try { window.localStorage.setItem(key, value) } catch { /* The choice still holds for this visit. */ }
+  }
+
+  function chooseLayout(next: ProfileLayout) {
+    setLayout(next)
+    remember(LAYOUT_KEY, next)
+  }
+
+  function storeExpanded(next: Set<string>) {
+    setExpanded(next)
+    remember(EXPANDED_KEY, JSON.stringify([...next]))
+  }
+
+  /** A fold made inside search results is not remembered: the search made the opening. */
+  function toggleSection(key: string) {
+    const next = new Set(selfOpening ? foldedInResults : expanded)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    if (selfOpening) setFoldedInResults(next)
+    else storeExpanded(next)
+  }
+
+  function setAllSections(open: boolean) {
+    const keys = sections.map((section) => section.key)
+    if (selfOpening) setFoldedInResults(new Set(open ? [] : keys))
+    else storeExpanded(new Set(open ? keys : []))
+  }
+
+  function selectRows(rows: Profile[], on: boolean) {
+    setSelected((current) => {
+      const next = new Set(current)
+      rows.forEach((row) => (on ? next.add(row.id) : next.delete(row.id)))
+      return next
+    })
+  }
 
   /** Close the row menu and hand focus back to the button that opened it.
    *
@@ -727,7 +817,17 @@ export default function ProfilesPage() {
           <select id="profile-tag-filter" className="field field-compact w-[170px]" value="" disabled={tagFilters.length >= 20} onChange={event => { if (event.target.value && !tagFilters.includes(event.target.value)) setTagFilters(current => [...current, event.target.value]) }}><option value="">{t('Add tag filter')}</option>{availableTags.filter(tag => !tagFilters.includes(tag)).map(tag => <option key={tag} value={tag}>{tag}</option>)}</select>
           {tagFilters.map(tag => <button key={tag} className="btn btn-default h-7" onClick={() => setTagFilters(current => current.filter(value => value !== tag))} aria-label={t('Remove tag filter {tag}', { tag })}>{tag} ×</button>)}
           {tagFilters.length > 0 && <span className="text-[11px] text-ink-dim">{t('Match all selected tags')}</span>}
-          <button className="btn btn-ghost ml-auto" onClick={() => applyView(DEFAULT_VIEW)}>{t('Clear filters')}</button>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div role="group" aria-label={t('Profile list layout')} className="inline-flex overflow-hidden rounded-md border border-line-strong">
+              <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 px-2.5 ${grouped ? 'text-ink-dim hover:text-ink' : 'bg-signal-shade text-signal-soft'}`} aria-pressed={!grouped} onClick={() => chooseLayout('list')}><List size={13} aria-hidden="true" />{t('List')}</button>
+              <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 border-l border-line-strong px-2.5 ${grouped ? 'bg-signal-shade text-signal-soft' : 'text-ink-dim hover:text-ink'}`} aria-pressed={grouped} onClick={() => chooseLayout('grouped')}><Layers size={13} aria-hidden="true" />{t('By group')}</button>
+            </div>
+            {grouped && sections.length > 1 && <>
+              <button className="btn btn-ghost h-7" onClick={() => setAllSections(true)}>{t('Expand all')}</button>
+              <button className="btn btn-ghost h-7" onClick={() => setAllSections(false)}>{t('Collapse all')}</button>
+            </>}
+            <button className="btn btn-ghost" onClick={() => applyView(DEFAULT_VIEW)}>{t('Clear filters')}</button>
+          </div>
         </div>
       </section>
 
@@ -827,20 +927,13 @@ export default function ProfilesPage() {
                   type="checkbox"
                   className="accent-signal"
                   disabled={!canManageAccess && role !== 'operator'}
-                  checked={allOnPageSelected}
-                  aria-label={t('Select all on this page')}
-                  onChange={() =>
-                    setSelected((current) => {
-                      const next = new Set(current)
-                      pageRows.forEach((row) =>
-                        allOnPageSelected ? next.delete(row.id) : next.add(row.id),
-                      )
-                      return next
-                    })
-                  }
+                  checked={allHeaderSelected}
+                  ref={(element) => { if (element) element.indeterminate = grouped && headerSelected > 0 && !allHeaderSelected }}
+                  aria-label={grouped ? t('Select all matching profiles') : t('Select all on this page')}
+                  onChange={() => selectRows(headerRows, !allHeaderSelected)}
                 />
               </th>
-              {COLUMNS.flatMap((column) => [
+              {columns.flatMap((column) => [
                 <th key={column.key} className="py-2 pr-4 font-medium">
                   <button
                     className="inline-flex items-center gap-1 hover:text-ink"
@@ -859,7 +952,36 @@ export default function ProfilesPage() {
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((profile, index) => {
+            {listItems.map((item, index) => {
+              if (item.kind === 'section') {
+                const { section } = item
+                return (
+                  <SectionRow
+                    key={`section:${section.key}`}
+                    section={section}
+                    open={item.open}
+                    span={columns.length + 3}
+                    selectedCount={section.rows.filter((row) => selected.has(row.id)).length}
+                    selectable={canManageAccess || role === 'operator'}
+                    onToggle={() => toggleSection(section.key)}
+                    onSelect={(on) => selectRows(section.rows, on)}
+                  />
+                )
+              }
+              if (item.kind === 'more') {
+                const { section } = item
+                return (
+                  <tr key={`more:${section.key}`} className="border-b border-line/60">
+                    <td />
+                    <td colSpan={columns.length + 3} className="py-2 pl-6 pr-5">
+                      <button className="btn btn-ghost h-7" onClick={() => setSectionRows((current) => ({ ...current, [section.key]: (current[section.key] ?? SECTION_ROW_STEP) + SECTION_ROW_STEP }))}>
+                        {t('Show {count} more', { count: Math.min(SECTION_ROW_STEP, item.hidden) })}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              }
+              const { profile } = item
               const syncBinding = syncBindings.find(binding => binding.local_id === profile.id)
               const syncBlocked = syncBlocksLaunch(syncBinding)
               const isRunning = running.has(profile.id)
@@ -892,7 +1014,7 @@ export default function ProfilesPage() {
                     />
                   </td>
 
-                  <td className="py-2.5 pr-4 font-medium"><p>{profile.name}</p>{(profile.tags ?? []).length > 0 && <div className="mt-1 flex max-w-[240px] flex-wrap gap-1">{profile.tags?.map(tag => <button key={tag} className="rounded border border-line bg-raised px-1.5 py-px text-[11px] font-normal text-ink-dim hover:text-ink" aria-label={t('Filter by tag {tag}', { tag })} onClick={() => setTagFilters([tag])}>{tag}</button>)}</div>}</td>
+                  <td className={`py-2.5 pr-4 font-medium ${grouped ? 'pl-6' : ''}`}><p>{profile.name}</p>{(profile.tags ?? []).length > 0 && <div className="mt-1 flex max-w-[240px] flex-wrap gap-1">{profile.tags?.map(tag => <button key={tag} className="rounded border border-line bg-raised px-1.5 py-px text-[11px] font-normal text-ink-dim hover:text-ink" aria-label={t('Filter by tag {tag}', { tag })} onClick={() => setTagFilters([tag])}>{tag}</button>)}</div>}</td>
                   <td
                     className={`max-w-[240px] truncate py-2.5 pr-4 font-mono text-ink-dim ${profile.email ? 'cursor-copy' : ''}`}
                     title={profile.email ? t('Double-click to copy: {email}', { email: profile.email }) : undefined}
@@ -901,9 +1023,9 @@ export default function ProfilesPage() {
                     {profile.email || <span className="text-ink-faint">—</span>}
                   </td>
                   <td className="py-2.5 pr-4 font-mono text-ink-faint">{profile.id}</td>
-                  <td className="py-2.5 pr-4 text-ink-dim">
+                  {!grouped && <td className="py-2.5 pr-4 text-ink-dim">
                     {profile.group ? (groupNames.get(profile.group) ?? profile.group) : '—'}
-                  </td>
+                  </td>}
                   <td className="py-2.5 pr-4 text-ink-dim">
                     {OS_LABELS[profile.browser_settings?.os ?? ''] ?? profile.browser_settings?.os}
                     <FingerprintSource profile={profile} />
@@ -1042,7 +1164,12 @@ export default function ProfilesPage() {
         </table>
       )}
 
-      {totalPages > 1 && (
+      {grouped ? !error && !loading && visible.length > 0 && (
+        // No pages here: a page boundary would cut a group in two.
+        <p className="px-5 py-3 text-ink-dim">
+          {t('{count} groups', { count: sections.filter((section) => section.name !== null).length })} · {t('{count} profiles', { count: visible.length })}
+        </p>
+      ) : totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3 text-ink-dim">
           <span>
             {t('{start}–{end} of {count}', { start: (currentPage - 1) * perPage + 1, end: Math.min(currentPage * perPage, visible.length), count: visible.length })}
@@ -1128,6 +1255,93 @@ export default function ProfilesPage() {
         </p>
       </Modal>
     </>
+  )
+}
+
+/** The line a group folds into: what it holds, and what in it needs a look.
+ *
+ * The whole line toggles, since the name alone is a small target in a wide
+ * table; the button inside is the same action for the keyboard.
+ */
+function SectionRow({
+  section,
+  open,
+  span,
+  selectedCount,
+  selectable,
+  onToggle,
+  onSelect,
+}: {
+  section: ProfileSection<Profile>
+  open: boolean
+  span: number
+  selectedCount: number
+  selectable: boolean
+  onToggle: () => void
+  onSelect: (on: boolean) => void
+}) {
+  const { t, locale } = useI18n()
+  const name = section.name ?? t('Ungrouped')
+  const allSelected = selectedCount === section.rows.length
+  return (
+    <tr className="cursor-pointer border-b border-line bg-surface hover:bg-raised" onClick={onToggle}>
+      <td className="relative py-2 pl-5" onClick={(event) => event.stopPropagation()}>
+        {/* Same marker as a running row, so a folded group still shows it. */}
+        {section.running > 0 && <span className="absolute left-0 top-0 h-full w-[2px] bg-signal" aria-hidden />}
+        <input
+          type="checkbox"
+          className="accent-signal"
+          disabled={!selectable}
+          checked={allSelected}
+          ref={(element) => { if (element) element.indeterminate = selectedCount > 0 && !allSelected }}
+          aria-label={t('Select all profiles in {name}', { name })}
+          onChange={() => onSelect(!allSelected)}
+        />
+      </td>
+      <td colSpan={span} className="py-2 pr-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <button
+            className="inline-flex cursor-pointer items-center gap-2 font-semibold"
+            aria-expanded={open}
+            onClick={(event) => {
+              event.stopPropagation()
+              onToggle()
+            }}
+          >
+            <ChevronRight size={14} aria-hidden="true" className={`text-ink-faint transition-transform ${open ? 'rotate-90' : ''}`} />
+            {name}
+          </button>
+          <span className="rounded-full border border-line-strong bg-raised px-2 text-[11px] leading-[18px] text-ink-dim">
+            {section.rows.length === section.total
+              ? t('{count} profiles', { count: section.total })
+              : t('{matched} of {total} match', { matched: section.rows.length, total: section.total })}
+          </span>
+          {section.running > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-signal">
+              <span className="signal-pulse h-1.5 w-1.5 rounded-full bg-signal" />
+              {t('{count} running', { count: section.running })}
+            </span>
+          )}
+          {section.blocked > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-danger">
+              <span className="h-1.5 w-1.5 rounded-full bg-danger" />
+              {t('{count} blocked', { count: section.blocked })}
+            </span>
+          )}
+          {section.proxyIssues > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-danger">
+              <span className="h-1.5 w-1.5 rounded-full bg-danger" />
+              {t('Proxy issues: {count}', { count: section.proxyIssues })}
+            </span>
+          )}
+          {section.lastUsed && (
+            <span className="ml-auto text-[12px] text-ink-faint">
+              {t('Last used {time}', { time: formatLastUsed(section.lastUsed, locale).toLowerCase() })}
+            </span>
+          )}
+        </div>
+      </td>
+    </tr>
   )
 }
 
